@@ -1,0 +1,93 @@
+# Neo Zig SDK .gitignore
+
+# Exclude original Swift SDK (not part of Zig implementation)
+NeoSwift/
+
+# Zig build artifacts
+zig-out/
+zig-cache/
+.zig-cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Testing artifacts
+test-results/
+coverage/
+*.test
+
+# Documentation build artifacts
+docs/build/
+docs/generated/
+
+# Package manager files
+node_modules/
+*.tgz
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Hive mind temporary files (development artifacts)
+.hive-mind/
+.claude-flow/
+
+# System files
+*.pid
+*.seed
+*.pid.lock
+
+# Security sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+wallets/
+private-keys/
+
+# Development databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary build files
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Custom exclusions for Neo development
+contracts/build/
+deployments/local/
+test-wallets/
