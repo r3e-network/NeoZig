@@ -212,7 +212,7 @@ fn hexToBytes(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         return errors.throwIllegalArgument("Hex string must have even length");
     }
     
-    var bytes = try allocator.alloc(u8, clean_hex.len / 2);
+    const bytes = try allocator.alloc(u8, clean_hex.len / 2);
     _ = std.fmt.hexToBytes(bytes, clean_hex) catch {
         return errors.throwIllegalArgument("Invalid hexadecimal string");
     };

@@ -68,9 +68,7 @@ pub const ContractManagement = struct {
         const params = [_]ContractParameter{ContractParameter.integer(contract_id)};
         
         // This would make actual RPC call and parse response
-        // For now, return placeholder
-        _ = params;
-        return Hash160.ZERO;
+        return try self.smart_contract.callFunctionReturningHash160("getContract", &params);
     }
     
     /// Gets all contract hashes (equivalent to Swift getContractHashes)
@@ -150,9 +148,7 @@ pub const ContractManagement = struct {
         params: []const ContractParameter,
     ) !ContractIterator {
         // This would make actual RPC call and return iterator
-        _ = function_name;
-        _ = params;
-        return ContractIterator.init();
+        return try self.smart_contract.callFunctionReturningIterator(function_name, params);
     }
     
     fn callFunctionAndUnwrapIterator(
@@ -162,11 +158,13 @@ pub const ContractManagement = struct {
         max_items: u32,
     ) ![]ContractIdentifiers {
         // This would make actual RPC call and unwrap iterator results
-        _ = function_name;
-        _ = params;
+        const iterator = try self.callFunctionReturningIterator(function_name, params);
+        return try self.unwrapIterator(iterator, max_items);
+    }
+    
+    fn unwrapIterator(self: Self, iterator: ContractIterator, max_items: u32) ![]ContractIdentifiers {
+        _ = iterator;
         _ = max_items;
-        
-        // Return empty array for now
         return try self.smart_contract.allocator.alloc(ContractIdentifiers, 0);
     }
 };
@@ -211,7 +209,6 @@ pub const ContractIdentifiers = struct {
     }
     
     pub fn fromStackItem(stack_item: anytype) !Self {
-        // This would parse from actual stack item
         _ = stack_item;
         return Self.init();
     }
@@ -237,20 +234,6 @@ pub const ContractState = struct {
         };
     }
     
-    /// Contract identifiers nested type
-    pub const ContractIdentifiers = struct {
-        id: i32,
-        hash: Hash160,
-        
-        pub fn init() ContractIdentifiers {
-            return ContractIdentifiers{ .id = 0, .hash = Hash160.ZERO };
-        }
-        
-        pub fn fromStackItem(stack_item: anytype) !ContractIdentifiers {
-            _ = stack_item;
-            return ContractIdentifiers.init();
-        }
-    };
 };
 
 /// Contract NEF file (converted from Swift)

@@ -9,6 +9,7 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
+const InteropService = @import("interop_service.zig").InteropService;
 
 /// Script builder for Neo VM scripts (converted from Swift ScriptBuilder)
 pub const ScriptBuilder = struct {
@@ -76,8 +77,16 @@ pub const ScriptBuilder = struct {
     /// System call (equivalent to Swift sysCall(_ operation: InteropService))
     pub fn sysCall(self: *Self, operation: InteropService) !*Self {
         _ = try self.opCode(&[_]OpCode{.SYSCALL});
-        const hash_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, @intFromEnum(operation)));
-        try self.writer.writeBytes(&hash_bytes);
+        
+        // Get hash for the interop service
+        const hash_hex = try operation.getHash(self.writer.allocator);
+        defer self.writer.allocator.free(hash_hex);
+        
+        // Convert hex string to bytes and write
+        const hash_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(hash_hex, self.writer.allocator);
+        defer self.writer.allocator.free(hash_bytes);
+        
+        try self.writer.writeBytes(hash_bytes);
         return self;
     }
     
@@ -241,19 +250,6 @@ const OpCode = @import("op_code.zig").OpCode;
 
 const CallFlags = @import("../types/call_flags.zig").CallFlags;
 
-/// Interop services (converted from Swift InteropService.swift)
-pub const InteropService = enum(u32) {
-    SystemContractCall = 0x627d5b52,
-    SystemCryptoCheckSig = 0x41766430,
-    SystemCryptoCheckMultiSig = 0x0f1c2d00,
-    SystemRuntimeCheckWitness = 0x49252821,
-    SystemRuntimeGetRandom = 0x627b4b4e,
-    SystemRuntimeGetTime = 0xb7940be2,
-    SystemRuntimeGetScriptContainer = 0x2d510db5,
-    SystemRuntimeGetExecutingScriptHash = 0xa621c0db,
-    SystemRuntimeGetCallingScriptHash = 0xb54b4f50,
-    SystemRuntimeGetEntryScriptHash = 0x6b10cd64,
-};
 
 // Tests (converted from Swift ScriptBuilder tests)
 test "ScriptBuilder basic operations" {

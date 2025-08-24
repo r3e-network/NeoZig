@@ -84,4 +84,4 @@ pub const Signature = struct {
         
         return !std.mem.eql(u8, r_bytes, &zero_bytes) and !std.mem.eql(u8, s_bytes, &zero_bytes);
     }
-}
+};

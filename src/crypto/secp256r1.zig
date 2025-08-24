@@ -172,7 +172,7 @@ fn pointFromCompressed(compressed: []const u8) !Point {
     
     const y_squared = modAdd(modAdd(modMul(modMul(x, x, Secp256r1.P), x, Secp256r1.P), modMul(Secp256r1.A, x, Secp256r1.P), Secp256r1.P), Secp256r1.B, Secp256r1.P);
     const y = modSqrt(y_squared, Secp256r1.P);
-    const final_y = if ((y & 1) == 0) == y_is_even) y else modSub(Secp256r1.P, y, Secp256r1.P);
+    const final_y = if (((y & 1) == 0) == y_is_even) y else modSub(Secp256r1.P, y, Secp256r1.P);
     
     return Point.init(x, final_y);
 }

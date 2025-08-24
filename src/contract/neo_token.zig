@@ -91,21 +91,18 @@ pub const NeoToken = struct {
     /// Gets all candidates (equivalent to Swift getCandidates)
     pub fn getCandidates(self: Self) ![]Candidate {
         // This would make actual RPC call and parse candidates
-        _ = self;
         return try self.fungible_token.token.smart_contract.allocator.alloc(Candidate, 0);
     }
     
     /// Gets committee members (equivalent to Swift getCommittee)
     pub fn getCommittee(self: Self) ![][33]u8 {
         // This would make actual RPC call and parse committee
-        _ = self;
         return try self.fungible_token.token.smart_contract.allocator.alloc([33]u8, 0);
     }
     
     /// Gets next block validators (equivalent to Swift getNextBlockValidators)
     pub fn getNextBlockValidators(self: Self) ![][33]u8 {
         // This would make actual RPC call
-        _ = self;
         return try self.fungible_token.token.smart_contract.allocator.alloc([33]u8, 0);
     }
     
@@ -148,8 +145,7 @@ pub const NeoToken = struct {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         
         // This would make actual RPC call and parse account state
-        _ = params;
-        return AccountState.init();
+        return try self.fungible_token.token.smart_contract.callFunctionReturningAccountState(GET_ACCOUNT_STATE, &params);
     }
     
     /// Gets GAS per block (equivalent to Swift getGasPerBlock)

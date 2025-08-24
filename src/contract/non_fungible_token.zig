@@ -56,8 +56,7 @@ pub const NonFungibleToken = struct {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
         
         // This would make actual RPC call and parse owner
-        _ = params;
-        return Hash160.ZERO; // Placeholder
+        return try self.token.smart_contract.callFunctionReturningHash160(OWNER_OF, &params);
     }
     
     /// Gets token properties (equivalent to Swift properties)
@@ -65,8 +64,7 @@ pub const NonFungibleToken = struct {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
         
         // This would make actual RPC call and parse properties
-        _ = params;
-        return TokenProperties.init();
+        return try self.token.smart_contract.callFunctionReturningProperties(PROPERTIES, &params);
     }
     
     /// Transfers NFT (equivalent to Swift transfer for non-divisible NFTs)
@@ -80,6 +78,7 @@ pub const NonFungibleToken = struct {
         var params = std.ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
         
+        try params.append(ContractParameter.hash160(from));
         try params.append(ContractParameter.hash160(to));
         try params.append(ContractParameter.byteArray(token_id));
         

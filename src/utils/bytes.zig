@@ -13,7 +13,7 @@ pub fn fromHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
     const clean_hex = if (std.mem.startsWith(u8, hex_str, "0x")) hex_str[2..] else hex_str;
     if (clean_hex.len % 2 != 0) return errors.ValidationError.InvalidParameter;
     
-    var bytes = try allocator.alloc(u8, clean_hex.len / 2);
+    const bytes = try allocator.alloc(u8, clean_hex.len / 2);
     _ = std.fmt.hexToBytes(bytes, clean_hex) catch {
         allocator.free(bytes);
         return errors.ValidationError.InvalidParameter;
@@ -26,7 +26,7 @@ pub fn reverse(bytes: []u8) void {
 }
 
 pub fn reversed(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    var result = try allocator.dupe(u8, bytes);
+    const result = try allocator.dupe(u8, bytes);
     reverse(result);
     return result;
 }

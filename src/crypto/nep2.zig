@@ -136,13 +136,13 @@ pub const NEP2 = struct {
     fn performCipher(
         data: []const u8,
         key: []const u8,
-        encrypt: bool,
+        should_encrypt: bool,
         allocator: std.mem.Allocator,
     ) ![]u8 {
         var result = try allocator.alloc(u8, data.len);
         @memcpy(result, data);
         
-        if (encrypt) {
+        if (should_encrypt) {
             try aesEncrypt(result, key);
         } else {
             try aesDecrypt(result, key);
