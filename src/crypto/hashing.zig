@@ -152,7 +152,7 @@ fn scryptMixingFunction(block: []u8, n: u32, r: u32, allocator: std.mem.Allocato
             b.* ^= v_byte;
         }
         
-        var temp_block = try allocator.alloc(u8, block_size);
+        const temp_block = try allocator.alloc(u8, block_size);
         defer allocator.free(temp_block);
         scryptBlockMix(block, temp_block, r);
         @memcpy(block, temp_block);

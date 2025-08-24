@@ -150,12 +150,12 @@ pub fn verify(hash: [32]u8, signature: [64]u8, public_key: []const u8) !bool {
     
     const z = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &hash));
     const s_inv = modInverse(s, Secp256r1.N);
-    const u1 = modMul(z, s_inv, Secp256r1.N);
-    const u2 = modMul(r, s_inv, Secp256r1.N);
+    const recovery_u1 = modMul(z, s_inv, Secp256r1.N);
+    const recovery_u2 = modMul(r, s_inv, Secp256r1.N);
     
     const generator = Point.generator();
-    const point1 = generator.multiply(u1);
-    const point2 = public_point.multiply(u2);
+    const point1 = generator.multiply(recovery_u1);
+    const point2 = public_point.multiply(recovery_u2);
     const result_point = point1.add(point2);
     
     if (result_point.is_infinity) return false;
