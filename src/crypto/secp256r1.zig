@@ -17,14 +17,14 @@ pub const Secp256r1 = struct {
 };
 
 pub const Point = struct {
-    x: u256, y: u256, infinity: bool = false,
+    x: u256, y: u256, is_infinity: bool = false,
     
     pub fn init(x: u256, y: u256) Point {
         return Point{ .x = x, .y = y };
     }
     
     pub fn infinity() Point {
-        return Point{ .x = 0, .y = 0, .infinity = true };
+        return Point{ .x = 0, .y = 0, .is_infinity = true };
     }
     
     pub fn generator() Point {
@@ -32,7 +32,7 @@ pub const Point = struct {
     }
     
     pub fn multiply(self: Point, scalar: u256) Point {
-        if (scalar == 0 or self.infinity) return Point.infinity();
+        if (scalar == 0 or self.is_infinity) return Point.infinity();
         if (scalar == 1) return self;
         
         var result = Point.infinity();
@@ -48,8 +48,8 @@ pub const Point = struct {
     }
     
     pub fn add(self: Point, other: Point) Point {
-        if (self.infinity) return other;
-        if (other.infinity) return self;
+        if (self.is_infinity) return other;
+        if (other.is_infinity) return self;
         if (self.x == other.x) {
             return if (self.y == other.y) self.double() else Point.infinity();
         }
@@ -65,7 +65,7 @@ pub const Point = struct {
     }
     
     pub fn double(self: Point) Point {
-        if (self.infinity or self.y == 0) return Point.infinity();
+        if (self.is_infinity or self.y == 0) return Point.infinity();
         
         const three_x_squared = modMul(3, modMul(self.x, self.x, Secp256r1.P), Secp256r1.P);
         const numerator = modAdd(three_x_squared, Secp256r1.A, Secp256r1.P);
@@ -85,7 +85,7 @@ pub fn derivePublicKey(private_key: [32]u8, compressed: bool, allocator: std.mem
     
     const generator = Point.generator();
     const public_point = generator.multiply(scalar);
-    if (public_point.infinity) return errors.CryptoError.KeyGenerationFailed;
+    if (public_point.is_infinity) return errors.CryptoError.KeyGenerationFailed;
     
     var result = try allocator.alloc(u8, if (compressed) 33 else 65);
     
@@ -115,7 +115,7 @@ pub fn sign(hash: [32]u8, private_key: [32]u8) ![64]u8 {
     
     const generator = Point.generator();
     const k_point = generator.multiply(k);
-    if (k_point.infinity) return errors.CryptoError.ECDSAOperationFailed;
+    if (k_point.is_infinity) return errors.CryptoError.ECDSAOperationFailed;
     
     const r = k_point.x % Secp256r1.N;
     if (r == 0) return errors.CryptoError.ECDSAOperationFailed;
@@ -158,7 +158,7 @@ pub fn verify(hash: [32]u8, signature: [64]u8, public_key: []const u8) !bool {
     const point2 = public_point.multiply(u2);
     const result_point = point1.add(point2);
     
-    if (result_point.infinity) return false;
+    if (result_point.is_infinity) return false;
     return (result_point.x % Secp256r1.N) == r;
 }
 

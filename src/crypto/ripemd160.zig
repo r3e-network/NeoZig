@@ -87,7 +87,7 @@ pub const Ripemd160 = struct {
     
     fn processBlock(self: *Self, block: []const u8) void {
         var x: [16]u32 = undefined;
-        for (x, 0..) |*word, i| {
+        for (&x, 0..) |*word, i| {
             const bytes = block[i * 4..(i + 1) * 4];
             word.* = std.mem.littleToNative(u32, std.mem.bytesToValue(u32, bytes[0..4]));
         }

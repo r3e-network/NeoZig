@@ -27,7 +27,7 @@ pub const StringUtils = struct {
         const decoder = std.base64.standard.Decoder;
         const decoded_len = try decoder.calcSizeForSlice(encoded);
         
-        var result = try allocator.alloc(u8, decoded_len);
+        const result = try allocator.alloc(u8, decoded_len);
         try decoder.decode(result, encoded);
         
         return result;
@@ -38,7 +38,7 @@ pub const StringUtils = struct {
         const encoder = std.base64.standard.Encoder;
         const encoded_len = encoder.calcSize(data.len);
         
-        var result = try allocator.alloc(u8, encoded_len);
+        const result = try allocator.alloc(u8, encoded_len);
         _ = encoder.encode(result, data);
         
         return result;
@@ -112,7 +112,7 @@ pub const StringUtils = struct {
         defer allocator.free(base58_data);
         
         // Extract script hash and reverse (Swift does .reversed())
-        var script_hash = try allocator.alloc(u8, 20);
+        const script_hash = try allocator.alloc(u8, 20);
         @memcpy(script_hash, base58_data[1..21]);
         std.mem.reverse(u8, script_hash);
         
