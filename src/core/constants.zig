@@ -1,5 +1,5 @@
 //! Neo blockchain constants and configuration values
-//! 
+//!
 //! Complete conversion from NeoSwift/Sources/NeoSwift/NeoConstants.swift
 //! All constants match the original Swift implementation for compatibility.
 
@@ -30,6 +30,9 @@ pub const NetworkMagic = struct {
     pub const TESTNET: u32 = 0x4e454f01;
 };
 
+/// Default magic used when the RPC endpoint does not report protocol metadata
+pub const DEFAULT_NETWORK_MAGIC: u32 = NetworkMagic.MAINNET;
+
 /// secp256r1 curve parameters (converted from Swift)
 pub const Secp256r1 = struct {
     /// Field prime p
@@ -40,7 +43,7 @@ pub const Secp256r1 = struct {
     pub const HALF_CURVE_ORDER: u256 = N >> 1;
     /// Curve coefficient A
     pub const A: u256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC;
-    /// Curve coefficient B  
+    /// Curve coefficient B
     pub const B: u256 = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B;
     /// Generator point X coordinate
     pub const GX: u256 = 0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296;
@@ -58,9 +61,10 @@ pub const AddressConstants = struct {
 
 /// Native contract script hashes
 pub const NativeContracts = struct {
-    pub const NEO_TOKEN: [20]u8 = [_]u8{0xef, 0x4f, 0x3d, 0x0b, 0x94, 0xe8, 0x8c, 0x2f, 0x5b, 0xc9, 0x2e, 0x9b, 0xde, 0x5a, 0x8b, 0x25, 0x4b, 0x71, 0x42, 0x85};
-    pub const GAS_TOKEN: [20]u8 = [_]u8{0xd2, 0xa4, 0xcf, 0xf3, 0x1a, 0x0a, 0xa7, 0x93, 0x3e, 0x4d, 0xa7, 0x8b, 0x46, 0x97, 0x7c, 0xa0, 0xd8, 0x13, 0x68, 0xa7};
-    pub const POLICY_CONTRACT: [20]u8 = [_]u8{0xcc, 0x5e, 0x4e, 0xdd, 0x86, 0xf3, 0x40, 0x45, 0x8c, 0x96, 0x5a, 0x2e, 0x1f, 0x08, 0x95, 0x24, 0xbc, 0x6d, 0x2e, 0x8c};
+    pub const NEO_TOKEN: [20]u8 = [_]u8{ 0xef, 0x4f, 0x3d, 0x0b, 0x94, 0xe8, 0x8c, 0x2f, 0x5b, 0xc9, 0x2e, 0x9b, 0xde, 0x5a, 0x8b, 0x25, 0x4b, 0x71, 0x42, 0x85 };
+    pub const GAS_TOKEN: [20]u8 = [_]u8{ 0xd2, 0xa4, 0xcf, 0xf3, 0x1a, 0x0a, 0xa7, 0x93, 0x3e, 0x4d, 0xa7, 0x8b, 0x46, 0x97, 0x7c, 0xa0, 0xd8, 0x13, 0x68, 0xa7 };
+    pub const POLICY_CONTRACT: [20]u8 = [_]u8{ 0xcc, 0x5e, 0x4e, 0xdd, 0x86, 0xf3, 0x40, 0x45, 0x8c, 0x96, 0x5a, 0x2e, 0x1f, 0x08, 0x95, 0x24, 0xbc, 0x6d, 0x2e, 0x8c };
+    pub const CONTRACT_MANAGEMENT: [20]u8 = [_]u8{ 0xff, 0xfd, 0xc9, 0x37, 0x64, 0xdb, 0xad, 0xdd, 0x97, 0xc4, 0x8f, 0x25, 0x2a, 0x53, 0xea, 0x46, 0x43, 0xfa, 0xa3, 0xfd };
 };
 
 /// Fee constants
@@ -82,14 +86,14 @@ pub const InteropServices = struct {
 
 test "constants validation" {
     const testing = std.testing;
-    
+
     // Validate key sizes match original Swift implementation
     try testing.expectEqual(@as(usize, 20), HASH160_SIZE);
     try testing.expectEqual(@as(usize, 32), HASH256_SIZE);
     try testing.expectEqual(@as(usize, 32), PRIVATE_KEY_SIZE);
     try testing.expectEqual(@as(usize, 33), PUBLIC_KEY_SIZE_COMPRESSED);
     try testing.expectEqual(@as(usize, 64), SIGNATURE_SIZE);
-    
+
     // Validate transaction limits
     try testing.expectEqual(@as(u8, 0), CURRENT_TX_VERSION);
     try testing.expectEqual(@as(u32, 102400), MAX_TRANSACTION_SIZE);
