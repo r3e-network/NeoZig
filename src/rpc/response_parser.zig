@@ -4,10 +4,13 @@
 //! Handles type-safe conversion from JSON to Zig types.
 
 const std = @import("std");
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const StackItem = @import("../types/stack_item.zig").StackItem;
+const json_utils = @import("../utils/json_utils.zig");
 
 /// Parses RPC response result based on expected type
 pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: std.mem.Allocator) !T {
@@ -19,153 +22,108 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         i64 => result.integer,
         bool => result.bool,
         []const u8 => try allocator.dupe(u8, result.string),
-        
+
         // Complex response types
         @import("responses.zig").NeoBlock => try @import("responses.zig").NeoBlock.fromJson(result, allocator),
         @import("responses.zig").NeoVersion => try @import("responses.zig").NeoVersion.fromJson(result, allocator),
         @import("responses.zig").InvocationResult => try @import("responses.zig").InvocationResult.fromJson(result, allocator),
         @import("responses.zig").Nep17Balances => try @import("responses.zig").Nep17Balances.fromJson(result, allocator),
         @import("responses.zig").Nep17Transfers => try @import("responses.zig").Nep17Transfers.fromJson(result, allocator),
+        @import("response_aliases.zig").NeoGetRawMemPool => try @import("response_aliases.zig").NeoGetRawMemPool.fromJson(result, allocator),
+        @import("response_aliases.zig").NeoGetRawTransaction => try @import("response_aliases.zig").NeoGetRawTransaction.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep17Balances => try @import("token_responses.zig").NeoGetNep17Balances.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep11Balances => try @import("token_responses.zig").NeoGetNep11Balances.fromJson(result, allocator),
         @import("complete_responses.zig").NeoAccountState => try @import("complete_responses.zig").NeoAccountState.fromJson(result, allocator),
         @import("complete_responses.zig").NeoGetPeers => try @import("complete_responses.zig").NeoGetPeers.fromJson(result, allocator),
         @import("complete_responses.zig").NeoListPlugins => try @import("complete_responses.zig").NeoListPlugins.fromJson(result, allocator),
         @import("remaining_responses.zig").NeoGetVersion => try @import("remaining_responses.zig").NeoGetVersion.fromJson(result, allocator),
-        
-        else => {
-            // For unknown types, try to return raw JSON
-            return try result.cloneWithAllocator(allocator);
-        },
+
+        else => try json_utils.cloneValue(result, allocator),
     };
 }
 
 /// Validates RPC response structure
-pub fn validateRpcResponse(response_body: []const u8) !std.json.Value {
-    var json_parser = std.json.Parser.init(std.heap.page_allocator, .alloc_always);
-    defer json_parser.deinit();
-    
-    var json_tree = try json_parser.parse(response_body);
-    const response_obj = json_tree.root.object;
-    
-    // Validate JSON-RPC 2.0 structure
-    const jsonrpc = response_obj.get("jsonrpc") orelse return error.InvalidResponse;
-    if (!std.mem.eql(u8, jsonrpc.string, "2.0")) {
-        return error.InvalidResponse;
-    }
-    
-    // Must have either result or error
-    const has_result = response_obj.get("result") != null;
-    const has_error = response_obj.get("error") != null;
-    
-    if (!has_result and !has_error) {
-        return error.InvalidResponse;
-    }
-    
-    if (has_error) {
-        const error_obj = response_obj.get("error").?.object;
-        const error_code = error_obj.get("code").?.integer;
-        const error_message = error_obj.get("message").?.string;
-        
-        std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
-        return error.RPCError;
-    }
-    
-    return json_tree.root;
+pub fn validateRpcResponse(allocator: std.mem.Allocator, response_body: []const u8) !std.json.Value {
+    var parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_body, .{});
+    defer parsed.deinit();
+
+    try validateResponseValue(parsed.value);
+
+    return try json_utils.cloneValue(parsed.value, allocator);
 }
 
 /// Batch response parser for multiple RPC calls
 pub fn parseBatchResponse(response_body: []const u8, allocator: std.mem.Allocator) ![]std.json.Value {
-    var json_parser = std.json.Parser.init(allocator, .alloc_always);
-    defer json_parser.deinit();
-    
-    var json_tree = try json_parser.parse(response_body);
-    defer json_tree.deinit();
-    
-    const response_array = json_tree.root.array;
-    var results = try allocator.alloc(std.json.Value, response_array.len);
-    
-    for (response_array, 0..) |response_item, i| {
-        const validated_response = try validateRpcResponse(response_body); // Would validate individual
-        results[i] = try validated_response.cloneWithAllocator(allocator);
+    var parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_body, .{});
+    defer parsed.deinit();
+
+    if (parsed.value != .array) return error.InvalidResponse;
+
+    const response_array = parsed.value.array;
+    var results = try allocator.alloc(std.json.Value, response_array.items.len);
+    errdefer allocator.free(results);
+
+    for (response_array.items, 0..) |item, i| {
+        try validateResponseValue(item);
+        results[i] = try json_utils.cloneValue(item, allocator);
     }
-    
+
     return results;
+}
+
+fn validateResponseValue(value: std.json.Value) !void {
+    const response_obj = value.object;
+
+    const jsonrpc = response_obj.get("jsonrpc") orelse return error.InvalidResponse;
+    if (jsonrpc != .string or !std.mem.eql(u8, jsonrpc.string, "2.0")) {
+        return error.InvalidResponse;
+    }
+
+    const has_result = response_obj.get("result") != null;
+    const has_error = response_obj.get("error") != null;
+
+    if (!has_result and !has_error) {
+        return error.InvalidResponse;
+    }
+
+    if (has_error) {
+        const error_obj = response_obj.get("error").?.object;
+        const error_code = error_obj.get("code").?.integer;
+        const error_message = error_obj.get("message").?.string;
+
+        std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
+        return error.RPCError;
+    }
 }
 
 /// Stack item parsing utilities
 pub const StackItemParser = struct {
     /// Parses stack item as string
     pub fn parseAsString(stack_item: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-        const item_obj = stack_item.object;
-        const item_type = item_obj.get("type").?.string;
-        const item_value = item_obj.get("value").?.string;
-        
-        return switch (std.hash_map.hashString(item_type)) {
-            std.hash_map.hashString("ByteString") => try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(item_value, allocator),
-            std.hash_map.hashString("Integer") => try allocator.dupe(u8, item_value),
-            std.hash_map.hashString("Boolean") => try allocator.dupe(u8, if (std.mem.eql(u8, item_value, "true")) "true" else "false"),
-            else => try allocator.dupe(u8, item_value),
-        };
+        var decoded = try StackItem.decodeFromJson(stack_item, allocator);
+        defer decoded.deinit(allocator);
+        return try decoded.getString(allocator);
     }
-    
+
     /// Parses stack item as integer
-    pub fn parseAsInteger(stack_item: std.json.Value) !i64 {
-        const item_obj = stack_item.object;
-        const item_type = item_obj.get("type").?.string;
-        const item_value = item_obj.get("value").?.string;
-        
-        if (std.mem.eql(u8, item_type, "Integer")) {
-            return std.fmt.parseInt(i64, item_value, 10) catch {
-                return error.InvalidStackItem;
-            };
-        }
-        
-        return error.InvalidStackItem;
+    pub fn parseAsInteger(stack_item: std.json.Value, allocator: std.mem.Allocator) !i64 {
+        var decoded = try StackItem.decodeFromJson(stack_item, allocator);
+        defer decoded.deinit(allocator);
+        return decoded.getInteger();
     }
-    
+
     /// Parses stack item as boolean
-    pub fn parseAsBoolean(stack_item: std.json.Value) !bool {
-        const item_obj = stack_item.object;
-        const item_type = item_obj.get("type").?.string;
-        const item_value = item_obj.get("value").?.string;
-        
-        if (std.mem.eql(u8, item_type, "Boolean")) {
-            return std.mem.eql(u8, item_value, "true");
-        }
-        
-        if (std.mem.eql(u8, item_type, "Integer")) {
-            const int_val = std.fmt.parseInt(i64, item_value, 10) catch 0;
-            return int_val != 0;
-        }
-        
-        return false;
+    pub fn parseAsBoolean(stack_item: std.json.Value, allocator: std.mem.Allocator) !bool {
+        var decoded = try StackItem.decodeFromJson(stack_item, allocator);
+        defer decoded.deinit(allocator);
+        return decoded.getBoolean();
     }
-    
+
     /// Parses stack item as byte array
     pub fn parseAsByteArray(stack_item: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-        const item_obj = stack_item.object;
-        const item_type = item_obj.get("type").?.string;
-        const item_value = item_obj.get("value").?.string;
-        
-        if (std.mem.eql(u8, item_type, "ByteString")) {
-            return try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(item_value, allocator);
-        }
-        
-        return error.InvalidStackItem;
-    }
-    
-    /// Parses stack item as array
-    pub fn parseAsArray(stack_item: std.json.Value, allocator: std.mem.Allocator) ![]std.json.Value {
-        const item_obj = stack_item.object;
-        const item_type = item_obj.get("type").?.string;
-        
-        if (std.mem.eql(u8, item_type, "Array")) {
-            const array_value = item_obj.get("value").?.array;
-            return try allocator.dupe(std.json.Value, array_value);
-        }
-        
-        return error.InvalidStackItem;
+        var decoded = try StackItem.decodeFromJson(stack_item, allocator);
+        defer decoded.deinit(allocator);
+        return try decoded.getByteArray(allocator);
     }
 };
 
@@ -173,18 +131,18 @@ pub const StackItemParser = struct {
 test "Response parsing for basic types" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test Hash256 parsing
     const hash_json = std.json.Value{ .string = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" };
     const parsed_hash = try parseResponseResult(Hash256, hash_json, allocator);
     const expected_hash = try Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     try testing.expect(parsed_hash.eql(expected_hash));
-    
+
     // Test integer parsing
     const int_json = std.json.Value{ .integer = 12345 };
     const parsed_int = try parseResponseResult(u32, int_json, allocator);
     try testing.expectEqual(@as(u32, 12345), parsed_int);
-    
+
     // Test boolean parsing
     const bool_json = std.json.Value{ .bool = true };
     const parsed_bool = try parseResponseResult(bool, bool_json, allocator);
@@ -194,53 +152,76 @@ test "Response parsing for basic types" {
 test "Stack item parsing utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Create test stack item JSON
     var item_obj = std.json.ObjectMap.init(allocator);
     defer item_obj.deinit();
-    
+
     try item_obj.put("type", std.json.Value{ .string = "ByteString" });
     try item_obj.put("value", std.json.Value{ .string = "SGVsbG8gTmVv" }); // "Hello Neo" in base64
-    
+
     const stack_item = std.json.Value{ .object = item_obj };
-    
+
     // Test string parsing
     const parsed_string = try StackItemParser.parseAsString(stack_item, allocator);
     defer allocator.free(parsed_string);
     try testing.expectEqualStrings("Hello Neo", parsed_string);
-    
+
     // Test integer stack item
     var int_obj = std.json.ObjectMap.init(allocator);
     defer int_obj.deinit();
-    
+
     try int_obj.put("type", std.json.Value{ .string = "Integer" });
     try int_obj.put("value", std.json.Value{ .string = "42" });
-    
+
     const int_stack_item = std.json.Value{ .object = int_obj };
-    const parsed_int = try StackItemParser.parseAsInteger(int_stack_item);
+    const parsed_int = try StackItemParser.parseAsInteger(int_stack_item, allocator);
     try testing.expectEqual(@as(i64, 42), parsed_int);
+
+    // Test boolean stack item
+    var bool_obj = std.json.ObjectMap.init(allocator);
+    defer bool_obj.deinit();
+
+    try bool_obj.put("type", std.json.Value{ .string = "Boolean" });
+    try bool_obj.put("value", std.json.Value{ .string = "true" });
+
+    const bool_stack_item = std.json.Value{ .object = bool_obj };
+    const parsed_bool = try StackItemParser.parseAsBoolean(bool_stack_item, allocator);
+    try testing.expect(parsed_bool);
+
+    // Test byte array stack item
+    var bytes_obj = std.json.ObjectMap.init(allocator);
+    defer bytes_obj.deinit();
+
+    try bytes_obj.put("type", std.json.Value{ .string = "ByteString" });
+    try bytes_obj.put("value", std.json.Value{ .string = "U29tZUJ5dGVz" });
+
+    const bytes_stack_item = std.json.Value{ .object = bytes_obj };
+    const parsed_bytes = try StackItemParser.parseAsByteArray(bytes_stack_item, allocator);
+    defer allocator.free(parsed_bytes);
+    try testing.expectEqualStrings("SomeBytes", parsed_bytes);
 }
 
 test "RPC response validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test valid JSON-RPC response
-    const valid_response = 
+    const valid_response =
         \\{"jsonrpc":"2.0","result":"test_result","id":1}
     ;
-    
-    const validated = try validateRpcResponse(valid_response);
-    defer validated.deinit();
-    
+
+    const validated = try validateRpcResponse(allocator, valid_response);
+    defer json_utils.freeValue(validated, allocator);
+
     const response_obj = validated.object;
     try testing.expectEqualStrings("2.0", response_obj.get("jsonrpc").?.string);
     try testing.expectEqualStrings("test_result", response_obj.get("result").?.string);
-    
+
     // Test error response
-    const error_response = 
+    const error_response =
         \\{"jsonrpc":"2.0","error":{"code":-1,"message":"Test error"},"id":1}
     ;
-    
-    try testing.expectError(error.RPCError, validateRpcResponse(error_response));
+
+    try testing.expectError(error.RPCError, validateRpcResponse(allocator, error_response));
 }
