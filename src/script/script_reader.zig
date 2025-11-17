@@ -4,6 +4,9 @@
 //! Provides script analysis and human-readable conversion capabilities.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const OpCode = @import("op_code.zig").OpCode;
@@ -51,7 +54,7 @@ pub const ScriptReader = struct {
     /// Converts script bytes to OpCode string (equivalent to Swift convertToOpCodeString(_ script: Bytes))
     pub fn convertToOpCodeStringFromBytes(script: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var reader = CompleteBinaryReader.init(script);
-        var result = std.ArrayList(u8).init(allocator);
+        var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
         while (reader.hasMore()) {
@@ -103,7 +106,7 @@ pub const ScriptReader = struct {
     pub fn analyzeScript(script: []const u8, allocator: std.mem.Allocator) !ScriptAnalysis {
         var analysis = ScriptAnalysis{
             .total_bytes = script.len,
-            .opcodes = std.ArrayList(OpCodeInfo).init(allocator),
+            .opcodes = ArrayList(OpCodeInfo).init(allocator),
             .push_operations = 0,
             .syscall_operations = 0,
             .jump_operations = 0,
@@ -165,7 +168,7 @@ pub const ScriptReader = struct {
     
     /// Extracts public keys from verification script (utility method)
     pub fn extractPublicKeys(script: []const u8, allocator: std.mem.Allocator) ![]PublicKey {
-        var public_keys = std.ArrayList(PublicKey).init(allocator);
+        var public_keys = ArrayList(PublicKey).init(allocator);
         defer public_keys.deinit();
         
         var reader = CompleteBinaryReader.init(script);
@@ -220,7 +223,7 @@ pub const OpCodeInfo = struct {
 /// Script analysis results
 pub const ScriptAnalysis = struct {
     total_bytes: usize,
-    opcodes: std.ArrayList(OpCodeInfo),
+    opcodes: ArrayList(OpCodeInfo),
     push_operations: u32,
     syscall_operations: u32,
     jump_operations: u32,

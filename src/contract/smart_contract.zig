@@ -4,12 +4,17 @@
 //! Essential for contract interaction and deployment.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
+const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const Signer = @import("../transaction/transaction_builder.zig").Signer;
 
 /// Smart contract representation (converted from Swift SmartContract)
 pub const SmartContract = struct {
@@ -75,51 +80,20 @@ pub const SmartContract = struct {
         function_name: []const u8,
         params: []const ContractParameter,
     ) ![]u8 {
-        const rpc_client = @import("../rpc/http_client.zig").HttpClient.init(self.allocator, "http://localhost:20332");
-        
-        // Build parameters for RPC call
-        const script_hash_hex = try self.script_hash.string(self.allocator);
-        defer self.allocator.free(script_hash_hex);
-        
-        var params_array = std.ArrayList(std.json.Value).init(self.allocator);
-        defer params_array.deinit();
-        
-        for (params) |param| {
-            const param_json = try param.toJsonValue(self.allocator);
-            try params_array.append(param_json);
+        if (self.neo_swift == null) {
+            return try self.allocator.dupe(u8, "UNKNOWN");
         }
-        
-        const rpc_params = std.json.Value{ .array = &[_]std.json.Value{
-            std.json.Value{ .string = script_hash_hex },
-            std.json.Value{ .string = function_name },
-            std.json.Value{ .array = params_array.items },
-            std.json.Value{ .array = &[_]std.json.Value{} }, // Empty signers for read-only
-        }};
-        
-        // Make RPC call
-        const result = try rpc_client.jsonRpcRequest("invokefunction", rpc_params, 1);
-        defer result.deinit();
-        
-        // Parse and validate result
-        const invocation = result.object;
-        const state = invocation.get("state").?.string;
-        
-        if (!std.mem.eql(u8, state, "HALT")) {
+        const neo_swift = try self.getNeoSwift();
+        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        defer invocation.deinit(neo_swift.allocator);
+
+        if (invocation.hasFaulted()) {
             return errors.ContractError.ContractExecutionFailed;
         }
-        
-        const stack = invocation.get("stack").?.array;
-        if (stack.len == 0) return errors.ContractError.ContractExecutionFailed;
-        
-        const first_item = stack[0].object;
-        const item_type = first_item.get("type").?.string;
-        
-        if (!std.mem.eql(u8, item_type, "ByteString")) {
-            return errors.ContractError.InvalidParameters;
-        }
-        
-        const value = first_item.get("value").?.string;
-        return try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(value, self.allocator);
+
+        const stack_item = try invocation.getFirstStackItem();
+        return try stack_item.getString(self.allocator);
     }
     
     /// Calls function returning integer (equivalent to Swift callFunctionReturningInt)
@@ -128,21 +102,20 @@ pub const SmartContract = struct {
         function_name: []const u8,
         params: []const ContractParameter,
     ) !i64 {
-        // Build invocation script
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(self.allocator);
-        defer script_builder.deinit();
-        
-        _ = try script_builder.contractCall(self.script_hash, function_name, params);
-        const script = script_builder.toScript();
-        
-        // This would make actual RPC call in production
-        // For now, return placeholder value based on function name
-        if (std.mem.eql(u8, function_name, "decimals")) return 8;
-        if (std.mem.eql(u8, function_name, "totalSupply")) return 100000000;
-        if (std.mem.indexOf(u8, function_name, "balance") != null) return 1000000;
-        
-        _ = script; // Use the script in actual implementation
-        return 0;
+        if (self.neo_swift == null) {
+            return 0;
+        }
+        const neo_swift = try self.getNeoSwift();
+        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        defer invocation.deinit(neo_swift.allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const stack_item = try invocation.getFirstStackItem();
+        return try stack_item.getInteger();
     }
     
     /// Calls function returning boolean (equivalent to Swift callFunctionReturningBool)
@@ -151,20 +124,20 @@ pub const SmartContract = struct {
         function_name: []const u8,
         params: []const ContractParameter,
     ) !bool {
-        // Build invocation script
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(self.allocator);
-        defer script_builder.deinit();
-        
-        _ = try script_builder.contractCall(self.script_hash, function_name, params);
-        const script = script_builder.toScript();
-        
-        // This would make actual RPC call in production
-        // For now, return placeholder value based on function name
-        if (std.mem.indexOf(u8, function_name, "verify") != null) return true;
-        if (std.mem.indexOf(u8, function_name, "hasMethod") != null) return true;
-        
-        _ = script; // Use the script in actual implementation
-        return false;
+        if (self.neo_swift == null) {
+            return false;
+        }
+        const neo_swift = try self.getNeoSwift();
+        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        defer invocation.deinit(neo_swift.allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const stack_item = try invocation.getFirstStackItem();
+        return try stack_item.getBoolean();
     }
     
     /// Gets contract manifest (equivalent to Swift getManifest)
@@ -179,6 +152,15 @@ pub const SmartContract = struct {
         // This would make actual RPC call in production
         _ = self;
         return ContractState.init();
+    }
+
+    pub fn hasClient(self: Self) bool {
+        return self.neo_swift != null;
+    }
+
+    fn getNeoSwift(self: Self) !*NeoSwift {
+        const ptr = self.neo_swift orelse return errors.NeoError.InvalidConfiguration;
+        return @ptrCast(@alignCast(ptr));
     }
 };
 

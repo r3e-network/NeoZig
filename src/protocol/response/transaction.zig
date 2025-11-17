@@ -4,6 +4,9 @@
 //! Provides transaction structure for RPC responses.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 const NeoWitness = @import("neo_witness.zig").NeoWitness;
 const TransactionAttribute = @import("transaction_attribute.zig").TransactionAttribute;
@@ -307,21 +310,21 @@ pub const Transaction = struct {
         const net_fee_copy = try allocator.dupe(u8, self.net_fee);
         const script_copy = try allocator.dupe(u8, self.script);
         
-        var signers_copy = try std.ArrayList(TransactionSigner).initCapacity(allocator, self.signers.len);
+        var signers_copy = try ArrayList(TransactionSigner).initCapacity(allocator, self.signers.len);
         defer signers_copy.deinit();
         
         for (self.signers) |signer| {
             try signers_copy.append(try signer.clone(allocator));
         }
         
-        var attributes_copy = try std.ArrayList(TransactionAttribute).initCapacity(allocator, self.attributes.len);
+        var attributes_copy = try ArrayList(TransactionAttribute).initCapacity(allocator, self.attributes.len);
         defer attributes_copy.deinit();
         
         for (self.attributes) |attr| {
             try attributes_copy.append(try attr.clone(allocator));
         }
         
-        var witnesses_copy = try std.ArrayList(NeoWitness).initCapacity(allocator, self.witnesses.len);
+        var witnesses_copy = try ArrayList(NeoWitness).initCapacity(allocator, self.witnesses.len);
         defer witnesses_copy.deinit();
         
         for (self.witnesses) |witness| {

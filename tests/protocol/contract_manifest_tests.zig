@@ -4,6 +4,8 @@
 //! Tests contract manifest parsing and validation.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const ContractManifest = @import("../../src/protocol/response/contract_manifest.zig").ContractManifest;
 const ContractGroup = @import("../../src/protocol/response/contract_manifest.zig").ContractGroup;

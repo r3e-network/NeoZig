@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Byte type alias (equivalent to Swift Byte typealias)
 pub const Byte = u8;
 

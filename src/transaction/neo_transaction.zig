@@ -4,6 +4,9 @@
 //! Provides full transaction functionality with Swift API compatibility.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -116,7 +119,7 @@ pub const NeoTransaction = struct {
     
     /// Calculates transaction hash (equivalent to Swift getHash)
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
-        var buffer = std.ArrayList(u8).init(allocator);
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
         
         try self.serializeUnsigned(&buffer);
@@ -124,7 +127,7 @@ pub const NeoTransaction = struct {
     }
     
     /// Serializes transaction without witnesses (equivalent to Swift unsigned serialization)
-    pub fn serializeUnsigned(self: Self, buffer: *std.ArrayList(u8)) !void {
+    pub fn serializeUnsigned(self: Self, buffer: *ArrayList(u8)) !void {
         var writer = BinaryWriter.init(buffer.allocator);
         defer writer.deinit();
         
@@ -156,7 +159,7 @@ pub const NeoTransaction = struct {
     
     /// Serializes complete transaction (equivalent to Swift full serialization)
     pub fn serialize(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
         
         // Serialize unsigned part
@@ -348,7 +351,7 @@ test "NeoTransaction creation and properties" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D }; // Simple script
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 }; // Simple script
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{}, &[_]u8{}),
     };
@@ -387,7 +390,7 @@ test "NeoTransaction size calculation" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{}, &[_]u8{}),
     };
@@ -414,7 +417,7 @@ test "NeoTransaction hash calculation" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{}, &[_]u8{}),
     };
@@ -441,7 +444,7 @@ test "NeoTransaction serialization" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{0x01}, &[_]u8{0x02}),
     };
@@ -484,7 +487,7 @@ test "NeoTransaction validation" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{}, &[_]u8{}),
     };
@@ -523,7 +526,7 @@ test "NeoTransaction fee estimation" {
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
     var witnesses = [_]Witness{
         Witness.init(&[_]u8{}, &[_]u8{}),
     };

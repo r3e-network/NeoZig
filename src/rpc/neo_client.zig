@@ -6,6 +6,7 @@
 const std = @import("std");
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const ArrayList = std.array_list.Managed;
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const Address = @import("../types/address.zig").Address;
@@ -259,7 +260,7 @@ pub const NeoSwift = struct {
         const address = try script_hash.toAddress(self.allocator);
         defer self.allocator.free(address);
 
-        var params = std.ArrayList(RpcParam).init(self.allocator);
+        var params = ArrayList(RpcParam).init(self.allocator);
         defer params.deinit();
 
         try params.append(RpcParam.initString(address));
@@ -333,7 +334,7 @@ pub fn RpcRequest(comptime T: type) type {
         pub fn send(self: Self) !T {
             const allocator = self.client.allocator;
 
-            var params_list = std.ArrayList(std.json.Value).init(allocator);
+            var params_list = ArrayList(std.json.Value).init(allocator);
             defer params_list.deinit();
 
             for (self.params) |param| {
@@ -348,7 +349,7 @@ pub fn RpcRequest(comptime T: type) type {
                 allocator.free(params_slice);
             }
 
-            var request = Request(T, T).init(allocator, self.method, params_slice);
+            var request = try Request(T, T).init(allocator, self.method, params_slice);
             const response = try request.sendUsing(self.client.getService());
             return response;
         }

@@ -4,6 +4,9 @@
 //! Handles Neo Name Service domain name validation and operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 
@@ -129,7 +132,7 @@ pub const NNSName = struct {
     
     /// Gets subdomain parts (equivalent to Swift subdomain extraction)
     pub fn getSubdomains(self: Self, allocator: std.mem.Allocator) ![][]u8 {
-        var subdomains = std.ArrayList([]u8).init(allocator);
+        var subdomains = ArrayList([]u8).init(allocator);
         defer subdomains.deinit();
         
         var fragment_iterator = std.mem.split(u8, self.name, ".");
@@ -179,7 +182,7 @@ pub const NNSUtils = struct {
     /// Suggests valid NNS name (utility function)
     pub fn suggestValidName(invalid_name: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // Basic suggestion: lowercase, remove invalid chars, add .neo if needed
-        var suggested = std.ArrayList(u8).init(allocator);
+        var suggested = ArrayList(u8).init(allocator);
         defer suggested.deinit();
         
         for (invalid_name) |char| {

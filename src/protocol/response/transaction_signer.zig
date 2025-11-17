@@ -3,6 +3,8 @@
 //! Complete conversion from NeoSwift TransactionSigner.swift
 
 const std = @import("std");
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 
 pub const TransactionSigner = struct {

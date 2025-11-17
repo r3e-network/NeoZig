@@ -4,6 +4,9 @@
 //! Tests signer creation, witness scopes, and configuration.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const testing = std.testing;
 const Account = @import("../../src/wallet/account.zig").Account;
 const AccountSigner = @import("../../src/transaction/account_signer.zig").AccountSigner;
@@ -363,7 +366,7 @@ test "Signer maximum limits validation" {
     
     // Test maximum allowed contracts limit
     // Create array with more than MAX_SIGNER_SUBITEMS contracts
-    var too_many_contracts = std.ArrayList(Hash160).init(allocator);
+    var too_many_contracts = ArrayList(Hash160).init(allocator);
     defer too_many_contracts.deinit();
     
     var i: usize = 0;

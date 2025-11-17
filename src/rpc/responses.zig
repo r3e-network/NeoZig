@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const ArrayList = std.array_list.Managed;
+const json_utils = @import("../utils/json_utils.zig");
 
 const constants = @import("../core/constants.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -19,8 +20,17 @@ fn stringifyJsonValue(value: std.json.Value, allocator: std.mem.Allocator) ![]u8
     var buffer = ArrayList(u8).init(allocator);
     errdefer buffer.deinit();
 
-    var stringify = std.json.Stringify{ .writer = buffer.writer(), .options = .{} };
-    try stringify.write(value);
+    var writer = buffer.writer();
+    var adapter = writer.adaptToNewApi(&.{ });
+    var stringify = std.json.Stringify{ .writer = &adapter.new_interface, .options = .{} };
+    stringify.write(value) catch |err| switch (err) {
+        error.WriteFailed => return adapter.err.?,
+        else => return err,
+    };
+    adapter.new_interface.flush() catch |err| switch (err) {
+        error.WriteFailed => return adapter.err.?,
+        else => return err,
+    };
 
     return try buffer.toOwnedSlice();
 }
@@ -55,8 +65,8 @@ pub const NeoBlock = struct {
     index: u32,
     primary: ?u32,
     next_consensus: []const u8,
-    witnesses: ?[]const NeoWitness,
-    transactions: ?[]const Transaction,
+    witnesses: ?[]NeoWitness,
+    transactions: ?[]Transaction,
     confirmations: u32,
     next_block_hash: ?Hash256,
 
@@ -73,8 +83,8 @@ pub const NeoBlock = struct {
         index: u32,
         primary: ?u32,
         next_consensus: []const u8,
-        witnesses: ?[]const NeoWitness,
-        transactions: ?[]const Transaction,
+        witnesses: ?[]NeoWitness,
+        transactions: ?[]Transaction,
         confirmations: u32,
         next_block_hash: ?Hash256,
     ) Self {
@@ -152,7 +162,7 @@ pub const NeoBlock = struct {
             var witnesses_list = ArrayList(NeoWitness).init(allocator);
             defer witnesses_list.deinit();
 
-            for (witnesses_value.array) |witness_json| {
+            for (witnesses_value.array.items) |witness_json| {
                 try witnesses_list.append(try NeoWitness.fromJson(witness_json, allocator));
             }
 
@@ -164,7 +174,7 @@ pub const NeoBlock = struct {
             var tx_list = ArrayList(Transaction).init(allocator);
             defer tx_list.deinit();
 
-            for (tx_value.array) |tx_json| {
+            for (tx_value.array.items) |tx_json| {
                 try tx_list.append(try Transaction.fromJson(tx_json, allocator));
             }
 
@@ -173,7 +183,7 @@ pub const NeoBlock = struct {
             var tx_list = ArrayList(Transaction).init(allocator);
             defer tx_list.deinit();
 
-            for (tx_value.array) |tx_json| {
+            for (tx_value.array.items) |tx_json| {
                 try tx_list.append(try Transaction.fromJson(tx_json, allocator));
             }
 
@@ -215,7 +225,7 @@ pub const NeoBlock = struct {
             for (transactions_slice) |*tx| {
                 tx.deinit(allocator);
             }
-            allocator.free(@constCast(transactions_slice));
+            allocator.free(transactions_slice);
             self.transactions = null;
         }
     }
@@ -288,7 +298,7 @@ pub const Transaction = struct {
         var signers_list = ArrayList(TransactionSigner).init(allocator);
         defer signers_list.deinit();
         if (obj.get("signers")) |signers_json| {
-            for (signers_json.array) |signer_json| {
+            for (signers_json.array.items) |signer_json| {
                 try signers_list.append(try TransactionSigner.fromJson(signer_json, allocator));
             }
         }
@@ -296,7 +306,7 @@ pub const Transaction = struct {
         var attributes_list = ArrayList(TransactionAttribute).init(allocator);
         defer attributes_list.deinit();
         if (obj.get("attributes")) |attributes_json| {
-            for (attributes_json.array) |attr_json| {
+            for (attributes_json.array.items) |attr_json| {
                 try attributes_list.append(try TransactionAttribute.fromJson(attr_json, allocator));
             }
         }
@@ -306,7 +316,7 @@ pub const Transaction = struct {
         var witnesses_list = ArrayList(NeoWitness).init(allocator);
         defer witnesses_list.deinit();
         if (obj.get("witnesses")) |witnesses_json| {
-            for (witnesses_json.array) |witness_json| {
+            for (witnesses_json.array.items) |witness_json| {
                 try witnesses_list.append(try NeoWitness.fromJson(witness_json, allocator));
             }
         }
@@ -396,9 +406,9 @@ pub const Transaction = struct {
 pub const TransactionSigner = struct {
     account: Hash160,
     scopes: []const u8,
-    allowed_contracts: ?[]const Hash160,
-    allowed_groups: ?[]const [33]u8,
-    rules: ?[]const WitnessRule,
+    allowed_contracts: ?[]Hash160,
+    allowed_groups: ?[] [33]u8,
+    rules: ?[]WitnessRule,
 
     const Self = @This();
 
@@ -412,24 +422,24 @@ pub const TransactionSigner = struct {
         const account = try Hash160.initWithString(obj.get("account").?.string);
         const scopes = try allocator.dupe(u8, obj.get("scopes").?.string);
 
-        var allowed_contracts_slice: ?[]const Hash160 = null;
+        var allowed_contracts_slice: ?[]Hash160 = null;
         if (obj.get("allowedcontracts")) |contracts_json| {
             var contracts_list = ArrayList(Hash160).init(allocator);
             defer contracts_list.deinit();
 
-            for (contracts_json.array) |contract_json| {
+            for (contracts_json.array.items) |contract_json| {
                 try contracts_list.append(try Hash160.initWithString(contract_json.string));
             }
 
             allowed_contracts_slice = try contracts_list.toOwnedSlice();
         }
 
-        var allowed_groups_slice: ?[]const [33]u8 = null;
+        var allowed_groups_slice: ?[] [33]u8 = null;
         if (obj.get("allowedgroups")) |groups_json| {
             var groups_list = ArrayList([33]u8).init(allocator);
             defer groups_list.deinit();
 
-            for (groups_json.array) |group_json| {
+            for (groups_json.array.items) |group_json| {
                 const group_str = group_json.string;
                 if (group_str.len != 66) return errors.ValidationError.InvalidLength;
                 var group_bytes: [33]u8 = undefined;
@@ -440,12 +450,12 @@ pub const TransactionSigner = struct {
             allowed_groups_slice = try groups_list.toOwnedSlice();
         }
 
-        var rules_slice: ?[]const WitnessRule = null;
+        var rules_slice: ?[]WitnessRule = null;
         if (obj.get("rules")) |rules_json| {
             var rules_list = ArrayList(WitnessRule).init(allocator);
             defer rules_list.deinit();
 
-            for (rules_json.array) |rule_json| {
+            for (rules_json.array.items) |rule_json| {
                 try rules_list.append(try WitnessRule.fromJson(rule_json, allocator));
             }
 
@@ -612,7 +622,7 @@ pub const InvocationResult = struct {
         defer stack_items.deinit();
         if (obj.get("stack")) |stack_array| {
             if (stack_array != .array) return errors.SerializationError.InvalidFormat;
-            for (stack_array.array) |item| {
+            for (stack_array.array.items) |item| {
                 var parsed_item = try StackItem.decodeFromJson(item, allocator);
                 var item_guard = true;
                 defer if (item_guard) parsed_item.deinit(allocator);
@@ -632,11 +642,11 @@ pub const InvocationResult = struct {
     }
 
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-        if (self.script.ptr != null and self.script.len > 0) allocator.free(@constCast(self.script));
-        if (self.gas_consumed.ptr != null and self.gas_consumed.len > 0) allocator.free(@constCast(self.gas_consumed));
+        if (self.script.len > 0) allocator.free(@constCast(self.script));
+        if (self.gas_consumed.len > 0) allocator.free(@constCast(self.gas_consumed));
 
         if (self.exception) |ex| {
-            if (ex.ptr != null and ex.len > 0) allocator.free(@constCast(ex));
+            if (ex.len > 0) allocator.free(@constCast(ex));
         }
 
         if (self.stack.len > 0) {
@@ -647,7 +657,7 @@ pub const InvocationResult = struct {
         }
 
         if (self.session) |sess| {
-            if (sess.ptr != null and sess.len > 0) allocator.free(@constCast(sess));
+            if (sess.len > 0) allocator.free(@constCast(sess));
         }
     }
 };
@@ -737,7 +747,7 @@ pub const Nep17Balances = struct {
 
         var balances = ArrayList(TokenBalance).init(allocator);
         if (obj.get("balance")) |balance_array| {
-            for (balance_array.array) |balance_item| {
+            for (balance_array.array.items) |balance_item| {
                 try balances.append(try TokenBalance.fromJson(balance_item, allocator));
             }
         }
@@ -795,14 +805,14 @@ pub const Nep17Transfers = struct {
 
         var sent = ArrayList(TokenTransfer).init(allocator);
         if (obj.get("sent")) |sent_array| {
-            for (sent_array.array) |item| {
+            for (sent_array.array.items) |item| {
                 try sent.append(try TokenTransfer.fromJson(item, allocator));
             }
         }
 
         var received = ArrayList(TokenTransfer).init(allocator);
         if (obj.get("received")) |received_array| {
-            for (received_array.array) |item| {
+            for (received_array.array.items) |item| {
                 try received.append(try TokenTransfer.fromJson(item, allocator));
             }
         }
@@ -865,7 +875,7 @@ pub const NeoApplicationLog = struct {
         defer executions.deinit();
         if (obj.get("executions")) |exec_array| {
             if (exec_array != .array) return errors.SerializationError.InvalidFormat;
-            for (exec_array.array) |item| {
+            for (exec_array.array.items) |item| {
                 var execution = try Execution.fromJson(item, allocator);
                 var execution_guard = true;
                 defer if (execution_guard) execution.deinit(allocator);
@@ -931,7 +941,7 @@ pub const Execution = struct {
         defer stack_items.deinit();
         if (obj.get("stack")) |stack_value| {
             if (stack_value != .array) return errors.SerializationError.InvalidFormat;
-            for (stack_value.array) |entry| {
+            for (stack_value.array.items) |entry| {
                 var parsed_item = try StackItem.decodeFromJson(entry, allocator);
                 var item_guard = true;
                 defer if (item_guard) parsed_item.deinit(allocator);
@@ -944,7 +954,7 @@ pub const Execution = struct {
         defer notifications_list.deinit();
         if (obj.get("notifications")) |notifications_value| {
             if (notifications_value != .array) return errors.SerializationError.InvalidFormat;
-            for (notifications_value.array) |notification_value| {
+            for (notifications_value.array.items) |notification_value| {
                 var notification = try Notification.fromJson(notification_value, allocator);
                 var notification_guard = true;
                 defer if (notification_guard) notification.deinit(allocator);
@@ -964,10 +974,10 @@ pub const Execution = struct {
     }
 
     pub fn deinit(self: *Execution, allocator: std.mem.Allocator) void {
-        if (self.trigger.ptr != null and self.trigger.len > 0) allocator.free(@constCast(self.trigger));
-        if (self.gas_consumed.ptr != null and self.gas_consumed.len > 0) allocator.free(@constCast(self.gas_consumed));
+        if (self.trigger.len > 0) allocator.free(@constCast(self.trigger));
+        if (self.gas_consumed.len > 0) allocator.free(@constCast(self.gas_consumed));
         if (self.exception) |ex| {
-            if (ex.ptr != null and ex.len > 0) allocator.free(@constCast(ex));
+            if (ex.len > 0) allocator.free(@constCast(ex));
         }
 
         if (self.stack.len > 0) {
@@ -1009,7 +1019,7 @@ pub const Notification = struct {
     }
 
     pub fn deinit(self: *Notification, allocator: std.mem.Allocator) void {
-        if (self.event_name.ptr != null and self.event_name.len > 0) allocator.free(@constCast(self.event_name));
+        if (self.event_name.len > 0) allocator.free(@constCast(self.event_name));
         self.state.deinit(allocator);
     }
 };
@@ -1107,10 +1117,10 @@ pub const ContractNef = struct {
     }
 
     pub fn deinit(self: *ContractNef, allocator: std.mem.Allocator) void {
-        if (self.compiler.ptr != null and self.compiler.len > 0) allocator.free(@constCast(self.compiler));
-        if (self.script.ptr != null and self.script.len > 0) allocator.free(@constCast(self.script));
+        if (self.compiler.len > 0) allocator.free(@constCast(self.compiler));
+        if (self.script.len > 0) allocator.free(@constCast(self.script));
         if (self.source) |value| {
-            if (value.ptr != null and value.len > 0) allocator.free(@constCast(value));
+            if (value.len > 0) allocator.free(@constCast(value));
         }
     }
 };
@@ -1157,7 +1167,7 @@ pub const ContractManifest = struct {
         };
         if (obj.get("groups")) |groups_value| {
             if (groups_value != .array) return errors.SerializationError.InvalidFormat;
-            for (groups_value.array) |group_value| {
+            for (groups_value.array.items) |group_value| {
                 try groups.append(try ContractGroup.fromJson(group_value, allocator));
             }
         }
@@ -1172,7 +1182,7 @@ pub const ContractManifest = struct {
         };
         if (obj.get("supportedstandards")) |standards_value| {
             if (standards_value != .array) return errors.SerializationError.InvalidFormat;
-            for (standards_value.array) |entry| {
+            for (standards_value.array.items) |entry| {
                 if (entry != .string) return errors.SerializationError.InvalidFormat;
                 try standards.append(try allocator.dupe(u8, entry.string));
             }
@@ -1186,7 +1196,7 @@ pub const ContractManifest = struct {
         };
         if (obj.get("permissions")) |permissions_value| {
             if (permissions_value != .array) return errors.SerializationError.InvalidFormat;
-            for (permissions_value.array) |permission_value| {
+            for (permissions_value.array.items) |permission_value| {
                 try permissions.append(try ContractPermission.fromJson(permission_value, allocator));
             }
         }
@@ -1201,7 +1211,7 @@ pub const ContractManifest = struct {
         };
         if (obj.get("trusts")) |trusts_value| {
             if (trusts_value != .array) return errors.SerializationError.InvalidFormat;
-            for (trusts_value.array) |trust_value| {
+            for (trusts_value.array.items) |trust_value| {
                 try trusts.append(try jsonValueToOwnedString(trust_value, allocator));
             }
         }
@@ -1245,7 +1255,7 @@ pub const ContractManifest = struct {
 
     pub fn deinit(self: *ContractManifest, allocator: std.mem.Allocator) void {
         if (self.name) |value| {
-            if (value.ptr != null and value.len > 0) allocator.free(@constCast(value));
+            if (value.len > 0) allocator.free(@constCast(value));
         }
 
         if (self.groups.len > 0) {
@@ -1255,7 +1265,7 @@ pub const ContractManifest = struct {
 
         if (self.supported_standards.len > 0) {
             for (self.supported_standards) |standard| {
-                if (standard.ptr != null and standard.len > 0) allocator.free(@constCast(standard));
+                if (standard.len > 0) allocator.free(@constCast(standard));
             }
             allocator.free(@constCast(self.supported_standards));
         }
@@ -1271,13 +1281,13 @@ pub const ContractManifest = struct {
 
         if (self.trusts.len > 0) {
             for (self.trusts) |trust| {
-                if (trust.ptr != null and trust.len > 0) allocator.free(@constCast(trust));
+                if (trust.len > 0) allocator.free(@constCast(trust));
             }
             allocator.free(@constCast(self.trusts));
         }
 
         if (self.extra) |value| {
-            if (value.ptr != null and value.len > 0) allocator.free(@constCast(value));
+            if (value.len > 0) allocator.free(@constCast(value));
         }
     }
 };
@@ -1330,8 +1340,8 @@ pub const ContractGroup = struct {
     }
 
     pub fn deinit(self: *ContractGroup, allocator: std.mem.Allocator) void {
-        if (self.public_key.ptr != null and self.public_key.len > 0) allocator.free(@constCast(self.public_key));
-        if (self.signature.ptr != null and self.signature.len > 0) allocator.free(@constCast(self.signature));
+        if (self.public_key.len > 0) allocator.free(@constCast(self.public_key));
+        if (self.signature.len > 0) allocator.free(@constCast(self.signature));
     }
 };
 
@@ -1355,8 +1365,8 @@ pub const ContractParameterDefinition = struct {
     }
 
     pub fn deinit(self: *ContractParameterDefinition, allocator: std.mem.Allocator) void {
-        if (self.name.ptr != null and self.name.len > 0) allocator.free(@constCast(self.name));
-        if (self.parameter_type.ptr != null and self.parameter_type.len > 0) allocator.free(@constCast(self.parameter_type));
+        if (self.name.len > 0) allocator.free(@constCast(self.name));
+        if (self.parameter_type.len > 0) allocator.free(@constCast(self.parameter_type));
     }
 };
 
@@ -1401,7 +1411,7 @@ pub const ContractMethod = struct {
         };
         if (obj.get("parameters")) |params_value| {
             if (params_value != .array) return errors.SerializationError.InvalidFormat;
-            for (params_value.array) |param_value| {
+            for (params_value.array.items) |param_value| {
                 try parameters.append(try ContractParameterDefinition.fromJson(param_value, allocator));
             }
         }
@@ -1419,8 +1429,8 @@ pub const ContractMethod = struct {
     }
 
     pub fn deinit(self: *ContractMethod, allocator: std.mem.Allocator) void {
-        if (self.name.ptr != null and self.name.len > 0) allocator.free(@constCast(self.name));
-        if (self.return_type.ptr != null and self.return_type.len > 0) allocator.free(@constCast(self.return_type));
+        if (self.name.len > 0) allocator.free(@constCast(self.name));
+        if (self.return_type.len > 0) allocator.free(@constCast(self.return_type));
         if (self.parameters.len > 0) {
             for (self.parameters) |*param| param.deinit(allocator);
             allocator.free(@constCast(self.parameters));
@@ -1452,7 +1462,7 @@ pub const ContractEvent = struct {
         };
         if (obj.get("parameters")) |params_value| {
             if (params_value != .array) return errors.SerializationError.InvalidFormat;
-            for (params_value.array) |param_value| {
+            for (params_value.array.items) |param_value| {
                 try parameters.append(try ContractParameterDefinition.fromJson(param_value, allocator));
             }
         }
@@ -1467,7 +1477,7 @@ pub const ContractEvent = struct {
     }
 
     pub fn deinit(self: *ContractEvent, allocator: std.mem.Allocator) void {
-        if (self.name.ptr != null and self.name.len > 0) allocator.free(@constCast(self.name));
+        if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.parameters.len > 0) {
             for (self.parameters) |*param| param.deinit(allocator);
             allocator.free(@constCast(self.parameters));
@@ -1497,7 +1507,7 @@ pub const ContractABI = struct {
         };
         if (obj.get("methods")) |methods_value| {
             if (methods_value != .array) return errors.SerializationError.InvalidFormat;
-            for (methods_value.array) |method_value| {
+            for (methods_value.array.items) |method_value| {
                 try methods.append(try ContractMethod.fromJson(method_value, allocator));
             }
         }
@@ -1510,7 +1520,7 @@ pub const ContractABI = struct {
         };
         if (obj.get("events")) |events_value| {
             if (events_value != .array) return errors.SerializationError.InvalidFormat;
-            for (events_value.array) |event_value| {
+            for (events_value.array.items) |event_value| {
                 try events.append(try ContractEvent.fromJson(event_value, allocator));
             }
         }
@@ -1590,10 +1600,10 @@ pub const ContractPermission = struct {
     }
 
     pub fn deinit(self: *ContractPermission, allocator: std.mem.Allocator) void {
-        if (self.contract.ptr != null and self.contract.len > 0) allocator.free(@constCast(self.contract));
+        if (self.contract.len > 0) allocator.free(@constCast(self.contract));
         if (self.methods.len > 0) {
             for (self.methods) |method| {
-                if (method.ptr != null and method.len > 0) allocator.free(@constCast(method));
+                if (method.len > 0) allocator.free(@constCast(method));
             }
             allocator.free(@constCast(self.methods));
         }
@@ -1708,9 +1718,9 @@ test "NetworkFeeResponse parsing" {
     try testing.expectEqual(@as(u64, 1000), parsed_string.network_fee);
 
     var object_map = std.json.ObjectMap.init(allocator);
-    defer object_map.deinit();
-    try object_map.put("networkfee", std.json.Value{ .string = "42" });
+    try json_utils.putOwnedKey(&object_map, allocator, "networkfee", std.json.Value{ .string = try allocator.dupe(u8, "42") });
     const object_value = std.json.Value{ .object = object_map };
+    defer json_utils.freeValue(object_value, allocator);
     const parsed_object = try NetworkFeeResponse.fromJson(object_value, allocator);
     try testing.expectEqual(@as(u64, 42), parsed_object.network_fee);
 }

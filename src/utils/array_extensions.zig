@@ -4,6 +4,9 @@
 //! Provides Swift-compatible array operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 
 /// Array utility functions (converted from Swift Array extensions)
 pub const ArrayUtils = struct {
@@ -59,7 +62,7 @@ pub const ArrayUtils = struct {
         predicate: *const fn (T) bool,
         allocator: std.mem.Allocator,
     ) ![]T {
-        var result = std.ArrayList(T).init(allocator);
+        var result = ArrayList(T).init(allocator);
         defer result.deinit();
         
         for (array) |item| {
@@ -165,12 +168,12 @@ pub const ArrayUtils = struct {
     }
     
     /// Removes element at index (equivalent to Swift .remove(at:))
-    pub fn removeAt(comptime T: type, array: *std.ArrayList(T), index: usize) T {
+    pub fn removeAt(comptime T: type, array: *ArrayList(T), index: usize) T {
         return array.orderedRemove(index);
     }
     
     /// Inserts element at index (equivalent to Swift .insert(_:at:))
-    pub fn insertAt(comptime T: type, array: *std.ArrayList(T), element: T, index: usize) !void {
+    pub fn insertAt(comptime T: type, array: *ArrayList(T), element: T, index: usize) !void {
         try array.insert(index, element);
     }
 };

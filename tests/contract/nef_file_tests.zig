@@ -4,6 +4,8 @@
 //! Tests NEF (Neo Executable Format) file handling.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const NefFile = @import("../../src/contract/nef_file.zig").NefFile;
 

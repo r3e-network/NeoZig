@@ -4,6 +4,8 @@
 //! Provides Neo Express private blockchain functionality.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -24,142 +26,174 @@ pub const NeoExpress = struct {
     
     /// Gets populated blocks (equivalent to Swift expressGetPopulatedBlocks())
     pub fn expressGetPopulatedBlocks(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/complete_responses.zig").PopulatedBlocks) {
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/complete_responses.zig").PopulatedBlocks).withNoParams(
-            self.service.allocator,
+        const allocator = self.service.getAllocator();
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/complete_responses.zig").PopulatedBlocks).withNoParams(
+            allocator,
             "expressgetpopulatedblocks",
-            self.service,
         );
     }
     
     /// Gets NEP-17 contracts (equivalent to Swift expressGetNep17Contracts())
     pub fn expressGetNep17Contracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/complete_responses.zig").Nep17Contract) {
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/complete_responses.zig").Nep17Contract).withNoParams(
-            self.service.allocator,
+        const allocator = self.service.getAllocator();
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/complete_responses.zig").Nep17Contract).withNoParams(
+            allocator,
             "expressgetnep17contracts",
-            self.service,
         );
     }
     
     /// Gets contract storage (equivalent to Swift expressGetContractStorage(_ contractHash: Hash160))
     pub fn expressGetContractStorage(self: Self, contract_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/complete_responses.zig").ContractStorageEntry) {
-        const hash_hex = try contract_hash.string(self.service.allocator);
-        defer self.service.allocator.free(hash_hex);
-        
+        const allocator = self.service.getAllocator();
+        const hash_hex = try contract_hash.string(allocator);
+        defer allocator.free(hash_hex);
+
         const string_params = [_][]const u8{hash_hex};
         return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/complete_responses.zig").ContractStorageEntry).withStringParams(
-            self.service.allocator,
+            allocator,
             "expressgetcontractstorage",
             &string_params,
-            self.service,
         );
     }
     
     /// Lists contracts (equivalent to Swift expressListContracts())
     pub fn expressListContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/complete_responses.zig").ExpressContractState) {
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/complete_responses.zig").ExpressContractState).withNoParams(
-            self.service.allocator,
+        const allocator = self.service.getAllocator();
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/complete_responses.zig").ExpressContractState).withNoParams(
+            allocator,
             "expresslistcontracts",
-            self.service,
         );
     }
     
     /// Creates checkpoint (equivalent to Swift expressCreateCheckpoint(_ filename: String))
     pub fn expressCreateCheckpoint(self: Self, filename: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8) {
+        const allocator = self.service.getAllocator();
         const string_params = [_][]const u8{filename};
         return try Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8).withStringParams(
-            self.service.allocator,
+            allocator,
             "expresscreatecheckpoint",
             &string_params,
-            self.service,
         );
     }
     
     /// Lists oracle requests (equivalent to Swift expressListOracleRequests())
     pub fn expressListOracleRequests(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/complete_responses.zig").OracleRequest) {
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/complete_responses.zig").OracleRequest).withNoParams(
-            self.service.allocator,
+        const allocator = self.service.getAllocator();
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/complete_responses.zig").OracleRequest).withNoParams(
+            allocator,
             "expresslistoraclerequests",
-            self.service,
         );
     }
     
     /// Creates oracle response transaction (equivalent to Swift expressCreateOracleResponseTx)
     pub fn expressCreateOracleResponseTx(self: Self, oracle_response: TransactionAttribute) !Request(@import("../rpc/response_aliases.zig").NeoExpressCreateOracleResponseTx, []const u8) {
+        const allocator = self.service.getAllocator();
         // Serialize oracle response attribute
-        var writer = @import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter.init(self.service.allocator);
+        var writer = @import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter.init(allocator);
         defer writer.deinit();
-        
+
         try writer.writeByte(@intFromEnum(oracle_response.attribute_type));
         try writer.writeVarBytes(oracle_response.data);
-        
-        const serialized_hex = try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(writer.toArray(), self.service.allocator);
-        defer self.service.allocator.free(serialized_hex);
-        
+
+        const serialized_hex = try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(writer.toArray(), allocator);
+        defer allocator.free(serialized_hex);
+
         const string_params = [_][]const u8{serialized_hex};
         return try Request(@import("../rpc/response_aliases.zig").NeoExpressCreateOracleResponseTx, []const u8).withStringParams(
-            self.service.allocator,
+            allocator,
             "expresscreateoracleresponsetx",
             &string_params,
-            self.service,
         );
     }
     
     /// Shuts down Express blockchain (equivalent to Swift expressShutdown())
     pub fn expressShutdown(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/complete_responses.zig").ExpressShutdown) {
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/complete_responses.zig").ExpressShutdown).withNoParams(
-            self.service.allocator,
+        const allocator = self.service.getAllocator();
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/complete_responses.zig").ExpressShutdown).withNoParams(
+            allocator,
             "expressshutdown",
-            self.service,
         );
     }
     
     /// Validates Express blockchain connectivity (utility method)
     pub fn validateExpressConnectivity(self: Self) !bool {
-        // Test with expressgetpopulatedblocks call
-        const populated_blocks_request = try self.expressGetPopulatedBlocks();
-        
-        // Would actually send request and check response
-        _ = populated_blocks_request;
-        return true; // Placeholder
+        const allocator = self.service.getAllocator();
+        var request = try self.expressGetPopulatedBlocks();
+
+        const response = request.sendUsing(self.service) catch |err| switch (err) {
+            errors.NetworkError.MethodNotFound => return false,
+            errors.NetworkError.InvalidEndpoint => return false,
+            errors.NetworkError.ConnectionFailed => return false,
+            errors.NetworkError.NetworkUnavailable => return false,
+            else => return err,
+        };
+
+        if (@hasDecl(@TypeOf(response), "deinit")) {
+            var mutable_response = response;
+            mutable_response.deinit(allocator);
+        }
+
+        return true;
     }
-    
+
     /// Gets Express blockchain info (utility method)
-    pub fn getExpressInfo(self: Self) !ExpressInfo {
-        // Would gather Express blockchain information
+    pub fn getExpressInfo(self: Self, allocator: std.mem.Allocator) !ExpressInfo {
+        const service_allocator = self.service.getAllocator();
+        const config = self.service.getConfiguration();
+
+        var request = try self.expressGetPopulatedBlocks();
+        var populated_response = request.sendUsing(self.service) catch |err| switch (err) {
+            errors.NetworkError.MethodNotFound => return error.NotConnectedToNeoExpress,
+            errors.NetworkError.InvalidEndpoint => return error.NotConnectedToNeoExpress,
+            else => return err,
+        };
+
+        var block_count: u32 = 0;
+        if (populated_response.getPopulatedBlocks()) |populated| {
+            block_count = populated.count;
+        }
+
+        if (@hasDecl(@TypeOf(populated_response), "deinit")) {
+            populated_response.deinit(service_allocator);
+        }
+
+        const version = try allocator.dupe(u8, config.endpoint);
+        const network_type = ExpressUtils.deriveNetworkType(config.endpoint);
+
         return ExpressInfo{
-            .version = try self.service.allocator.dupe(u8, "neo-express-3.0"),
-            .network_type = .Private,
+            .version = version,
+            .network_type = network_type,
             .is_running = true,
-            .block_count = 0, // Would get actual count
+            .block_count = block_count,
         };
     }
-    
+
     /// Resets Express blockchain (utility method)
-    pub fn resetExpressBlockchain(self: Self, to_genesis: bool) !Request(@import("../rpc/response_aliases.zig").ExpressShutdown, bool) {
+    pub fn resetExpressBlockchain(self: Self, to_genesis: bool) !Request(@import("../rpc/response_aliases.zig").NeoExpressReset, bool) {
+        const allocator = self.service.getAllocator();
         const params = [_]std.json.Value{
             std.json.Value{ .bool = to_genesis },
         };
-        
-        return Request(@import("../rpc/response_aliases.zig").ExpressShutdown, bool).init(
-            self.service.allocator,
+
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressReset, bool).init(
+            allocator,
             "expressreset",
             &params,
-            self.service,
         );
     }
-    
+
     /// Creates batch checkpoint (utility method)
     pub fn createBatchCheckpoint(self: Self, checkpoint_name: []const u8, include_state: bool) !Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8) {
+        const allocator = self.service.getAllocator();
         const params = [_]std.json.Value{
             std.json.Value{ .string = checkpoint_name },
             std.json.Value{ .bool = include_state },
         };
-        
-        return Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8).init(
-            self.service.allocator,
-            "expresscreatebachcheckpoint",
+
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8).init(
+            allocator,
+            "expresscreatebatchcheckpoint",
             &params,
-            self.service,
         );
     }
 };
@@ -227,6 +261,9 @@ pub const ExpressUtils = struct {
             "expressgetcontractstorage",
             "expresslistcontracts",
             "expresscreatecheckpoint",
+            "expresslistcheckpoints",
+            "expresscreatebatchcheckpoint",
+            "expressreset",
             "expresslistoraclerequests",
             "expresscreateoracleresponsetx",
             "expressshutdown",
@@ -249,10 +286,24 @@ pub const ExpressUtils = struct {
             "expressgetcontractstorage",
             "expresslistcontracts",
             "expresscreatecheckpoint",
+            "expresslistcheckpoints",
+            "expresscreatebatchcheckpoint",
+            "expressreset",
             "expresslistoraclerequests",
             "expresscreateoracleresponsetx",
             "expressshutdown",
         };
+    }
+
+    pub fn deriveNetworkType(endpoint: []const u8) NetworkType {
+        if (std.mem.containsAtLeast(u8, endpoint, 1, "mainnet")) return .MainNet;
+        if (std.mem.containsAtLeast(u8, endpoint, 1, "testnet")) return .TestNet;
+        if (std.mem.containsAtLeast(u8, endpoint, 1, "localhost") or
+            std.mem.containsAtLeast(u8, endpoint, 1, "127.0.0.1"))
+        {
+            return .Local;
+        }
+        return .Private;
     }
     
     /// Validates checkpoint filename
@@ -419,12 +470,13 @@ test "ExpressUtils utility functions" {
     // Test method support checking
     try testing.expect(ExpressUtils.isExpressMethodSupported("expressgetpopulatedblocks"));
     try testing.expect(ExpressUtils.isExpressMethodSupported("expressshutdown"));
+    try testing.expect(ExpressUtils.isExpressMethodSupported("expressreset"));
     try testing.expect(!ExpressUtils.isExpressMethodSupported("getblockcount")); // Regular RPC method
     try testing.expect(!ExpressUtils.isExpressMethodSupported("invalid_method"));
     
     // Test all Express methods
     const all_methods = ExpressUtils.getAllExpressMethods();
-    try testing.expectEqual(@as(usize, 8), all_methods.len);
+    try testing.expectEqual(@as(usize, 11), all_methods.len);
     
     for (all_methods) |method| {
         try testing.expect(ExpressUtils.isExpressMethodSupported(method));
@@ -447,11 +499,11 @@ test "ExpressFactory creation methods" {
     );
     
     // Test Express info
-    var express_info = try localhost_express.getExpressInfo();
+    var express_info = try localhost_express.getExpressInfo(allocator);
     defer express_info.deinit(allocator);
     
     try testing.expect(express_info.version.len > 0);
-    try testing.expectEqual(NetworkType.Private, express_info.network_type);
+    try testing.expectEqual(NetworkType.Local, express_info.network_type);
     
     const formatted_info = try express_info.format(allocator);
     defer allocator.free(formatted_info);

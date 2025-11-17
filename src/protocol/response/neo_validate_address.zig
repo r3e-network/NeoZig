@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Address validation result (converted from Swift Result)
 pub const ValidateAddressResult = struct {
     /// Address string

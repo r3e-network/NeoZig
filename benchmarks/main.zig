@@ -3,26 +3,29 @@
 //! Performance benchmarks for key Neo SDK operations
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     
-    std.log.info("🚀 Neo Zig SDK Benchmarks");
-    std.log.info("========================");
+    std.log.info("🚀 Neo Zig SDK Benchmarks", .{});
+    std.log.info("========================", .{});
     
     try benchmarkKeyGeneration();
     try benchmarkHashOperations();
     try benchmarkSignatures(allocator);
-    try benchmarkAddressGeneration(allocator);
+    try benchmarkAddressGeneration();
     try benchmarkTransactionBuilding(allocator);
     
-    std.log.info("✅ All benchmarks completed!");
+    std.log.info("✅ All benchmarks completed!", .{});
 }
 
 /// Benchmark key generation operations
 fn benchmarkKeyGeneration() !void {
-    std.log.info("\n🔑 Key Generation Benchmark:");
+    std.log.info("\n🔑 Key Generation Benchmark:", .{});
     
     const iterations = 1000;
     const start = std.time.nanoTimestamp();
@@ -42,7 +45,7 @@ fn benchmarkKeyGeneration() !void {
 
 /// Benchmark hash operations
 fn benchmarkHashOperations() !void {
-    std.log.info("\n🔐 Hash Operations Benchmark:");
+    std.log.info("\n🔐 Hash Operations Benchmark:", .{});
     
     const test_data = "Neo Zig SDK benchmark test data for hashing operations";
     const iterations = 10000;
@@ -80,7 +83,7 @@ fn benchmarkHashOperations() !void {
 
 /// Benchmark signature operations
 fn benchmarkSignatures(allocator: std.mem.Allocator) !void {
-    std.log.info("\n✍️  Signature Operations Benchmark:");
+    std.log.info("\n✍️  Signature Operations Benchmark:", .{});
     
     const message = "Neo Zig SDK signature benchmark message";
     const iterations = 100;
@@ -91,7 +94,7 @@ fn benchmarkSignatures(allocator: std.mem.Allocator) !void {
     
     // Signing benchmark
     const start_sign = std.time.nanoTimestamp();
-    var signatures = std.ArrayList(neo.crypto.Signature).init(allocator);
+    var signatures = ArrayList(neo.crypto.Signature).init(allocator);
     defer signatures.deinit();
     
     for (0..iterations) |_| {
@@ -129,8 +132,8 @@ fn benchmarkSignatures(allocator: std.mem.Allocator) !void {
 }
 
 /// Benchmark address generation
-fn benchmarkAddressGeneration(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🏠 Address Generation Benchmark:");
+fn benchmarkAddressGeneration() !void {
+    std.log.info("\n🏠 Address Generation Benchmark:", .{});
     
     const iterations = 1000;
     const start = std.time.nanoTimestamp();
@@ -154,7 +157,7 @@ fn benchmarkAddressGeneration(allocator: std.mem.Allocator) !void {
 
 /// Benchmark transaction building
 fn benchmarkTransactionBuilding(allocator: std.mem.Allocator) !void {
-    std.log.info("\n💰 Transaction Building Benchmark:");
+    std.log.info("\n💰 Transaction Building Benchmark:", .{});
     
     const iterations = 100;
     const start = std.time.nanoTimestamp();
@@ -167,6 +170,8 @@ fn benchmarkTransactionBuilding(allocator: std.mem.Allocator) !void {
         _ = builder.version(0)
             .additionalNetworkFee(500000)
             .additionalSystemFee(1000000);
+
+        _ = try builder.validUntilBlock(100000);
         
         // Add signer
         const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);

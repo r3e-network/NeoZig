@@ -3,6 +3,8 @@
 //! Complete conversion of NeoSwift transaction test suite.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 /// Tests transaction builder (converted from Swift TransactionBuilderTests)
@@ -119,7 +121,7 @@ test "transaction builder complete workflow" {
     _ = try builder.signer(signer);
     
     // Add script
-    _ = try builder.script(&[_]u8{ 0x41, 0x9D }); // Simple script
+    _ = try builder.script(&[_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 }); // SYSCALL CheckSig
     
     // Build transaction (equivalent to Swift build())
     const transaction = try builder.build();

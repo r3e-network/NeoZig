@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Witness action for witness rules (converted from Swift WitnessAction)
 pub const WitnessAction = enum(u8) {
     /// Deny action

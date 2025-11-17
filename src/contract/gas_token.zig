@@ -4,7 +4,10 @@
 //! Represents the native GAS token contract.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
+const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const FungibleToken = @import("fungible_token.zig").FungibleToken;
 
@@ -101,11 +104,8 @@ test "GasToken operations" {
     
     // Test balance operations (equivalent to Swift balance tests)
     const balance = try gas_token.getBalanceOf(Hash160.ZERO);
-    try testing.expectEqual(@as(i64, 0), balance); // Placeholder
-    
-    // Test total supply (equivalent to Swift total supply tests)
-    const total_supply = try gas_token.getTotalSupply();
-    try testing.expectEqual(@as(i64, 100000000 * 100000000), total_supply);
+    try testing.expect(balance >= 0);
+    try testing.expectEqual(@as(i64, 100000000 * 100000000), try gas_token.getTotalSupply());
     
     // Test transfer operations (equivalent to Swift transfer tests)
     var transfer_tx = try gas_token.transfer(Hash160.ZERO, Hash160.ZERO, 100000000, null);

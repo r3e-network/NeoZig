@@ -4,6 +4,8 @@
 //! Tests NEP-11 non-fungible token functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const NonFungibleToken = @import("../../src/contract/non_fungible_token.zig").NonFungibleToken;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;

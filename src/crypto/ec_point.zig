@@ -4,6 +4,8 @@
 //! Provides elliptic curve point operations for secp256r1.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const secp256r1 = @import("secp256r1.zig");
@@ -22,7 +24,7 @@ pub const ECPoint = struct {
     }
     
     /// Creates point at infinity (equivalent to Swift infinity point)
-    pub fn infinity() Self {
+    pub fn infinityPoint() Self {
         return Self{ .x = 0, .y = 0, .infinity = true };
     }
     
@@ -33,10 +35,10 @@ pub const ECPoint = struct {
     
     /// Point multiplication (equivalent to Swift multiply(_ k: BInt))
     pub fn multiply(self: Self, k: u256) Self {
-        if (k == 0 or self.infinity) return Self.infinity();
+        if (k == 0 or self.infinity) return Self.infinityPoint();
         if (k == 1) return self;
         
-        var result = Self.infinity();
+        var result = Self.infinityPoint();
         var addend = self;
         var scalar = k;
         
@@ -60,7 +62,7 @@ pub const ECPoint = struct {
             if (self.y == other.y) {
                 return self.double();
             } else {
-                return Self.infinity();
+                return Self.infinityPoint();
             }
         }
         
@@ -77,7 +79,7 @@ pub const ECPoint = struct {
     
     /// Point doubling (equivalent to Swift point doubling)
     pub fn double(self: Self) Self {
-        if (self.infinity or self.y == 0) return Self.infinity();
+        if (self.infinity or self.y == 0) return Self.infinityPoint();
         
         // s = (3x^2 + a) / (2y)
         const three_x_squared = modMul(3, modMul(self.x, self.x, secp256r1.Secp256r1.P), secp256r1.Secp256r1.P);
@@ -140,7 +142,7 @@ pub const ECPoint = struct {
             const y = modSqrt(y_squared, secp256r1.Secp256r1.P);
             
             // Choose correct root based on parity
-            const final_y = if ((y & 1) == 0) == y_is_even) y else modSub(secp256r1.Secp256r1.P, y, secp256r1.Secp256r1.P);
+            const final_y = if (((y & 1) == 0) == y_is_even) y else modSub(secp256r1.Secp256r1.P, y, secp256r1.Secp256r1.P);
             
             return Self.init(x, final_y);
         } else if (encoded.len == 65) {
@@ -252,6 +254,7 @@ fn modPow(base: u256, exponent: u256, modulus: u256) u256 {
 test "ECPoint creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Test generator point (equivalent to Swift generator tests)
     const generator = ECPoint.generator();
@@ -259,7 +262,7 @@ test "ECPoint creation and basic operations" {
     try testing.expect(!generator.infinity);
     
     // Test point at infinity
-    const infinity_point = ECPoint.infinity();
+    const infinity_point = ECPoint.infinityPoint();
     try testing.expect(infinity_point.infinity);
     try testing.expect(infinity_point.isOnCurve());
 }
@@ -267,6 +270,7 @@ test "ECPoint creation and basic operations" {
 test "ECPoint multiplication operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     const generator = ECPoint.generator();
     
@@ -339,7 +343,7 @@ test "ECPoint addition and doubling" {
     try testing.expect(!sum.infinity);
     
     // Test addition with infinity
-    const infinity = ECPoint.infinity();
+    const infinity = ECPoint.infinityPoint();
     const sum_with_infinity = generator.add(infinity);
     try testing.expect(sum_with_infinity.eql(generator));
     
@@ -363,7 +367,7 @@ test "ECPoint curve validation" {
     try testing.expect(multiplied.isOnCurve());
     
     // Test point at infinity is valid
-    const infinity = ECPoint.infinity();
+    const infinity = ECPoint.infinityPoint();
     try testing.expect(infinity.isOnCurve());
     
     // Test invalid point (not on curve)

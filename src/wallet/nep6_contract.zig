@@ -4,6 +4,9 @@
 //! Provides NEP-6 wallet contract structure.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const ContractParameterType = @import("../types/contract_parameter.zig").ContractParameterType;
 
 /// NEP-6 parameter structure (converted from Swift NEP6Parameter)
@@ -188,7 +191,7 @@ pub const NEP6Contract = struct {
         defer allocator.free(script_str);
         
         // Encode parameters array
-        var params_json = std.ArrayList(u8).init(allocator);
+        var params_json = ArrayList(u8).init(allocator);
         defer params_json.deinit();
         
         try params_json.appendSlice("[");
@@ -227,7 +230,7 @@ pub const NEP6Contract = struct {
         
         // Parse parameters array
         const params_array = json_obj.get("parameters").?.array;
-        var parameters = try std.ArrayList(NEP6Parameter).initCapacity(allocator, params_array.items.len);
+        var parameters = try ArrayList(NEP6Parameter).initCapacity(allocator, params_array.items.len);
         defer parameters.deinit();
         
         for (params_array.items) |param_value| {
@@ -261,7 +264,7 @@ pub const NEP6Contract = struct {
         else
             null;
         
-        var params_copy = try std.ArrayList(NEP6Parameter).initCapacity(allocator, self.nep6_parameters.len);
+        var params_copy = try ArrayList(NEP6Parameter).initCapacity(allocator, self.nep6_parameters.len);
         defer params_copy.deinit();
         
         for (self.nep6_parameters) |param| {

@@ -4,6 +4,9 @@
 //! Provides detailed ECDSA signature management and validation.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const secp256r1 = @import("secp256r1.zig");
@@ -71,7 +74,7 @@ pub const ECDSASignature = struct {
     
     /// Converts to DER encoding (equivalent to Swift DER serialization)
     pub fn toDER(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var der = std.ArrayList(u8).init(allocator);
+        var der = ArrayList(u8).init(allocator);
         defer der.deinit();
         
         // SEQUENCE tag
@@ -225,6 +228,7 @@ pub const ECDSASignature = struct {
 test "ECDSASignature creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Test signature creation (equivalent to Swift ECDSASignature tests)
     const r: u256 = 0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF;

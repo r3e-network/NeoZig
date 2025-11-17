@@ -4,6 +4,9 @@
 //! Handles complete wallet lifecycle and standard compliance.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -19,7 +22,7 @@ pub const CompleteNEP6Wallet = struct {
     name: []const u8,
     version: []const u8,
     scrypt: ScryptParams,
-    accounts: std.ArrayList(CompleteNEP6Account),
+    accounts: ArrayList(CompleteNEP6Account),
     extra: ?std.json.Value,
     allocator: std.mem.Allocator,
     
@@ -31,7 +34,7 @@ pub const CompleteNEP6Wallet = struct {
             .name = name,
             .version = "3.0",
             .scrypt = ScryptParams.init(16384, 8, 8), // NEP-6 standard
-            .accounts = std.ArrayList(CompleteNEP6Account).init(allocator),
+            .accounts = ArrayList(CompleteNEP6Account).init(allocator),
             .extra = null,
             .allocator = allocator,
         };
@@ -117,7 +120,7 @@ pub const CompleteNEP6Wallet = struct {
         try wallet_obj.put("scrypt", try self.scrypt.toJson(self.allocator));
         
         // Export accounts
-        var accounts_array = std.ArrayList(std.json.Value).init(self.allocator);
+        var accounts_array = ArrayList(std.json.Value).init(self.allocator);
         for (self.accounts.items) |account| {
             try accounts_array.append(try account.exportToJson());
         }
@@ -142,7 +145,7 @@ pub const CompleteNEP6Wallet = struct {
             .name = name,
             .version = version,
             .scrypt = scrypt,
-            .accounts = std.ArrayList(CompleteNEP6Account).init(allocator),
+            .accounts = ArrayList(CompleteNEP6Account).init(allocator),
             .extra = obj.get("extra"),
             .allocator = allocator,
         };
@@ -163,15 +166,16 @@ pub const CompleteNEP6Wallet = struct {
         const json_value = try self.exportToJson();
         defer json_value.deinit();
         
-        var json_buffer = std.ArrayList(u8).init(self.allocator);
-        defer json_buffer.deinit();
+        var writer_state = std.Io.Writer.Allocating.init(self.allocator);
+        defer writer_state.deinit();
         
-        try std.json.stringify(json_value, .{ .whitespace = .indent_2 }, json_buffer.writer());
+        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{ .whitespace = .indent_2 } };
+        try stringify.write(json_value);
         
         const file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
         
-        try file.writeAll(json_buffer.items);
+        try file.writeAll(writer_state.writer.buffered());
     }
     
     /// Loads wallet from file
@@ -182,13 +186,10 @@ pub const CompleteNEP6Wallet = struct {
         const file_content = try file.readToEndAlloc(allocator, 10 * 1024 * 1024); // 10MB max
         defer allocator.free(file_content);
         
-        var json_parser = std.json.Parser.init(allocator, .alloc_always);
-        defer json_parser.deinit();
+        var parsed = try std.json.parseFromSlice(std.json.Value, allocator, file_content, .{});
+        defer parsed.deinit();
         
-        var json_tree = try json_parser.parse(file_content);
-        defer json_tree.deinit();
-        
-        return try Self.importFromJson(json_tree.root, allocator);
+        return try Self.importFromJson(parsed.value, allocator);
     }
 };
 
@@ -361,7 +362,7 @@ pub const NEP6Contract = struct {
         try contract_obj.put("script", std.json.Value{ .string = script_hex });
         try contract_obj.put("deployed", std.json.Value{ .bool = self.deployed });
         
-        var params_array = std.ArrayList(std.json.Value).init(allocator);
+        var params_array = ArrayList(std.json.Value).init(allocator);
         for (self.parameters) |param| {
             try params_array.append(try param.exportToJson(allocator));
         }
@@ -377,7 +378,7 @@ pub const NEP6Contract = struct {
         const script = try @import("../utils/bytes.zig").fromHex(script_hex, allocator);
         const deployed = obj.get("deployed").?.bool;
         
-        var parameters = std.ArrayList(NEP6ParameterInfo).init(allocator);
+        var parameters = ArrayList(NEP6ParameterInfo).init(allocator);
         if (obj.get("parameters")) |params_array| {
             for (params_array.array) |param_json| {
                 try parameters.append(try NEP6ParameterInfo.importFromJson(param_json, allocator));
@@ -460,7 +461,7 @@ pub const ScryptParams = struct {
 
 /// Creates verification script for account
 fn createVerificationScript(public_key: PublicKey, allocator: std.mem.Allocator) ![]u8 {
-    var script = std.ArrayList(u8).init(allocator);
+    var script = ArrayList(u8).init(allocator);
     defer script.deinit();
     
     // PUSHDATA public_key

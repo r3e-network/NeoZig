@@ -4,6 +4,8 @@
 //! Tests binary serialization functionality and data type writing.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const BinaryWriter = @import("../../src/serialization/binary_writer_complete.zig").CompleteBinaryWriter;
 

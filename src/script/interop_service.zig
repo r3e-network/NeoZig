@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// System call interop services for Neo VM (converted from Swift InteropService)
 pub const InteropService = enum {
     SystemCryptoCheckSig,
@@ -85,8 +87,9 @@ pub const InteropService = enum {
     /// Gets the hash for the interop service (equivalent to Swift hash property)
     pub fn getHash(self: InteropService, allocator: std.mem.Allocator) ![]u8 {
         const string_value = self.toString();
-        const hash_full = std.crypto.hash.sha2.Sha256.hash(string_value);
-        
+        var hash_full: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+        std.crypto.hash.sha2.Sha256.hash(string_value, &hash_full, .{});
+
         // Take first 4 bytes and convert to hex string
         const prefix = hash_full[0..4];
         return try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(prefix, allocator);

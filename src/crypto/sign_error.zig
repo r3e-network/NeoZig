@@ -4,6 +4,8 @@
 //! Provides specialized error handling for signature operations.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
 
 /// Sign-specific errors (converted from Swift SignError)

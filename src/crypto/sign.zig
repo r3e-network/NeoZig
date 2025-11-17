@@ -4,12 +4,15 @@
 //! Provides message signing with recovery and validation utilities.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ECKeyPair = @import("ec_key_pair.zig").ECKeyPair;
 const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
 const PublicKey = @import("keys.zig").PublicKey;
+const secp256r1 = @import("secp256r1.zig");
 
 /// Sign utilities (converted from Swift Sign enum)
 pub const Sign = struct {
@@ -42,10 +45,10 @@ pub const Sign = struct {
         
         var i: u8 = 0;
         while (i <= 3) : (i += 1) {
-            if (try recoverFromSignature(i, ecdsa_sig, message_hash, allocator)) |recovered_key| {
+            if (try recoverPublicKeyBytes(i, ecdsa_sig, message_hash, allocator)) |recovered_key| {
                 defer allocator.free(recovered_key);
-                
-                const recovered_public = try PublicKey.fromHex(recovered_key);
+
+                const recovered_public = try PublicKey.init(recovered_key, false);
                 if (recovered_public.eql(key_pair.getPublicKey())) {
                     rec_id = i;
                     break;
@@ -64,22 +67,52 @@ pub const Sign = struct {
         );
     }
     
-    /// Recovers public key from signature (equivalent to Swift recoverFromSignature)
-    pub fn recoverFromSignature(
+    /// Recovers uncompressed public key bytes for a given recovery identifier.
+    fn recoverPublicKeyBytes(
         recovery_id: u8,
         signature: ECDSASignature,
         message_hash: Hash256,
         allocator: std.mem.Allocator,
     ) !?[]u8 {
-        // This is a simplified recovery implementation
-        // Full implementation would use elliptic curve point recovery
-        _ = recovery_id;
-        _ = signature;
-        _ = message_hash;
-        
-        // For now, return null to indicate recovery not implemented
-        // In production, this would implement full ECDSA recovery
-        _ = allocator;
+        if (secp256r1.recoverPoint(recovery_id, signature.getR(), signature.getS(), message_hash.toSlice())) |point| {
+            var encoded: [65]u8 = undefined;
+            encoded[0] = 0x04;
+            const px = std.mem.toBytes(std.mem.nativeToBig(u256, point.x));
+            const py = std.mem.toBytes(std.mem.nativeToBig(u256, point.y));
+            @memcpy(encoded[1..33], &px);
+            @memcpy(encoded[33..65], &py);
+
+            const output = try allocator.alloc(u8, encoded.len);
+            @memcpy(output, &encoded);
+            return output;
+        }
+        return null;
+    }
+
+    /// Recovers public key from signature (equivalent to Swift recoverFromSignature)
+    pub fn recoverFromSignature(
+        signature: SignatureData,
+        message: []const u8,
+        allocator: std.mem.Allocator,
+    ) !?[]u8 {
+        const message_hash = Hash256.sha256(message);
+        const ecdsa_sig = ECDSASignature.init(signature.r, signature.s);
+
+        const preferred_recovery = signature.v - LOWER_REAL_V;
+        if (preferred_recovery < 4) {
+            if (try recoverPublicKeyBytes(preferred_recovery, ecdsa_sig, message_hash, allocator)) |bytes| {
+                return bytes;
+            }
+        }
+
+        var recovery_id: u8 = 0;
+        while (recovery_id <= 3) : (recovery_id += 1) {
+            if (recovery_id == preferred_recovery) continue;
+            if (try recoverPublicKeyBytes(recovery_id, ecdsa_sig, message_hash, allocator)) |bytes| {
+                return bytes;
+            }
+        }
+
         return null;
     }
     

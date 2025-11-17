@@ -4,6 +4,9 @@
 //! Ensures 100% NEP-17/NEP-11 response handling.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -44,7 +47,7 @@ pub const NeoGetNep17Balances = struct {
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             
-            var balance_list = std.ArrayList(Nep17Balance).init(allocator);
+            var balance_list = ArrayList(Nep17Balance).init(allocator);
             if (obj.get("balance")) |balance_array| {
                 for (balance_array.array) |balance_item| {
                     try balance_list.append(try Nep17Balance.fromJson(balance_item, allocator));
@@ -153,14 +156,14 @@ pub const NeoGetNep17Transfers = struct {
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             
-            var sent_list = std.ArrayList(Nep17Transfer).init(allocator);
+            var sent_list = ArrayList(Nep17Transfer).init(allocator);
             if (obj.get("sent")) |sent_array| {
                 for (sent_array.array) |sent_item| {
                     try sent_list.append(try Nep17Transfer.fromJson(sent_item, allocator));
                 }
             }
             
-            var received_list = std.ArrayList(Nep17Transfer).init(allocator);
+            var received_list = ArrayList(Nep17Transfer).init(allocator);
             if (obj.get("received")) |received_array| {
                 for (received_array.array) |received_item| {
                     try received_list.append(try Nep17Transfer.fromJson(received_item, allocator));
@@ -288,7 +291,7 @@ pub const NeoGetNep11Balances = struct {
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             
-            var balance_list = std.ArrayList(Nep11Balance).init(allocator);
+            var balance_list = ArrayList(Nep11Balance).init(allocator);
             if (obj.get("balance")) |balance_array| {
                 for (balance_array.array) |balance_item| {
                     try balance_list.append(try Nep11Balance.fromJson(balance_item, allocator));
@@ -331,7 +334,7 @@ pub const NeoGetNep11Balances = struct {
             const decimals = if (obj.get("decimals")) |d| try allocator.dupe(u8, d.string) else null;
             const asset_hash = try Hash160.initWithString(obj.get("assethash").?.string);
             
-            var token_list = std.ArrayList([]const u8).init(allocator);
+            var token_list = ArrayList([]const u8).init(allocator);
             if (obj.get("tokens")) |tokens_array| {
                 for (tokens_array.array) |token| {
                     try token_list.append(try allocator.dupe(u8, token.string));
@@ -391,14 +394,14 @@ pub const NeoGetNep11Transfers = struct {
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             
-            var sent_list = std.ArrayList(Nep11Transfer).init(allocator);
+            var sent_list = ArrayList(Nep11Transfer).init(allocator);
             if (obj.get("sent")) |sent_array| {
                 for (sent_array.array) |sent_item| {
                     try sent_list.append(try Nep11Transfer.fromJson(sent_item, allocator));
                 }
             }
             
-            var received_list = std.ArrayList(Nep11Transfer).init(allocator);
+            var received_list = ArrayList(Nep11Transfer).init(allocator);
             if (obj.get("received")) |received_array| {
                 for (received_array.array) |received_item| {
                     try received_list.append(try Nep11Transfer.fromJson(received_item, allocator));
@@ -519,7 +522,7 @@ pub const TokenBalance = struct {
 // Tests (converted from Swift NEP-17/NEP-11 response tests)
 test "NeoGetNep17Balances response parsing" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test NEP-17 balance response (equivalent to Swift Nep17Balances tests)
     const nep17_balances = NeoGetNep17Balances.init();
@@ -551,7 +554,7 @@ test "NeoGetNep17Balances response parsing" {
 
 test "NeoGetNep17Transfers response parsing" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test NEP-17 transfer response (equivalent to Swift Nep17Transfers tests)
     const nep17_transfers = NeoGetNep17Transfers.init();
@@ -640,7 +643,7 @@ test "NeoGetNep11Balances and transfers" {
 
 test "Token response traits and utilities" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test token balance traits (equivalent to Swift protocol tests)
     const balance_entry = NeoGetNep17Balances.Nep17Balance.init(

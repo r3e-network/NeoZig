@@ -4,6 +4,8 @@
 //! Provides contract manifest structure for smart contract metadata.
 
 const std = @import("std");
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const ECKeyPair = @import("../../crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../../crypto/keys.zig").PublicKey;

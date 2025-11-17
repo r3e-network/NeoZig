@@ -4,6 +4,8 @@
 //! Provides complete witness rule system for advanced transaction validation.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -266,7 +268,7 @@ pub const WitnessCondition = union(enum(u8)) {
             0x18 => {
                 var hash_bytes: [20]u8 = undefined;
                 try reader.readBytes(&hash_bytes);
-                return Self{ .ScriptHash = Hash160.init(hash_bytes) };
+                return Self{ .ScriptHash = Hash160.fromArray(hash_bytes) };
             },
             0x19 => {
                 var group: [33]u8 = undefined;
@@ -277,7 +279,7 @@ pub const WitnessCondition = union(enum(u8)) {
             0x28 => {
                 var hash_bytes: [20]u8 = undefined;
                 try reader.readBytes(&hash_bytes);
-                return Self{ .CalledByContract = Hash160.init(hash_bytes) };
+                return Self{ .CalledByContract = Hash160.fromArray(hash_bytes) };
             },
             0x29 => {
                 var group: [33]u8 = undefined;

@@ -4,6 +4,9 @@
 //! Standard wallet format for Neo blockchain.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -52,7 +55,7 @@ pub const NEP6Wallet = struct {
         try wallet_obj.put("scrypt", try self.scrypt.toJson(allocator));
         
         // Convert accounts array
-        var accounts_array = std.ArrayList(std.json.Value).init(allocator);
+        var accounts_array = ArrayList(std.json.Value).init(allocator);
         for (self.accounts) |account| {
             try accounts_array.append(try account.toJson(allocator));
         }
@@ -74,7 +77,7 @@ pub const NEP6Wallet = struct {
         const scrypt = try ScryptParams.fromJson(obj.get("scrypt").?, allocator);
         
         // Parse accounts
-        var accounts = std.ArrayList(NEP6Account).init(allocator);
+        var accounts = ArrayList(NEP6Account).init(allocator);
         if (obj.get("accounts")) |accounts_array| {
             for (accounts_array.array) |account_json| {
                 try accounts.append(try NEP6Account.fromJson(account_json, allocator));
@@ -91,15 +94,16 @@ pub const NEP6Wallet = struct {
         const json_value = try self.toJson(allocator);
         defer json_value.deinit();
         
-        var json_buffer = std.ArrayList(u8).init(allocator);
-        defer json_buffer.deinit();
+        var writer_state = std.Io.Writer.Allocating.init(allocator);
+        defer writer_state.deinit();
         
-        try std.json.stringify(json_value, .{ .whitespace = .indent_2 }, json_buffer.writer());
+        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{ .whitespace = .indent_2 } };
+        try stringify.write(json_value);
         
         const file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
         
-        try file.writeAll(json_buffer.items);
+        try file.writeAll(writer_state.writer.buffered());
     }
     
     /// Loads from file (equivalent to Swift file operations)
@@ -110,13 +114,10 @@ pub const NEP6Wallet = struct {
         const file_content = try file.readToEndAlloc(allocator, 1024 * 1024);
         defer allocator.free(file_content);
         
-        var json_parser = std.json.Parser.init(allocator, .alloc_always);
-        defer json_parser.deinit();
+        var parsed = try std.json.parseFromSlice(std.json.Value, allocator, file_content, .{});
+        defer parsed.deinit();
         
-        var json_tree = try json_parser.parse(file_content);
-        defer json_tree.deinit();
-        
-        return try Self.fromJson(json_tree.root, allocator);
+        return try Self.fromJson(parsed.value, allocator);
     }
 };
 
@@ -232,7 +233,7 @@ pub const NEP6Contract = struct {
         try contract_obj.put("deployed", std.json.Value{ .bool = self.deployed });
         
         // Convert parameters
-        var params_array = std.ArrayList(std.json.Value).init(allocator);
+        var params_array = ArrayList(std.json.Value).init(allocator);
         for (self.parameters) |param| {
             try params_array.append(try param.toJson(allocator));
         }
@@ -249,7 +250,7 @@ pub const NEP6Contract = struct {
         const deployed = obj.get("deployed").?.bool;
         
         // Parse parameters
-        var parameters = std.ArrayList(ContractParameterInfo).init(allocator);
+        var parameters = ArrayList(ContractParameterInfo).init(allocator);
         if (obj.get("parameters")) |params_array| {
             for (params_array.array) |param_json| {
                 try parameters.append(try ContractParameterInfo.fromJson(param_json, allocator));
@@ -329,7 +330,7 @@ pub const ScryptParams = struct {
 // Tests (converted from Swift NEP6Wallet tests)
 test "NEP6Wallet creation and properties" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test wallet creation (equivalent to Swift NEP6Wallet tests)
     const accounts = [_]NEP6Account{};
@@ -376,7 +377,7 @@ test "NEP6Wallet JSON serialization" {
 
 test "NEP6Account creation and properties" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test account creation (equivalent to Swift NEP6Account tests)
     const account = NEP6Account.init(

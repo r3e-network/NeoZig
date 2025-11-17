@@ -4,6 +4,8 @@
 //! Provides all Swift string utility methods.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -147,7 +149,7 @@ pub const StringUtils = struct {
         var hash160_bytes: [20]u8 = undefined;
         @memcpy(&hash160_bytes, script_hash_bytes);
         
-        const hash160 = @import("../types/hash160.zig").Hash160.init(hash160_bytes);
+        const hash160 = @import("../types/hash160.zig").Hash160.fromArray(hash160_bytes);
         return try hash160.toAddress(allocator);
     }
 };

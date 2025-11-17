@@ -4,6 +4,8 @@
 //! Tests role management contract functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const RoleManagement = @import("../../src/contract/role_management.zig").RoleManagement;
 const Role = @import("../../src/types/role.zig").Role;

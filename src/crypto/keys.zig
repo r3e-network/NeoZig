@@ -1,6 +1,9 @@
 //! Cryptographic key management for Neo blockchain (Production Implementation)
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -63,7 +66,8 @@ pub const PrivateKey = struct {
     }
     
     pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "{}", .{std.fmt.fmtSliceHexLower(&self.bytes)});
+        const hex = std.fmt.bytesToHex(self.bytes, .lower);
+        return try allocator.dupe(u8, &hex);
     }
     
     pub fn toSlice(self: Self) []const u8 {
@@ -128,18 +132,19 @@ pub const PublicKey = struct {
     }
     
     pub fn toHash160(self: Self) !@import("../types/hash160.zig").Hash160 {
-        var script = std.ArrayList(u8).init(std.heap.page_allocator);
+        var script = ArrayList(u8).init(std.heap.page_allocator);
         defer script.deinit();
         
         try script.append(0x0C);
         try script.append(@intCast(self.bytes.len));
         try script.appendSlice(self.bytes);
         try script.append(0x41);
-        try script.append(0x9D);
+        const syscall_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.InteropServices.SYSTEM_CRYPTO_CHECK_SIG));
+        try script.appendSlice(&syscall_bytes);
         
         const ripemd160_impl = @import("ripemd160.zig");
         const hash_result = ripemd160_impl.ripemd160(script.items);
-        return @import("../types/hash160.zig").Hash160.init(hash_result);
+        return @import("../types/hash160.zig").Hash160.fromArray(hash_result);
     }
     
     pub fn toSlice(self: Self) []const u8 {

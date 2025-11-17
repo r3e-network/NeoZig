@@ -4,6 +4,8 @@
 //! Tests enum type functionality and ByteEnum protocol implementation.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const WitnessScope = @import("../../src/transaction/witness_scope_complete.zig").WitnessScope;
 const RecordType = @import("../../src/types/record_type.zig").RecordType;

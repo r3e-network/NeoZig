@@ -4,6 +4,9 @@
 //! Provides Neo block structure for blockchain data.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 const NeoWitness = @import("neo_witness.zig").NeoWitness;
 const Transaction = @import("transaction.zig").Transaction;
@@ -273,7 +276,7 @@ pub const NeoBlock = struct {
         
         // Clone witnesses if present
         const witnesses_copy = if (self.witnesses) |witnesses| blk: {
-            var witnesses_list = try std.ArrayList(NeoWitness).initCapacity(allocator, witnesses.len);
+            var witnesses_list = try ArrayList(NeoWitness).initCapacity(allocator, witnesses.len);
             defer witnesses_list.deinit();
             
             for (witnesses) |witness| {
@@ -285,7 +288,7 @@ pub const NeoBlock = struct {
         
         // Clone transactions if present  
         const transactions_copy = if (self.transactions) |transactions| blk: {
-            var tx_list = try std.ArrayList(Transaction).initCapacity(allocator, transactions.len);
+            var tx_list = try ArrayList(Transaction).initCapacity(allocator, transactions.len);
             defer tx_list.deinit();
             
             for (transactions) |tx| {

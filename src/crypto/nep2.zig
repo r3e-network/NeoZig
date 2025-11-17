@@ -4,6 +4,8 @@
 //! Provides password-based private key encryption/decryption.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -139,7 +141,7 @@ pub const NEP2 = struct {
         should_encrypt: bool,
         allocator: std.mem.Allocator,
     ) ![]u8 {
-        var result = try allocator.alloc(u8, data.len);
+        const result = try allocator.alloc(u8, data.len);
         @memcpy(result, data);
         
         if (should_encrypt) {

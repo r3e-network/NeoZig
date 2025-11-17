@@ -4,6 +4,10 @@
 //! Provides transaction signing context for multi-signature scenarios.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+const json_utils = @import("../utils/json_utils.zig");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -102,10 +106,10 @@ pub const ContractParametersContext = struct {
     pub fn toJson(self: Self) !std.json.Value {
         var context_obj = std.json.ObjectMap.init(self.allocator);
         
-        try context_obj.put("type", std.json.Value{ .string = CONTEXT_TYPE });
-        try context_obj.put("hash", std.json.Value{ .string = self.hash });
-        try context_obj.put("data", std.json.Value{ .string = self.data });
-        try context_obj.put("network", std.json.Value{ .integer = @intCast(self.network) });
+        try json_utils.putOwnedKey(&context_obj, self.allocator, "type", std.json.Value{ .string = try self.allocator.dupe(u8, CONTEXT_TYPE) });
+        try json_utils.putOwnedKey(&context_obj, self.allocator, "hash", std.json.Value{ .string = try self.allocator.dupe(u8, self.hash) });
+        try json_utils.putOwnedKey(&context_obj, self.allocator, "data", std.json.Value{ .string = try self.allocator.dupe(u8, self.data) });
+        try json_utils.putOwnedKey(&context_obj, self.allocator, "network", std.json.Value{ .integer = @intCast(self.network) });
         
         // Convert items to JSON
         var items_obj = std.json.ObjectMap.init(self.allocator);
@@ -113,7 +117,7 @@ pub const ContractParametersContext = struct {
         while (iterator.next()) |entry| {
             try items_obj.put(entry.key_ptr.*, try entry.value_ptr.toJson(self.allocator));
         }
-        try context_obj.put("items", std.json.Value{ .object = items_obj });
+        try json_utils.putOwnedKey(&context_obj, self.allocator, "items", std.json.Value{ .object = items_obj });
         
         return std.json.Value{ .object = context_obj };
     }
@@ -224,14 +228,14 @@ pub const ContextItem = struct {
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var item_obj = std.json.ObjectMap.init(allocator);
         
-        try item_obj.put("script", std.json.Value{ .string = self.script });
+        try json_utils.putOwnedKey(&item_obj, allocator, "script", std.json.Value{ .string = try allocator.dupe(u8, self.script) });
         
         if (self.parameters) |params| {
-            var params_array = std.ArrayList(std.json.Value).init(allocator);
+            var params_array = ArrayList(std.json.Value).init(allocator);
             for (params) |param| {
                 try params_array.append(try @import("../contract/parameter_utils.zig").parameterToJson(param, allocator));
             }
-            try item_obj.put("parameters", std.json.Value{ .array = try params_array.toOwnedSlice() });
+            try json_utils.putOwnedKey(&item_obj, allocator, "parameters", std.json.Value{ .array = try params_array.toOwnedSlice() });
         }
         
         // Convert signatures to JSON
@@ -240,7 +244,7 @@ pub const ContextItem = struct {
         while (sig_iterator.next()) |entry| {
             try sigs_obj.put(entry.key_ptr.*, std.json.Value{ .string = entry.value_ptr.* });
         }
-        try item_obj.put("signatures", std.json.Value{ .object = sigs_obj });
+        try json_utils.putOwnedKey(&item_obj, allocator, "signatures", std.json.Value{ .object = sigs_obj });
         
         return std.json.Value{ .object = item_obj };
     }
@@ -254,7 +258,7 @@ pub const ContextItem = struct {
         // Parse parameters if present
         var parameters: ?[]ContractParameter = null;
         if (obj.get("parameters")) |params_array| {
-            var params_list = std.ArrayList(ContractParameter).init(allocator);
+            var params_list = ArrayList(ContractParameter).init(allocator);
             for (params_array.array) |param_json| {
                 // Would parse contract parameter from JSON
                 try params_list.append(ContractParameter.boolean(true)); // Placeholder

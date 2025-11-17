@@ -4,6 +4,8 @@
 //! Provides smart contract invocation result structure.
 
 const std = @import("std");
+
+
 const NeoVMStateType = @import("../../types/neo_vm_state_type.zig").NeoVMStateType;
 const StackItem = @import("../../types/stack_item.zig").StackItem;
 

@@ -4,12 +4,14 @@
 //! Essential for contract calls and transaction building.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
-const InteropService = @import("interop_service.zig").InteropService;
+pub const InteropService = @import("interop_service.zig").InteropService;
 
 /// Script builder for Neo VM scripts (converted from Swift ScriptBuilder)
 pub const ScriptBuilder = struct {
@@ -79,12 +81,13 @@ pub const ScriptBuilder = struct {
         _ = try self.opCode(&[_]OpCode{.SYSCALL});
         
         // Get hash for the interop service
-        const hash_hex = try operation.getHash(self.writer.allocator);
-        defer self.writer.allocator.free(hash_hex);
-        
+        const writer_allocator = self.writer.getAllocator();
+        const hash_hex = try operation.getHash(writer_allocator);
+        defer writer_allocator.free(hash_hex);
+
         // Convert hex string to bytes and write
-        const hash_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(hash_hex, self.writer.allocator);
-        defer self.writer.allocator.free(hash_bytes);
+        const hash_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(hash_hex, writer_allocator);
+        defer writer_allocator.free(hash_bytes);
         
         try self.writer.writeBytes(hash_bytes);
         return self;
@@ -151,15 +154,17 @@ pub const ScriptBuilder = struct {
     /// Push integer value (equivalent to Swift pushInteger)
     pub fn pushInteger(self: *Self, value: i64) !*Self {
         if (value == 0) {
-            _ = try self.opCode(&[_]OpCode{.PUSH0});
+            _ = try self.opCode(&[_]OpCode{ .PUSH0 });
+        } else if (value == -1) {
+            _ = try self.opCode(&[_]OpCode{ .PUSHM1 });
         } else if (value > 0 and value <= 16) {
             const op_value = @as(u8, @intCast(@intFromEnum(OpCode.PUSH1) + value - 1));
             const op = @as(OpCode, @enumFromInt(op_value));
-            _ = try self.opCode(&[_]OpCode{op});
+            _ = try self.opCode(&[_]OpCode{ op });
         } else {
-            // Convert to bytes and push as data
-            const bytes = std.mem.toBytes(std.mem.nativeToLittle(i64, value));
-            _ = try self.pushData(&bytes);
+            var buffer: [9]u8 = undefined;
+            const encoded = encodeScriptNumber(value, &buffer);
+            _ = try self.pushData(encoded);
         }
         return self;
     }
@@ -170,15 +175,15 @@ pub const ScriptBuilder = struct {
             try self.writer.writeByte(@intCast(data.len));
             try self.writer.writeBytes(data);
         } else if (data.len <= 255) {
-            _ = try self.opCode(&[_]OpCode{.PUSHDATA1});
+            _ = try self.opCode(&[_]OpCode{ .PUSHDATA1 });
             try self.writer.writeByte(@intCast(data.len));
             try self.writer.writeBytes(data);
         } else if (data.len <= 65535) {
-            _ = try self.opCode(&[_]OpCode{.PUSHDATA2});
-            try self.writer.writeU32(@intCast(data.len));
+            _ = try self.opCode(&[_]OpCode{ .PUSHDATA2 });
+            try self.writer.writeU16(@intCast(data.len));
             try self.writer.writeBytes(data);
         } else {
-            _ = try self.opCode(&[_]OpCode{.PUSHDATA4});
+            _ = try self.opCode(&[_]OpCode{ .PUSHDATA4 });
             try self.writer.writeU32(@intCast(data.len));
             try self.writer.writeBytes(data);
         }
@@ -225,7 +230,7 @@ pub const ScriptBuilder = struct {
         _ = try builder.pushInteger(@intCast(public_keys.len));
         
         // CheckMultiSig
-        _ = try builder.sysCall(.SystemCryptoCheckMultiSig);
+        _ = try builder.sysCall(.SystemCryptoCheckMultisig);
         
         return try allocator.dupe(u8, builder.toScript());
     }
@@ -246,6 +251,35 @@ pub const ScriptBuilder = struct {
     }
 };
 
+pub fn encodeScriptNumber(value: i64, buffer: *[9]u8) []const u8 {
+    if (value == 0) return buffer[0..0];
+
+    var abs_value: u128 = if (value < 0)
+        @as(u128, @intCast(-(value + 1))) + 1
+    else
+        @as(u128, @intCast(value));
+
+    var index: usize = 0;
+    while (abs_value > 0) : (abs_value >>= 8) {
+        buffer[index] = @intCast(abs_value & 0xFF);
+        index += 1;
+    }
+
+    const negative = value < 0;
+    if (negative) {
+        if ((buffer[index - 1] & 0x80) != 0) {
+            buffer[index] = 0x80;
+            index += 1;
+        } else {
+            buffer[index - 1] |= 0x80;
+        }
+    } else if ((buffer[index - 1] & 0x80) != 0) {
+        buffer[index] = 0x00;
+        index += 1;
+    }
+
+    return buffer[0..index];
+}
 const OpCode = @import("op_code.zig").OpCode;
 
 const CallFlags = @import("../types/call_flags.zig").CallFlags;
@@ -277,7 +311,7 @@ test "ScriptBuilder contract call" {
     defer builder.deinit();
     
     // Test contract call (equivalent to Swift contractCall test)
-    const contract_hash = neo.Hash160.ZERO;
+    const contract_hash = Hash160.ZERO;
     const params = [_]ContractParameter{
         ContractParameter.string("test"),
         ContractParameter.integer(42),

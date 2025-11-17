@@ -4,6 +4,9 @@
 //! Provides all Swift bytes utility methods and conversions.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -25,7 +28,7 @@ pub const BytesUtils = struct {
     pub fn fromBigInt(value: u256, allocator: std.mem.Allocator) ![]u8 {
         if (value == 0) return try allocator.dupe(u8, &[_]u8{0});
         
-        var bytes = std.ArrayList(u8).init(allocator);
+        var bytes = ArrayList(u8).init(allocator);
         defer bytes.deinit();
         
         var temp_value = value;
@@ -176,14 +179,21 @@ pub const BytesUtils = struct {
     
     /// Reverses bytes (equivalent to Swift .reversed())
     pub fn reversed(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        var result = try allocator.dupe(u8, bytes);
+        const result = try allocator.dupe(u8, bytes);
         std.mem.reverse(u8, result);
         return result;
     }
     
     /// Converts bytes to hex string (equivalent to Swift .toHexString())
     pub fn toHexString(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "{}", .{std.fmt.fmtSliceHexLower(bytes)});
+        const hex_len = bytes.len * 2;
+        const result = try allocator.alloc(u8, hex_len);
+        const table = "0123456789abcdef";
+        for (bytes, 0..) |byte, i| {
+            result[i * 2] = table[byte >> 4];
+            result[i * 2 + 1] = table[byte & 0x0F];
+        }
+        return result;
     }
     
     /// Checks if bytes are all zeros
@@ -208,7 +218,7 @@ pub const BytesUtils = struct {
             return errors.ValidationError.InvalidParameter;
         }
         
-        var result = try allocator.alloc(u8, a.len);
+        const result = try allocator.alloc(u8, a.len);
         
         for (a, b, 0..) |byte_a, byte_b, i| {
             result[i] = byte_a ^ byte_b;

@@ -4,6 +4,8 @@
 //! Defines Neo node plugin types and capabilities.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
 
 /// Neo node plugin type (converted from Swift NodePluginType)

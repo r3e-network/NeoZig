@@ -3,10 +3,13 @@
 //! Converted from Swift Bytes extensions and utility functions.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
+const BytesExtensions = @import("bytes_extensions.zig").BytesUtils;
 
 pub fn toHex(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    return try std.fmt.allocPrint(allocator, "{}", .{std.fmt.fmtSliceHexLower(bytes)});
+    return try BytesExtensions.toHexString(bytes, allocator);
 }
 
 pub fn fromHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {

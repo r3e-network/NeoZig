@@ -4,6 +4,9 @@
 //! Provides safe decoding and string conversion protocols.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const errors = @import("../core/errors.zig");
 
 /// String decodable trait (converted from Swift StringDecodable protocol)
@@ -178,7 +181,7 @@ pub const ArrayDecodeUtils = struct {
     ) ![]T {
         return switch (json_value) {
             .array => |array| {
-                var result = std.ArrayList(T).init(allocator);
+                var result = ArrayList(T).init(allocator);
                 for (array) |item| {
                     try result.append(try decode_fn(item, allocator));
                 }
@@ -263,7 +266,7 @@ test "Array decoding utilities" {
     const allocator = testing.allocator;
     
     // Test string array decoding (equivalent to Swift array decoding tests)
-    var string_array = std.ArrayList(std.json.Value).init(allocator);
+    var string_array = ArrayList(std.json.Value).init(allocator);
     defer string_array.deinit();
     
     try string_array.append(std.json.Value{ .string = "first" });

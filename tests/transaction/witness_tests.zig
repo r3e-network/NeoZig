@@ -4,6 +4,9 @@
 //! Tests witness creation, serialization, and multi-signature functionality.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const testing = std.testing;
 const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
 const Witness = @import("../../src/transaction/witness.zig").Witness;
@@ -96,7 +99,7 @@ test "Multi-signature witness creation" {
     const signing_threshold: u32 = 2;
     
     // Create multiple key pairs and signatures (equivalent to Swift loop)
-    var signatures = std.ArrayList(Sign.SignatureData).init(allocator);
+    var signatures = ArrayList(Sign.SignatureData).init(allocator);
     defer {
         for (signatures.items) |*sig| {
             sig.deinit(allocator);
@@ -104,7 +107,7 @@ test "Multi-signature witness creation" {
         signatures.deinit();
     }
     
-    var public_keys = std.ArrayList(@import("../../src/crypto/keys.zig").PublicKey).init(allocator);
+    var public_keys = ArrayList(@import("../../src/crypto/keys.zig").PublicKey).init(allocator);
     defer public_keys.deinit();
     
     // Create 3 key pairs (equivalent to Swift for loop 0...2)

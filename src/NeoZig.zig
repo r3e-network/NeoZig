@@ -13,6 +13,7 @@ const HttpService = @import("rpc/http_service.zig").HttpService;
 const JsonRpc2_0Rx = @import("protocol/json_rpc_2_0_rx.zig").JsonRpc2_0Rx;
 const Neo = @import("protocol/neo_protocol.zig").NeoProtocol;
 const NeoSwiftRx = @import("protocol/neo_swift_rx.zig").NeoSwiftRx;
+const response_aliases = @import("rpc/response_aliases.zig");
 const errors = @import("core/errors.zig");
 
 /// Main Neo Zig SDK client (converted from Swift NeoSwift class)
@@ -66,7 +67,12 @@ pub const NeoZig = struct {
 
     /// Allow transmission on fault (equivalent to Swift allowTransmissionOnFault)
     pub fn allowTransmissionOnFault(self: *Self) void {
-        self.config.allows_transmission_on_fault = true;
+        _ = self.config.allowTransmissionOnFault();
+    }
+
+    /// Prevent transmission on fault (equivalent to Swift preventTransmissionOnFault)
+    pub fn preventTransmissionOnFault(self: *Self) void {
+        _ = self.config.preventTransmissionOnFault();
     }
 
     /// Gets reactive client (equivalent to Swift lazy neoSwiftRx)
@@ -120,14 +126,31 @@ pub const NeoZig = struct {
         return self.config.allows_transmission_on_fault;
     }
 
-    /// Gets network magic number
-    pub fn getNetworkMagic(self: Self) ?u32 {
-        return self.config.network_magic;
+    /// Gets network magic number, fetching from the connected node if necessary.
+    pub fn getNetworkMagic(self: *Self) !u32 {
+        if (self.config.network_magic) |magic| {
+            return magic;
+        }
+
+        var neo = Neo.init(self.getService());
+        var request = try neo.getVersion();
+        const response = try request.sendUsing(self.getService());
+
+        const service_allocator = self.getService().getAllocator();
+        defer service_allocator.free(response.user_agent);
+
+        if (response.protocol) |protocol_settings| {
+            _ = self.config.setNetworkMagic(protocol_settings.network);
+            NeoSwiftConfig.setAddressVersion(@intCast(protocol_settings.address_version));
+            return protocol_settings.network;
+        }
+
+        return errors.NeoError.InvalidConfiguration;
     }
 
     /// Sets network magic number
     pub fn setNetworkMagic(self: *Self, magic: u32) void {
-        self.config.network_magic = magic;
+        _ = self.config.setNetworkMagic(magic);
     }
 
     pub fn getBlockCount(self: *Self) !u32 {
@@ -329,9 +352,12 @@ test "NeoZig configuration management" {
     client.allowTransmissionOnFault();
     try testing.expect(client.isTransmissionOnFaultAllowed());
 
+    client.preventTransmissionOnFault();
+    try testing.expect(!client.isTransmissionOnFaultAllowed());
+
     // Test network magic
     client.setNetworkMagic(0x4e454f00);
-    try testing.expectEqual(@as(u32, 0x4e454f00), client.getNetworkMagic().?);
+    try testing.expectEqual(@as(u32, 0x4e454f00), try client.getNetworkMagic());
     try testing.expect(client.isMainnet());
 }
 

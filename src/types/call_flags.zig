@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Contract call flags (converted from Swift CallFlags)
 pub const CallFlags = enum(u8) {
     /// No permissions
@@ -49,12 +51,6 @@ pub const CallFlags = enum(u8) {
     /// Checks if flag includes allow notify permission
     pub fn hasAllowNotify(self: Self) bool {
         return (@intFromEnum(self) & @intFromEnum(CallFlags.AllowNotify)) != 0;
-    }
-    
-    /// Combines call flags (equivalent to Swift bitwise operations)
-    pub fn combine(self: Self, other: Self) Self {
-        const combined_value = @intFromEnum(self) | @intFromEnum(other);
-        return @enumFromInt(combined_value);
     }
     
     /// Creates call flags from integer value
@@ -110,14 +106,16 @@ test "CallFlags permission checking" {
 test "CallFlags combination" {
     const testing = std.testing;
     
-    // Test flag combination (equivalent to Swift bitwise operation tests)
-    const combined = CallFlags.ReadStates.combine(CallFlags.WriteStates);
-    try testing.expectEqual(CallFlags.States, combined);
-    
-    const read_call = CallFlags.ReadStates.combine(CallFlags.AllowCall);
-    try testing.expect(read_call.hasReadStates());
-    try testing.expect(read_call.hasAllowCall());
-    try testing.expect(!read_call.hasWriteStates());
+    // Test predefined combined flags
+    const states = CallFlags.States;
+    try testing.expect(states.hasReadStates());
+    try testing.expect(states.hasWriteStates());
+    try testing.expect(!states.hasAllowCall());
+
+    const read_only = CallFlags.ReadOnly;
+    try testing.expect(read_only.hasReadStates());
+    try testing.expect(read_only.hasAllowCall());
+    try testing.expect(read_only.hasAllowNotify());
 }
 
 test "CallFlags from value" {

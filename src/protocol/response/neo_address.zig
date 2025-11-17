@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Neo address structure (converted from Swift NeoAddress)
 pub const NeoAddress = struct {
     /// Address string

@@ -4,6 +4,8 @@
 //! Tests Neo Name Service domain name validation and operations.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const NNSName = @import("../../src/contract/nns_name.zig").NNSName;
 

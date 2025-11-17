@@ -4,6 +4,8 @@
 
 const std = @import("std");
 
+
+
 pub const Plugin = struct {
     name: []const u8,
     version: []const u8,

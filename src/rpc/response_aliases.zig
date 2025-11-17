@@ -86,7 +86,7 @@ pub const NeoGetBlock = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetBlock {
-        var block = try allocator.create(@import("responses.zig").NeoBlock);
+        const block = try allocator.create(@import("responses.zig").NeoBlock);
         errdefer allocator.destroy(block);
 
         block.* = try @import("responses.zig").NeoBlock.fromJson(json_value, allocator);
@@ -155,18 +155,18 @@ pub const NeoBlockHeaderCount = NeoConnectionCount;
 
 /// Calculate network fee response (converted from Swift NeoCalculateNetworkFee)
 pub const NeoCalculateNetworkFee = struct {
-    result: ?@import("complete_responses.zig").NetworkFeeResponse,
+    result: ?@import("responses.zig").NetworkFeeResponse,
 
     pub fn init() NeoCalculateNetworkFee {
         return NeoCalculateNetworkFee{ .result = null };
     }
 
-    pub fn getNetworkFee(self: NeoCalculateNetworkFee) ?@import("complete_responses.zig").NetworkFeeResponse {
+    pub fn getNetworkFee(self: NeoCalculateNetworkFee) ?@import("responses.zig").NetworkFeeResponse {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoCalculateNetworkFee {
-        const fee_response = try @import("complete_responses.zig").NetworkFeeResponse.fromJson(json_value, allocator);
+        const fee_response = try @import("responses.zig").NetworkFeeResponse.fromJson(json_value, allocator);
         return NeoCalculateNetworkFee{ .result = fee_response };
     }
 };
@@ -226,7 +226,7 @@ pub const NeoDumpPrivKey = struct {
 
     pub fn deinit(self: *NeoDumpPrivKey, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -251,7 +251,42 @@ pub const NeoGetRawTransaction = struct {
 
     pub fn deinit(self: *NeoGetRawTransaction, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
+            self.result = null;
+        }
+    }
+};
+
+/// Transaction response
+pub const NeoGetTransaction = struct {
+    result: ?*@import("responses.zig").Transaction,
+
+    pub fn init() NeoGetTransaction {
+        return NeoGetTransaction{ .result = null };
+    }
+
+    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetTransaction {
+        const tx = try allocator.create(@import("responses.zig").Transaction);
+        errdefer allocator.destroy(tx);
+
+        tx.* = try @import("responses.zig").Transaction.fromJson(json_value, allocator);
+        return NeoGetTransaction{ .result = tx };
+    }
+
+    pub fn getResult(self: NeoGetTransaction) ?*const @import("responses.zig").Transaction {
+        return self.result;
+    }
+
+    pub fn take(self: *NeoGetTransaction) ?*@import("responses.zig").Transaction {
+        const owned = self.result;
+        self.result = null;
+        return owned;
+    }
+
+    pub fn deinit(self: *NeoGetTransaction, allocator: std.mem.Allocator) void {
+        if (self.result) |tx| {
+            tx.deinit(allocator);
+            allocator.destroy(tx);
             self.result = null;
         }
     }
@@ -280,7 +315,7 @@ pub const NeoExpressCreateCheckpoint = struct {
 
     pub fn deinit(self: *NeoExpressCreateCheckpoint, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -305,7 +340,7 @@ pub const NeoExpressCreateOracleResponseTx = struct {
 
     pub fn deinit(self: *NeoExpressCreateOracleResponseTx, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -536,7 +571,7 @@ pub const NeoGetNewAddress = struct {
 
     pub fn deinit(self: *NeoGetNewAddress, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -888,7 +923,7 @@ pub const NeoGetStorage = struct {
 
     pub fn deinit(self: *NeoGetStorage, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -913,7 +948,7 @@ pub const NeoGetState = struct {
 
     pub fn deinit(self: *NeoGetState, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }
@@ -938,7 +973,7 @@ pub const NeoVerifyProof = struct {
 
     pub fn deinit(self: *NeoVerifyProof, allocator: std.mem.Allocator) void {
         if (self.result) |res| {
-            if (res.len > 0 and res.ptr != null) allocator.free(@constCast(res));
+            if (res.len > 0) allocator.free(@constCast(res));
             self.result = null;
         }
     }

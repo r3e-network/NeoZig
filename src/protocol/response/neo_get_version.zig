@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Neo protocol information (converted from Swift NeoProtocol)
 pub const NeoProtocol = struct {
     /// Network magic number

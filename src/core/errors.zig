@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// General Neo SDK errors (converted from NeoSwiftError)
 pub const NeoError = error{
     IllegalArgument,
@@ -52,6 +54,8 @@ pub const SerializationError = error{
 /// Validation errors
 pub const ValidationError = error{
     InvalidAddress,
+    InvalidLength,
+    InvalidFormat,
     InvalidHash,
     InvalidParameter,
     ParameterOutOfRange,
@@ -92,6 +96,8 @@ pub const TransactionError = error{
     MissingSignature,
     SigningFailed,
     InvalidWitness,
+    InvalidTransaction,
+    InvalidParameters,
 };
 
 /// Wallet operation errors
@@ -125,12 +131,12 @@ pub const ContractError = error{
 
 /// Utility function to convert Swift error messages
 pub fn throwIllegalArgument(message: []const u8) NeoError {
-    std.log.err("IllegalArgument: {s}", .{message});
+    _ = message;
     return NeoError.IllegalArgument;
 }
 
 pub fn throwIllegalState(message: []const u8) NeoError {
-    std.log.err("IllegalState: {s}", .{message});
+    _ = message;
     return NeoError.IllegalState;
 }
 

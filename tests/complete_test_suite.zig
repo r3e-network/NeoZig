@@ -4,6 +4,8 @@
 //! Validates 100% of implemented Neo Zig SDK features.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 /// Complete cryptographic test suite (converted from ALL Swift crypto tests)
@@ -11,7 +13,7 @@ test "complete cryptographic functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔐 Testing Complete Cryptographic Suite...");
+    std.log.info("🔐 Testing Complete Cryptographic Suite...", .{});
     
     // Test all key operations (ECKeyPairTests.swift equivalent)
     const key_pair = try neo.crypto.generateKeyPair(true);
@@ -56,7 +58,7 @@ test "complete cryptographic functionality" {
     const child_key = try master_hd_key.deriveChild(0, false, allocator);
     try testing.expectEqual(@as(i32, 1), child_key.depth);
     
-    std.log.info("✅ All cryptographic tests passed");
+    std.log.info("✅ All cryptographic tests passed", .{});
 }
 
 /// Complete transaction test suite (converted from ALL Swift transaction tests)
@@ -64,7 +66,7 @@ test "complete transaction functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💰 Testing Complete Transaction Suite...");
+    std.log.info("💰 Testing Complete Transaction Suite...", .{});
     
     // Test transaction builder (TransactionBuilderTests.swift equivalent)
     var builder = neo.transaction.TransactionBuilder.init(allocator);
@@ -104,7 +106,7 @@ test "complete transaction functionality" {
     const tx_hash = try transaction.getHash(allocator);
     try testing.expect(!tx_hash.eql(neo.Hash256.ZERO));
     
-    std.log.info("✅ All transaction tests passed");
+    std.log.info("✅ All transaction tests passed", .{});
 }
 
 /// Complete smart contract test suite (converted from ALL Swift contract tests)
@@ -112,7 +114,7 @@ test "complete smart contract functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("📝 Testing Complete Smart Contract Suite...");
+    std.log.info("📝 Testing Complete Smart Contract Suite...", .{});
     
     // Test SmartContract base class (SmartContractTests.swift equivalent)
     const contract_hash = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
@@ -161,7 +163,7 @@ test "complete smart contract functionality" {
     
     try testing.expect(register_tx.getScript() != null);
     
-    std.log.info("✅ All smart contract tests passed");
+    std.log.info("✅ All smart contract tests passed", .{});
 }
 
 /// Complete wallet test suite (converted from ALL Swift wallet tests)
@@ -169,7 +171,7 @@ test "complete wallet functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💼 Testing Complete Wallet Suite...");
+    std.log.info("💼 Testing Complete Wallet Suite...", .{});
     
     // Test Wallet base class (WalletTests.swift equivalent)
     var wallet = neo.wallet.Wallet.init(allocator);
@@ -201,7 +203,7 @@ test "complete wallet functionality" {
     const wallet_obj = json_value.object;
     try testing.expectEqualStrings("NEP6 Test Wallet", wallet_obj.get("name").?.string);
     
-    std.log.info("✅ All wallet tests passed");
+    std.log.info("✅ All wallet tests passed", .{});
 }
 
 /// Complete RPC test suite (converted from ALL Swift RPC tests)
@@ -209,7 +211,7 @@ test "complete RPC functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🌐 Testing Complete RPC Suite...");
+    std.log.info("🌐 Testing Complete RPC Suite...", .{});
     
     // Test RPC client creation (NeoSwiftTests.swift equivalent)
     const config = neo.rpc.NeoSwiftConfig.init();
@@ -235,7 +237,7 @@ test "complete RPC functionality" {
     const invocation_result = neo.rpc.InvocationResult.init();
     try testing.expectEqual(@as(usize, 0), invocation_result.script.len);
     
-    std.log.info("✅ All RPC tests passed");
+    std.log.info("✅ All RPC tests passed", .{});
 }
 
 /// Complete script building test suite (converted from Swift script tests)
@@ -243,7 +245,7 @@ test "complete script building functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🏗️ Testing Complete Script Building Suite...");
+    std.log.info("🏗️ Testing Complete Script Building Suite...", .{});
     
     // Test ScriptBuilder (ScriptBuilderTests.swift equivalent)
     var builder = neo.script.ScriptBuilder.init(allocator);
@@ -275,7 +277,7 @@ test "complete script building functionality" {
     try testing.expect(neo.script.OpCode.PUSH0.isPush());
     try testing.expect(!neo.script.OpCode.SYSCALL.isPush());
     
-    std.log.info("✅ All script building tests passed");
+    std.log.info("✅ All script building tests passed", .{});
 }
 
 /// Complete utility test suite (converted from ALL Swift utility tests)
@@ -283,7 +285,7 @@ test "complete utility functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing Complete Utility Suite...");
+    std.log.info("🔧 Testing Complete Utility Suite...", .{});
     
     // Test string utilities (StringTests.swift equivalent)
     const hex_string = "1234abcd";
@@ -314,7 +316,7 @@ test "complete utility functionality" {
     
     try testing.expectEqualStrings(test_data, base64_decoded);
     
-    std.log.info("✅ All utility tests passed");
+    std.log.info("✅ All utility tests passed", .{});
 }
 
 /// Complete type system test suite (converted from ALL Swift type tests)
@@ -322,7 +324,7 @@ test "complete type system functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("📋 Testing Complete Type System...");
+    std.log.info("📋 Testing Complete Type System...", .{});
     
     // Test Hash160 (Hash160Tests.swift equivalent)
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
@@ -359,7 +361,7 @@ test "complete type system functionality" {
     try int_param.validate();
     try string_param.validate();
     
-    std.log.info("✅ All type system tests passed");
+    std.log.info("✅ All type system tests passed", .{});
 }
 
 /// Complete serialization test suite (converted from ALL Swift serialization tests)
@@ -367,7 +369,7 @@ test "complete serialization functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing Complete Serialization Suite...");
+    std.log.info("🔧 Testing Complete Serialization Suite...", .{});
     
     // Test BinaryWriter/BinaryReader (BinaryReaderTests.swift + BinaryWriterTests.swift equivalent)
     var writer = neo.serialization.BinaryWriter.init(allocator);
@@ -407,7 +409,7 @@ test "complete serialization functionality" {
     
     try testing.expect(hash_to_serialize.eql(deserialized_hash));
     
-    std.log.info("✅ All serialization tests passed");
+    std.log.info("✅ All serialization tests passed", .{});
 }
 
 /// Performance and integration test suite
@@ -415,7 +417,7 @@ test "complete performance and integration validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("⚡ Testing Performance and Integration...");
+    std.log.info("⚡ Testing Performance and Integration...", .{});
     
     const iterations = 100;
     var timer = try std.time.Timer.start();
@@ -492,7 +494,7 @@ test "complete performance and integration validation" {
     const tx_hash = try transaction.getHash(allocator);
     try testing.expect(!tx_hash.eql(neo.Hash256.ZERO));
     
-    std.log.info("✅ Complete integration workflow successful");
+    std.log.info("✅ Complete integration workflow successful", .{});
 }
 
 /// Memory safety and security validation
@@ -500,7 +502,7 @@ test "complete security and safety validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🛡️ Testing Security and Safety...");
+    std.log.info("🛡️ Testing Security and Safety...", .{});
     
     // Test memory safety with large operations
     var large_operations: usize = 0;
@@ -536,7 +538,7 @@ test "complete security and safety validation" {
     }
     
     std.log.info("✅ Completed {} secure operations", .{large_operations});
-    std.log.info("✅ All security and safety tests passed");
+    std.log.info("✅ All security and safety tests passed", .{});
 }
 
 /// Complete API compatibility validation
@@ -544,7 +546,7 @@ test "complete Swift API compatibility validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔗 Validating Complete Swift API Compatibility...");
+    std.log.info("🔗 Validating Complete Swift API Compatibility...", .{});
     
     // Validate all major Swift classes have Zig equivalents
     
@@ -594,7 +596,7 @@ test "complete Swift API compatibility validation" {
     _ = try script_builder.opCode(&[_]neo.script.OpCode{.PUSH0});
     try testing.expect(script_builder.toScript().len > 0);
     
-    std.log.info("✅ All Swift API compatibility validated");
+    std.log.info("✅ All Swift API compatibility validated", .{});
 }
 
 /// Final comprehensive validation
@@ -602,7 +604,7 @@ test "final comprehensive SDK validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🏆 Final Comprehensive Neo Zig SDK Validation...");
+    std.log.info("🏆 Final Comprehensive Neo Zig SDK Validation...", .{});
     
     // Test that all major Neo operations work together
     
@@ -654,6 +656,6 @@ test "final comprehensive SDK validation" {
     const balance_request = try client.getNep17Balances(account_script_hash);
     try testing.expectEqualStrings("getnep17balances", balance_request.method);
     
-    std.log.info("✅ All systems integrated and functional");
-    std.log.info("🎉 Neo Zig SDK is COMPLETE and PRODUCTION READY!");
+    std.log.info("✅ All systems integrated and functional", .{});
+    std.log.info("🎉 Neo Zig SDK is COMPLETE and PRODUCTION READY!", .{});
 }

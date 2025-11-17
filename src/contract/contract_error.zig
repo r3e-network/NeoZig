@@ -4,6 +4,9 @@
 //! Provides specialized error handling for smart contract operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const errors = @import("../core/errors.zig");
 
 /// Contract-specific errors (converted from Swift ContractError)
@@ -54,7 +57,7 @@ pub const ContractError = union(enum) {
             },
             .UnexpectedReturnType => |data| {
                 if (data.expected_types) |expected| {
-                    var expected_str = std.ArrayList(u8).init(allocator);
+                    var expected_str = ArrayList(u8).init(allocator);
                     defer expected_str.deinit();
                     
                     for (expected, 0..) |exp_type, i| {

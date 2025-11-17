@@ -3,6 +3,8 @@
 //! Complete conversion from NeoSwift Hash256 type with full API compatibility.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 
@@ -41,7 +43,8 @@ pub const Hash256 = struct {
     }
     
     pub fn string(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "{}", .{std.fmt.fmtSliceHexLower(&self.bytes)});
+        const hex = std.fmt.bytesToHex(self.bytes, .lower);
+        return try allocator.dupe(u8, &hex);
     }
     
     pub fn toArray(self: Self) [constants.HASH256_SIZE]u8 {

@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Wallet-specific errors (converted from Swift WalletError)
 pub const WalletError = union(enum) {
     /// Account state error

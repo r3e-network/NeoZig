@@ -4,6 +4,9 @@
 //! Handles NEP-9 compatible URI schemes for token transfers.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -163,7 +166,7 @@ pub const NeoURI = struct {
     fn buildUri(self: *Self) !void {
         if (self.recipient == null) return;
         
-        var uri_builder = std.ArrayList(u8).init(self.allocator);
+        var uri_builder = ArrayList(u8).init(self.allocator);
         defer uri_builder.deinit();
         
         // Start with scheme

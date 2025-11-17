@@ -6,6 +6,8 @@
 
 const std = @import("std");
 
+
+
 // Export core modules
 pub const constants = @import("core/constants.zig");
 pub const errors = @import("core/errors.zig");
@@ -18,6 +20,7 @@ pub const contract = @import("contract/mod.zig");
 pub const transaction = @import("transaction/mod.zig");
 pub const wallet = @import("wallet/mod.zig");
 pub const rpc = @import("rpc/mod.zig");
+pub const NeoZig = @import("NeoZig.zig").NeoZig;
 
 // Export main types for convenience
 pub const Hash160 = types.Hash160;

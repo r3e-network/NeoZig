@@ -4,6 +4,8 @@
 //! Provides main error types for Neo Swift compatibility.
 
 const std = @import("std");
+
+
 const errors = @import("errors.zig");
 
 /// Main Neo Swift errors (converted from Swift NeoSwiftError)

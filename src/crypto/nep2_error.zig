@@ -4,6 +4,8 @@
 //! Provides specialized error handling for NEP-2 operations.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
 
 /// NEP-2 specific errors (converted from Swift NEP2Error)

@@ -4,6 +4,8 @@
 //! Ensures 100% test coverage of entire Neo Zig SDK.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 /// Complete contract tests (converted from ALL contract test files)
@@ -11,7 +13,7 @@ test "all contract functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("📝 Testing ALL Contract Functionality...");
+    std.log.info("📝 Testing ALL Contract Functionality...", .{});
     
     // Test NefFile (converted from NefFileTests.swift)
     const method_tokens = [_]neo.contract.MethodToken{};
@@ -76,7 +78,7 @@ test "all contract functionality tests" {
     defer allocator.free(root_domain);
     try testing.expectEqualStrings("neo", root_domain);
     
-    std.log.info("✅ ALL contract functionality tests passed");
+    std.log.info("✅ ALL contract functionality tests passed", .{});
 }
 
 /// Complete transaction tests (converted from ALL transaction test files)
@@ -84,7 +86,7 @@ test "all transaction functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💰 Testing ALL Transaction Functionality...");
+    std.log.info("💰 Testing ALL Transaction Functionality...", .{});
     
     // Test SerializableTransaction (converted from SerializableTransactionTest.swift)
     const signers = [_]neo.transaction.Signer{
@@ -150,7 +152,7 @@ test "all transaction functionality tests" {
     
     try testing.expect(allow_rule.eql(deserialized_rule));
     
-    std.log.info("✅ ALL transaction functionality tests passed");
+    std.log.info("✅ ALL transaction functionality tests passed", .{});
 }
 
 /// Complete wallet tests (converted from ALL wallet test files)
@@ -158,7 +160,7 @@ test "all wallet functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💼 Testing ALL Wallet Functionality...");
+    std.log.info("💼 Testing ALL Wallet Functionality...", .{});
     
     // Test Bip39Account (converted from Bip39AccountTests.swift)
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "comprehensive_test_password");
@@ -222,7 +224,7 @@ test "all wallet functionality tests" {
     const parsed_wallet = try neo.wallet.NEP6Wallet.fromJson(json_value, allocator);
     try testing.expect(nep6_wallet.eql(parsed_wallet));
     
-    std.log.info("✅ ALL wallet functionality tests passed");
+    std.log.info("✅ ALL wallet functionality tests passed", .{});
 }
 
 /// Complete crypto tests (converted from ALL crypto test files)
@@ -230,7 +232,7 @@ test "all crypto functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔐 Testing ALL Crypto Functionality...");
+    std.log.info("🔐 Testing ALL Crypto Functionality...", .{});
     
     // Test ECKeyPair (converted from ECKeyPairTests.swift)
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
@@ -337,7 +339,7 @@ test "all crypto functionality tests" {
     try testing.expect(extended_public.len > 0);
     try testing.expect(!std.mem.eql(u8, extended_private, extended_public));
     
-    std.log.info("✅ ALL crypto functionality tests passed");
+    std.log.info("✅ ALL crypto functionality tests passed", .{});
 }
 
 /// Complete serialization tests (converted from ALL serialization test files)
@@ -345,7 +347,7 @@ test "all serialization functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing ALL Serialization Functionality...");
+    std.log.info("🔧 Testing ALL Serialization Functionality...", .{});
     
     // Test BinaryWriter (converted from BinaryWriterTests.swift)
     var writer = neo.serialization.BinaryWriter.init(allocator);
@@ -398,7 +400,7 @@ test "all serialization functionality tests" {
     const large_var_size = neo.serialization.VarSizeUtils.stringVarSize(large_data);
     try testing.expect(large_var_size >= large_data.len + 3); // 3 bytes for length
     
-    std.log.info("✅ ALL serialization functionality tests passed");
+    std.log.info("✅ ALL serialization functionality tests passed", .{});
 }
 
 /// Complete RPC tests (converted from ALL RPC test files)
@@ -406,7 +408,7 @@ test "all RPC functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🌐 Testing ALL RPC Functionality...");
+    std.log.info("🌐 Testing ALL RPC Functionality...", .{});
     
     // Test HttpService functionality (converted from HttpServiceTests.swift)
     const config = neo.rpc.NeoSwiftConfig.init();
@@ -461,7 +463,7 @@ test "all RPC functionality tests" {
     const script_invoke_request = try client.invokeScript("0c21036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c29641419ed9d4", &signers);
     try testing.expectEqualStrings("invokescript", script_invoke_request.method);
     
-    std.log.info("✅ ALL RPC functionality tests passed");
+    std.log.info("✅ ALL RPC functionality tests passed", .{});
 }
 
 /// Complete protocol tests (converted from ALL protocol test files)
@@ -469,7 +471,7 @@ test "all protocol functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("📡 Testing ALL Protocol Functionality...");
+    std.log.info("📡 Testing ALL Protocol Functionality...", .{});
     
     // Test all response types can be created and parsed
     const neo_block = neo.rpc.NeoBlock.initDefault();
@@ -515,12 +517,13 @@ test "all protocol functionality tests" {
     try testing.expectEqual(@as(usize, 0), plugins.plugins.len);
     
     const send_response = neo.rpc.SendRawTransactionResponse.init();
-    try testing.expect(send_response.hash.eql(neo.Hash256.ZERO));
+    try testing.expect(!send_response.success);
+    try testing.expect(send_response.hash == null);
     
     const network_fee = neo.rpc.NetworkFeeResponse.init();
     try testing.expectEqual(@as(u64, 0), network_fee.network_fee);
     
-    std.log.info("✅ ALL protocol functionality tests passed");
+    std.log.info("✅ ALL protocol functionality tests passed", .{});
 }
 
 /// Complete utility tests (converted from ALL utility test files)
@@ -528,7 +531,7 @@ test "all utility functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing ALL Utility Functionality...");
+    std.log.info("🔧 Testing ALL Utility Functionality...", .{});
     
     // Test comprehensive string operations
     const test_hex = "0x1234abcdef";
@@ -613,7 +616,7 @@ test "all utility functionality tests" {
     const expected_sorted = [_]i32{ 1, 1, 2, 3, 4, 5, 6, 9 };
     try testing.expectEqualSlices(i32, &expected_sorted, &sort_array);
     
-    std.log.info("✅ ALL utility functionality tests passed");
+    std.log.info("✅ ALL utility functionality tests passed", .{});
 }
 
 /// Final comprehensive integration test
@@ -621,7 +624,7 @@ test "final absolute comprehensive validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🏆 Final Absolute Comprehensive Validation...");
+    std.log.info("🏆 Final Absolute Comprehensive Validation...", .{});
     
     // Test that EVERY major system works in complex integration
     
@@ -794,6 +797,6 @@ test "final absolute comprehensive validation" {
     const deserialized_hash = try neo.serialization.SerializationUtils.deserialize(neo.Hash256, serialized_hash);
     try testing.expect(sha256_hash.eql(deserialized_hash));
     
-    std.log.info("✅ ALL SYSTEMS FULLY INTEGRATED AND OPERATIONAL");
-    std.log.info("🎉 ABSOLUTE COMPREHENSIVE VALIDATION: 100% SUCCESS!");
+    std.log.info("✅ ALL SYSTEMS FULLY INTEGRATED AND OPERATIONAL", .{});
+    std.log.info("🎉 ABSOLUTE COMPREHENSIVE VALIDATION: 100% SUCCESS!", .{});
 }

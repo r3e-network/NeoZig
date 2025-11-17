@@ -4,6 +4,9 @@
 //! Maintains test compatibility and validates same functionality.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const neo = @import("neo-zig");
 
 // Test data (converted from Swift ECKeyPairTests)
@@ -294,7 +297,7 @@ test "hash serialization and deserialization" {
     // Test Hash160 serialization
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer = ArrayList(u8).init(allocator);
     defer buffer.deinit();
     
     try hash160.serialize(&buffer);

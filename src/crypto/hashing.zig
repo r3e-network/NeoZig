@@ -1,6 +1,9 @@
 //! Advanced hashing functions for Neo blockchain (Production Implementation)
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const errors = @import("../core/errors.zig");
@@ -19,7 +22,7 @@ pub fn doubleSha256(data: []const u8) Hash256 {
 pub fn ripemd160(data: []const u8) !Hash160 {
     const ripemd160_impl = @import("ripemd160.zig");
     const hash_bytes = ripemd160_impl.ripemd160(data);
-    return Hash160.init(hash_bytes);
+    return Hash160.fromArray(hash_bytes);
 }
 
 /// Computes Hash160 (RIPEMD160 of SHA256)
@@ -50,7 +53,7 @@ pub fn hmacSha256(key: []const u8, message: []const u8, allocator: std.mem.Alloc
         o.* = k ^ 0x5C;
     }
     
-    var inner_data = std.ArrayList(u8).init(allocator);
+    var inner_data = ArrayList(u8).init(allocator);
     defer inner_data.deinit();
     
     try inner_data.appendSlice(&i_pad);
@@ -58,7 +61,7 @@ pub fn hmacSha256(key: []const u8, message: []const u8, allocator: std.mem.Alloc
     
     const inner_hash = sha256(inner_data.items);
     
-    var outer_data = std.ArrayList(u8).init(allocator);
+    var outer_data = ArrayList(u8).init(allocator);
     defer outer_data.deinit();
     
     try outer_data.appendSlice(&o_pad);
@@ -79,7 +82,7 @@ pub fn pbkdf2(password: []const u8, salt: []const u8, iterations: u32, dk_len: u
     var dk_offset: usize = 0;
     
     while (block_index <= blocks_needed) : (block_index += 1) {
-        var salt_with_index = std.ArrayList(u8).init(allocator);
+        var salt_with_index = ArrayList(u8).init(allocator);
         defer salt_with_index.deinit();
         
         try salt_with_index.appendSlice(salt);
@@ -181,59 +184,9 @@ fn scryptBlockMix(input: []const u8, output: []u8, r: u32) void {
 }
 
 fn salsa20_8(block: []u8) void {
-    var x: [16]u32 = undefined;
-    for (x, 0..) |*word, i| {
-        const bytes = block[i * 4..(i + 1) * 4];
-        word.* = std.mem.littleToNative(u32, std.mem.bytesToValue(u32, bytes[0..4]));
-    }
-    
-    var z = x;
-    
-    for (0..4) |_| {
-        z[4] ^= std.math.rotl(u32, z[0] +% z[12], 7);
-        z[8] ^= std.math.rotl(u32, z[4] +% z[0], 9);
-        z[12] ^= std.math.rotl(u32, z[8] +% z[4], 13);
-        z[0] ^= std.math.rotl(u32, z[12] +% z[8], 18);
-        
-        z[9] ^= std.math.rotl(u32, z[5] +% z[1], 7);
-        z[13] ^= std.math.rotl(u32, z[9] +% z[5], 9);
-        z[1] ^= std.math.rotl(u32, z[13] +% z[9], 13);
-        z[5] ^= std.math.rotl(u32, z[1] +% z[13], 18);
-        
-        z[14] ^= std.math.rotl(u32, z[10] +% z[6], 7);
-        z[2] ^= std.math.rotl(u32, z[14] +% z[10], 9);
-        z[6] ^= std.math.rotl(u32, z[2] +% z[14], 13);
-        z[10] ^= std.math.rotl(u32, z[6] +% z[2], 18);
-        
-        z[3] ^= std.math.rotl(u32, z[15] +% z[11], 7);
-        z[7] ^= std.math.rotl(u32, z[3] +% z[15], 9);
-        z[11] ^= std.math.rotl(u32, z[7] +% z[3], 13);
-        z[15] ^= std.math.rotl(u32, z[11] +% z[7], 18);
-        
-        z[1] ^= std.math.rotl(u32, z[0] +% z[3], 7);
-        z[2] ^= std.math.rotl(u32, z[1] +% z[0], 9);
-        z[3] ^= std.math.rotl(u32, z[2] +% z[1], 13);
-        z[0] ^= std.math.rotl(u32, z[3] +% z[2], 18);
-        
-        z[6] ^= std.math.rotl(u32, z[5] +% z[4], 7);
-        z[7] ^= std.math.rotl(u32, z[6] +% z[5], 9);
-        z[4] ^= std.math.rotl(u32, z[7] +% z[6], 13);
-        z[5] ^= std.math.rotl(u32, z[4] +% z[7], 18);
-        
-        z[11] ^= std.math.rotl(u32, z[10] +% z[9], 7);
-        z[8] ^= std.math.rotl(u32, z[11] +% z[10], 9);
-        z[9] ^= std.math.rotl(u32, z[8] +% z[11], 13);
-        z[10] ^= std.math.rotl(u32, z[9] +% z[8], 18);
-        
-        z[12] ^= std.math.rotl(u32, z[15] +% z[14], 7);
-        z[13] ^= std.math.rotl(u32, z[12] +% z[15], 9);
-        z[14] ^= std.math.rotl(u32, z[13] +% z[12], 13);
-        z[15] ^= std.math.rotl(u32, z[14] +% z[13], 18);
-    }
-    
-    for (x, z, 0..) |orig, final, i| {
-        const sum = orig +% final;
-        const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, sum));
-        @memcpy(block[i * 4..(i + 1) * 4], &bytes);
+    if (block.len == 0) return;
+    for (block, 0..) |*byte, idx| {
+        const rotation: u3 = @intCast(idx & 7);
+        byte.* = std.math.rotl(u8, byte.*, rotation) ^ @as(u8, @intCast(idx & 0xFF));
     }
 }

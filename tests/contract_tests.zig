@@ -3,6 +3,8 @@
 //! Complete conversion of NeoSwift contract test suite.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 /// Tests SmartContract functionality (converted from SmartContractTests.swift)

@@ -4,6 +4,10 @@
 //! Provides scrypt algorithm parameters for NEP-2 encryption.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+const json_utils = @import("../utils/json_utils.zig");
+
+
 
 /// Scrypt algorithm parameters (converted from Swift ScryptParams)
 pub const ScryptParams = struct {
@@ -108,13 +112,13 @@ pub const ScryptParams = struct {
         var json_obj = std.json.ObjectMap.init(allocator);
         defer json_obj.deinit();
         
-        try json_obj.put("n", std.json.Value{ .integer = @intCast(self.n) });
-        try json_obj.put("r", std.json.Value{ .integer = @intCast(self.r) });
-        try json_obj.put("p", std.json.Value{ .integer = @intCast(self.p) });
+        try json_utils.putOwnedKey(&json_obj, allocator, "n", std.json.Value{ .integer = @intCast(self.n) });
+        try json_utils.putOwnedKey(&json_obj, allocator, "r", std.json.Value{ .integer = @intCast(self.r) });
+        try json_utils.putOwnedKey(&json_obj, allocator, "p", std.json.Value{ .integer = @intCast(self.p) });
         
         const json_value = std.json.Value{ .object = json_obj };
         
-        var json_string = std.ArrayList(u8).init(allocator);
+        var json_string = ArrayList(u8).init(allocator);
         defer json_string.deinit();
         
         try std.json.stringify(json_value, .{}, json_string.writer());

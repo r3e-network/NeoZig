@@ -4,6 +4,8 @@
 //! Tests base token functionality shared by NEP-17 and NEP-11.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const Token = @import("../../src/contract/token.zig").Token;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;

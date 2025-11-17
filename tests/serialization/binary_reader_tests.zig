@@ -4,6 +4,8 @@
 //! Tests binary deserialization functionality and data type reading.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const BinaryReader = @import("../../src/serialization/binary_reader_complete.zig").CompleteBinaryReader;
 const BinaryWriter = @import("../../src/serialization/binary_writer_complete.zig").CompleteBinaryWriter;

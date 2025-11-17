@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Network fee response (converted from Swift NeoNetworkFee)
 pub const NeoNetworkFee = struct {
     /// Network fee amount

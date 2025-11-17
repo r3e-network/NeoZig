@@ -4,6 +4,8 @@
 //! Tests NEP-6 wallet format import/export functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const NEP6Wallet = @import("../../src/wallet/nep6_wallet.zig").NEP6Wallet;
 const Account = @import("../../src/wallet/account.zig").Account;

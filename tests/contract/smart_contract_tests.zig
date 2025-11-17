@@ -4,6 +4,8 @@
 //! Tests smart contract interaction, invocation, and manifest retrieval.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const SmartContract = @import("../../src/contract/smart_contract.zig").SmartContract;
 const NeoToken = @import("../../src/contract/neo_token.zig").NeoToken;

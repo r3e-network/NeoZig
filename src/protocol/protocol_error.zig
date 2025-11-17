@@ -4,6 +4,8 @@
 //! Provides protocol-specific error handling for Neo RPC communication.
 
 const std = @import("std");
+
+
 const StackItem = @import("../types/stack_item.zig").StackItem;
 
 /// Protocol errors for Neo RPC communication (converted from Swift ProtocolError)

@@ -4,9 +4,13 @@
 //! Provides service interface for Neo RPC operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Request = @import("request.zig").Request;
+const json_utils = @import("../utils/json_utils.zig");
 const Response = @import("response.zig").Response;
 
 /// Neo Swift service protocol (converted from Swift NeoSwiftService)
@@ -22,13 +26,18 @@ pub const NeoSwiftService = struct {
             .service_impl = service_impl,
         };
     }
+
+    /// Releases owned resources
+    pub fn deinit(self: *Self) void {
+        self.service_impl.deinit();
+    }
     
     /// Sends request (equivalent to Swift send<T: Response<U>, U>(_ request: Request<T, U>))
     pub fn send(
         self: *Self,
         comptime T: type,
         comptime U: type,
-        request: Request(T, U),
+        request: *Request(T, U),
     ) !T {
         return try self.service_impl.performRequest(T, U, request);
     }
@@ -61,12 +70,26 @@ pub const NeoSwiftService = struct {
     pub fn getStatistics(self: Self) ServiceStatistics {
         return self.service_impl.getStatistics();
     }
+
+    pub fn getAllocator(self: Self) std.mem.Allocator {
+        return self.service_impl.http_service.allocator;
+    }
+
+    /// Marks this wrapper as no longer owning the underlying transport.
+    /// Useful when transferring ownership to another component.
+    pub fn relinquish(self: *Self) void {
+        self.service_impl.owns_http_service = false;
+    }
 };
 
 /// Service implementation interface
 pub const ServiceImplementation = struct {
     /// HTTP service reference
     http_service: *@import("http_service.zig").HttpService,
+    /// Ownership flag for http_service
+    owns_http_service: bool,
+    /// Allocator used to manage http_service lifetime
+    allocator: std.mem.Allocator,
     /// Request counter
     request_counter: u32,
     /// Statistics
@@ -75,12 +98,23 @@ pub const ServiceImplementation = struct {
     const Self = @This();
     
     /// Creates service implementation
-    pub fn init(http_service: *@import("http_service.zig").HttpService) Self {
+    pub fn init(http_service: *@import("http_service.zig").HttpService, allocator: std.mem.Allocator, owns_http_service: bool) Self {
         return Self{
             .http_service = http_service,
+            .owns_http_service = owns_http_service,
+            .allocator = allocator,
             .request_counter = 1,
             .statistics = ServiceStatistics.init(),
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        if (self.owns_http_service) {
+            self.http_service.deinit();
+            self.allocator.destroy(self.http_service);
+            self.owns_http_service = false;
+            self.http_service = undefined;
+        }
     }
     
     /// Performs JSON-RPC request
@@ -88,19 +122,28 @@ pub const ServiceImplementation = struct {
         self: *Self,
         comptime T: type,
         comptime U: type,
-        request: Request(T, U),
+        request: *Request(T, U),
     ) !T {
         // Increment statistics
         self.statistics.total_requests += 1;
         
         // Serialize request to JSON
         const request_json = try request.toJson();
-        defer request_json.deinit();
-        
-        var json_buffer = std.ArrayList(u8).init(self.http_service.allocator);
+        var json_buffer = ArrayList(u8).init(self.http_service.allocator);
         defer json_buffer.deinit();
+        defer json_utils.freeValue(request_json, self.http_service.allocator);
         
-        try std.json.stringify(request_json, .{}, json_buffer.writer());
+        var writer = json_buffer.writer();
+        var adapter = writer.adaptToNewApi(&.{ });
+        var stringify = std.json.Stringify{ .writer = &adapter.new_interface, .options = .{} };
+        stringify.write(request_json) catch |err| switch (err) {
+            error.WriteFailed => return adapter.err.?,
+            else => return err,
+        };
+        adapter.new_interface.flush() catch |err| switch (err) {
+            error.WriteFailed => return adapter.err.?,
+            else => return err,
+        };
         
         // Perform HTTP request
         const start_time = std.time.nanoTimestamp();
@@ -116,7 +159,12 @@ pub const ServiceImplementation = struct {
         self.statistics.successful_requests += 1;
         
         // Parse response
-        const response = try @import("response_parser.zig").parseResponseResult(T, response_body, self.http_service.allocator);
+        const parsed_response = try @import("response_parser.zig").validateRpcResponse(self.http_service.allocator, response_body);
+        defer json_utils.freeValue(parsed_response, self.http_service.allocator);
+
+        const response_obj = parsed_response.object;
+        const result_value = response_obj.get("result") orelse return errors.NetworkError.InvalidResponse;
+        const response = try @import("response_parser.zig").parseResponseResult(T, result_value, self.http_service.allocator);
         return response;
     }
     
@@ -132,7 +180,7 @@ pub const ServiceImplementation = struct {
         
         // Perform HTTP request
         const response_body = try self.http_service.performIO(batch_request);
-        defer allocator.free(response_body);
+        defer self.http_service.allocator.free(response_body);
         
         // Parse batch response
         return try @import("request.zig").RequestUtils.parseBatchResponse(response_body, allocator);
@@ -253,22 +301,28 @@ pub const ServiceStatistics = struct {
 pub const ServiceFactory = struct {
     /// Creates service for MainNet
     pub fn mainnet(allocator: std.mem.Allocator) !NeoSwiftService {
-        var http_service = @import("http_service.zig").HttpServiceFactory.mainnet(allocator);
-        const service_impl = ServiceImplementation.init(&http_service);
+        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        errdefer allocator.destroy(http_service);
+        http_service.* = @import("http_service.zig").HttpServiceFactory.mainnet(allocator);
+        const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoSwiftService.init(service_impl);
     }
     
     /// Creates service for TestNet
     pub fn testnet(allocator: std.mem.Allocator) !NeoSwiftService {
-        var http_service = @import("http_service.zig").HttpServiceFactory.testnet(allocator);
-        const service_impl = ServiceImplementation.init(&http_service);
+        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        errdefer allocator.destroy(http_service);
+        http_service.* = @import("http_service.zig").HttpServiceFactory.testnet(allocator);
+        const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoSwiftService.init(service_impl);
     }
     
     /// Creates service for local node
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoSwiftService {
-        var http_service = @import("http_service.zig").HttpServiceFactory.localhost(allocator, port);
-        const service_impl = ServiceImplementation.init(&http_service);
+        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        errdefer allocator.destroy(http_service);
+        http_service.* = @import("http_service.zig").HttpServiceFactory.localhost(allocator, port);
+        const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoSwiftService.init(service_impl);
     }
     
@@ -279,11 +333,13 @@ pub const ServiceFactory = struct {
         timeout_ms: u32,
         max_retries: u32,
     ) !NeoSwiftService {
-        var http_service = @import("http_service.zig").HttpService.init(allocator, endpoint, false);
+        var http_service = try allocator.create(@import("http_service.zig").HttpService);
+        errdefer allocator.destroy(http_service);
+        http_service.* = @import("http_service.zig").HttpService.init(allocator, endpoint, false);
         http_service.setTimeout(timeout_ms);
         http_service.setMaxRetries(max_retries);
         
-        const service_impl = ServiceImplementation.init(&http_service);
+        const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoSwiftService.init(service_impl);
     }
 };
@@ -294,11 +350,16 @@ test "NeoSwiftService creation and configuration" {
     const allocator = testing.allocator;
     
     // Test service creation
-    var http_service = @import("http_service.zig").HttpService.init(allocator, "http://localhost:20332", false);
-    defer http_service.deinit();
+    var http_service = try allocator.create(@import("http_service.zig").HttpService);
+    http_service.* = @import("http_service.zig").HttpService.init(allocator, "http://localhost:20332", false);
+    defer {
+        http_service.deinit();
+        allocator.destroy(http_service);
+    }
     
-    const service_impl = ServiceImplementation.init(&http_service);
+    const service_impl = ServiceImplementation.init(http_service, allocator, false);
     var neo_service = NeoSwiftService.init(service_impl);
+    defer neo_service.deinit();
     
     // Test configuration
     const config = neo_service.getConfiguration();
@@ -385,14 +446,17 @@ test "ServiceFactory network presets" {
     
     // Test network factory methods
     var mainnet_service = try ServiceFactory.mainnet(allocator);
+    defer mainnet_service.deinit();
     const mainnet_config = mainnet_service.getConfiguration();
     try testing.expect(std.mem.containsAtLeast(u8, mainnet_config.endpoint, 1, "mainnet"));
     
     var testnet_service = try ServiceFactory.testnet(allocator);
+    defer testnet_service.deinit();
     const testnet_config = testnet_service.getConfiguration();
     try testing.expect(std.mem.containsAtLeast(u8, testnet_config.endpoint, 1, "testnet"));
     
     var localhost_service = try ServiceFactory.localhost(allocator, null);
+    defer localhost_service.deinit();
     const localhost_config = localhost_service.getConfiguration();
     try testing.expect(std.mem.containsAtLeast(u8, localhost_config.endpoint, 1, "localhost"));
     
@@ -403,6 +467,7 @@ test "ServiceFactory network presets" {
         20000, // 20 second timeout
         5,     // 5 retries
     );
+    defer custom_service.deinit();
     const custom_config = custom_service.getConfiguration();
     
     try testing.expectEqualStrings("https://custom.neo.node:8080", custom_config.endpoint);

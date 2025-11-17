@@ -4,6 +4,9 @@
 //! Provides NEP-17 token balance information for accounts.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 
 /// NEP-17 balance for a specific token (converted from Swift Nep17Balance)
@@ -209,7 +212,7 @@ pub const Nep17Balances = struct {
     
     /// Gets non-zero balances
     pub fn getNonZeroBalances(self: Self, allocator: std.mem.Allocator) ![]Nep17Balance {
-        var non_zero = std.ArrayList(Nep17Balance).init(allocator);
+        var non_zero = ArrayList(Nep17Balance).init(allocator);
         defer non_zero.deinit();
         
         for (self.balances) |balance| {
@@ -235,7 +238,7 @@ pub const Nep17Balances = struct {
     pub fn clone(self: Self, allocator: std.mem.Allocator) !Self {
         const address_copy = try allocator.dupe(u8, self.address);
         
-        var balances_copy = try std.ArrayList(Nep17Balance).initCapacity(allocator, self.balances.len);
+        var balances_copy = try ArrayList(Nep17Balance).initCapacity(allocator, self.balances.len);
         defer balances_copy.deinit();
         
         for (self.balances) |balance| {

@@ -4,6 +4,9 @@
 //! between different SDK components.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const neo = @import("neo-zig");
 
 test "complete key generation and address workflow" {
@@ -143,7 +146,7 @@ test "serialization round-trip" {
     const allocator = testing.allocator;
     
     // Create test data
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer = ArrayList(u8).init(allocator);
     defer buffer.deinit();
     
     var writer = neo.BinaryWriter.init(&buffer);
@@ -270,7 +273,7 @@ test "performance characteristics" {
     timer.reset();
     i = 0;
     while (i < iterations) : (i += 1) {
-        var buffer = std.ArrayList(u8).init(allocator);
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
         
         var writer = neo.BinaryWriter.init(&buffer);
@@ -316,7 +319,7 @@ test "memory safety validation" {
     
     // Test serialization
     {
-        var buffer = std.ArrayList(u8).init(allocator);
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
         
         var writer = neo.BinaryWriter.init(&buffer);

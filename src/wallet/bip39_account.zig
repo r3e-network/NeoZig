@@ -4,6 +4,9 @@
 //! Provides BIP-39 mnemonic-based account generation.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -160,7 +163,7 @@ const BIP39Utils = struct {
     /// Converts entropy to mnemonic words
     pub fn entropyToMnemonic(entropy: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // Simplified mnemonic generation
-        var words = std.ArrayList([]const u8).init(allocator);
+        var words = ArrayList([]const u8).init(allocator);
         defer words.deinit();
         
         // Use entropy bytes to select words (simplified)
@@ -170,7 +173,7 @@ const BIP39Utils = struct {
         }
         
         // Join words with spaces
-        var result = std.ArrayList(u8).init(allocator);
+        var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
         for (words.items, 0..) |word, i| {
@@ -199,7 +202,7 @@ const BIP39Utils = struct {
     /// Converts mnemonic to seed
     pub fn mnemonicToSeed(mnemonic: []const u8, passphrase: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // PBKDF2 with mnemonic as password and "mnemonic" + passphrase as salt
-        var salt = std.ArrayList(u8).init(allocator);
+        var salt = ArrayList(u8).init(allocator);
         defer salt.deinit();
         
         try salt.appendSlice("mnemonic");

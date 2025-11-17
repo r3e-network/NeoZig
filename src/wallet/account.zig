@@ -4,6 +4,8 @@
 //! Represents a Neo account with single-sig or multi-sig capabilities.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -428,7 +430,7 @@ test "VerificationScript operations" {
     try testing.expect(!verification_script.getScriptHash().eql(Hash160.ZERO));
     
     // Test script from bytes
-    const test_script = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x9D }; // Mock verification script
+    const test_script = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x30, 0x64, 0x76, 0x41 }; // Mock verification script
     var script_from_bytes = try VerificationScript.initFromScript(&test_script, allocator);
     defer script_from_bytes.deinit(allocator);
     

@@ -4,6 +4,8 @@
 //! Provides comprehensive witness functionality for transaction validation.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -463,7 +465,7 @@ test "CompleteWitness creation and basic operations" {
     
     // Test witness from bytes (equivalent to Swift init with bytes tests)
     const invocation_bytes = [_]u8{ 0x0C, 0x40 }; // PUSHDATA + signature placeholder
-    const verification_bytes = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x9D }; // Verification script
+    const verification_bytes = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x30, 0x64, 0x76, 0x41 }; // Verification script
     
     var witness_from_bytes = try CompleteWitness.initFromBytes(&invocation_bytes, &verification_bytes, allocator);
     defer witness_from_bytes.deinit();

@@ -4,6 +4,8 @@
 //! Provides specialized error handling for transaction operations.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
 
 /// Transaction-specific errors (converted from Swift TransactionError)

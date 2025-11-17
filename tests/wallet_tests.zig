@@ -3,6 +3,8 @@
 //! Complete conversion of NeoSwift wallet test suite.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 /// Tests wallet creation (converted from Swift WalletTests)

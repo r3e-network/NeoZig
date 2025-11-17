@@ -4,6 +4,9 @@
 //! Provides transaction signer with scope management.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const WitnessScope = @import("witness_scope_complete.zig").WitnessScope;
@@ -96,7 +99,7 @@ pub const Signer = struct {
         }
         
         // Remove None scope if present
-        var filtered_scopes = std.ArrayList(WitnessScope).init(allocator);
+        var filtered_scopes = ArrayList(WitnessScope).init(allocator);
         defer filtered_scopes.deinit();
         
         for (self.scopes) |scope| {
@@ -135,7 +138,7 @@ pub const Signer = struct {
         }
         
         // Remove None scope if present
-        var filtered_scopes = std.ArrayList(WitnessScope).init(allocator);
+        var filtered_scopes = ArrayList(WitnessScope).init(allocator);
         defer filtered_scopes.deinit();
         
         for (self.scopes) |scope| {
@@ -169,7 +172,7 @@ pub const Signer = struct {
         }
         
         // Remove None scope if present and add Rules scope
-        var filtered_scopes = std.ArrayList(WitnessScope).init(allocator);
+        var filtered_scopes = ArrayList(WitnessScope).init(allocator);
         defer filtered_scopes.deinit();
         
         for (self.scopes) |scope| {
@@ -336,7 +339,7 @@ pub const Signer = struct {
         defer allocator.free(signer_hash_str);
         
         // Encode scopes
-        var scopes_json = std.ArrayList(u8).init(allocator);
+        var scopes_json = ArrayList(u8).init(allocator);
         defer scopes_json.deinit();
         
         try scopes_json.appendSlice("[");

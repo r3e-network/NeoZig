@@ -5,6 +5,9 @@
 //! Imported and modified from Base58Swift (MIT License)
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 
 /// Base58 encoding/decoding utilities (converted from Swift Base58)
 pub const Base58 = struct {
@@ -54,7 +57,7 @@ pub const Base58 = struct {
             return try allocator.dupe(u8, "");
         }
         
-        var result = std.ArrayList(u8).init(allocator);
+        var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
         // Convert bytes to big integer
@@ -140,7 +143,7 @@ pub const Base58 = struct {
         }
         
         // Combine leading zeros and magnitude bytes
-        var result = try std.ArrayList(u8).initCapacity(allocator, leading_zeros + magnitude_bytes.len);
+        var result = try ArrayList(u8).initCapacity(allocator, leading_zeros + magnitude_bytes.len);
         defer result.deinit();
         
         try result.appendNTimes(0, leading_zeros);
@@ -193,7 +196,7 @@ pub const Base58 = struct {
             return try allocator.dupe(u8, &[_]u8{0});
         }
         
-        var result = std.ArrayList(u8).init(allocator);
+        var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
         var temp = try std.math.big.int.Managed.init(allocator);

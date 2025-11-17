@@ -4,6 +4,8 @@
 //! Tests message signing, signature verification, and recovery functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const Sign = @import("../../src/crypto/sign.zig").Sign;
 const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
@@ -64,8 +66,9 @@ test "Signature recovery" {
     const signature = try Sign.signMessage(message_bytes, key_pair, allocator);
     defer signature.deinit(allocator);
     
-    const recovered_key = try Sign.recoverFromSignature(signature, message_bytes, allocator);
-    defer recovered_key.deinit(allocator);
-    
-    try testing.expect(key_pair.getPublicKey().eql(recovered_key));
+    const recovered_bytes = try Sign.recoverFromSignature(signature, message_bytes, allocator) orelse return testing.expect(false);
+    defer allocator.free(recovered_bytes);
+
+    const recovered_public = try @import("../../src/crypto/keys.zig").PublicKey.init(recovered_bytes, false);
+    try testing.expect(key_pair.getPublicKey().eql(recovered_public));
 }

@@ -4,6 +4,8 @@
 //! Provides comprehensive verification script functionality for witnesses.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -352,7 +354,7 @@ test "CompleteVerificationScript creation and basic operations" {
     try testing.expectEqual(ScriptType.Empty, VerificationScriptUtils.detectScriptType(empty_script));
     
     // Test script from bytes
-    const test_bytes = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x9D }; // Mock verification script
+    const test_bytes = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x30, 0x64, 0x76, 0x41 }; // Mock verification script
     var script_from_bytes = try CompleteVerificationScript.initFromBytes(&test_bytes, allocator);
     defer script_from_bytes.deinit();
     
@@ -472,7 +474,7 @@ test "CompleteVerificationScript serialization" {
     const allocator = testing.allocator;
     
     // Test verification script serialization (equivalent to Swift serialization tests)
-    const test_script = [_]u8{ 0x0C, 0x21, 0x02, 0xAB, 0x41, 0x9D };
+    const test_script = [_]u8{ 0x0C, 0x21, 0x02, 0xAB, 0x41, 0x30, 0x64, 0x76, 0x41 };
     var original_script = try CompleteVerificationScript.initFromBytes(&test_script, allocator);
     defer original_script.deinit();
     

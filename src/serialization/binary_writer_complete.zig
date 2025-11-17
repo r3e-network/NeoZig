@@ -4,6 +4,9 @@
 //! Provides comprehensive binary serialization with Swift API compatibility.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -13,14 +16,14 @@ const ECPoint = @import("../crypto/ec_point.zig").ECPoint;
 /// Complete binary writer (converted from Swift BinaryWriter)
 pub const CompleteBinaryWriter = struct {
     /// Internal byte array
-    array: std.ArrayList(u8),
+    array: ArrayList(u8),
     
     const Self = @This();
     
     /// Creates binary writer (equivalent to Swift init())
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
-            .array = std.ArrayList(u8).init(allocator),
+            .array = ArrayList(u8).init(allocator),
         };
     }
     

@@ -1,6 +1,8 @@
 //! ECDSA signature operations for Neo blockchain (Production Implementation)
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -66,7 +68,8 @@ pub const Signature = struct {
     }
     
     pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "{}", .{std.fmt.fmtSliceHexLower(&self.bytes)});
+        const hex = std.fmt.bytesToHex(self.bytes, .lower);
+        return try allocator.dupe(u8, &hex);
     }
     
     pub fn toSlice(self: Self) []const u8 {

@@ -4,6 +4,8 @@
 //! Provides serialization interface for all Neo types.
 
 const std = @import("std");
+
+
 const BinaryWriter = @import("binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("binary_reader.zig").BinaryReader;
 

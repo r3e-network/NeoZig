@@ -4,6 +4,8 @@
 //! Handles account verification scripts for single-sig and multi-sig accounts.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;

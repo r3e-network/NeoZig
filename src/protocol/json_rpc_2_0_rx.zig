@@ -4,6 +4,7 @@
 //! Provides reactive programming support for Neo blockchain operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
@@ -75,7 +76,7 @@ pub const JsonRpc2_0Rx = struct {
         const forwardIndices = struct {
             fn invoke(indices: []const u32, ctx_ptr: ?*anyopaque) void {
                 const handler_ptr = ctx_ptr orelse return;
-                const handler = @ptrCast(*HandlerContext, @alignCast(handler_ptr));
+                const handler: *HandlerContext = @ptrCast(@alignCast(handler_ptr));
                 for (indices) |index| {
                     handler.callback(index, handler.user_context);
                 }
@@ -85,7 +86,7 @@ pub const JsonRpc2_0Rx = struct {
         const destroyHandler = struct {
             fn destroy(allocator: std.mem.Allocator, ctx_ptr: ?*anyopaque) void {
                 if (ctx_ptr) |raw| {
-                    const handler = @ptrCast(*HandlerContext, @alignCast(raw));
+                    const handler: *HandlerContext = @ptrCast(@alignCast(raw));
                     if (handler.user_context) |user_ctx| {
                         if (handler.user_destructor) |destructor| {
                             destructor(allocator, user_ctx);
@@ -101,7 +102,7 @@ pub const JsonRpc2_0Rx = struct {
         else
             polling_interval_ms;
 
-        var handler_context = try self.allocator.create(HandlerContext);
+        const handler_context = try self.allocator.create(HandlerContext);
         handler_context.* = HandlerContext{
             .callback = callback,
             .user_context = callback_context,
@@ -138,7 +139,7 @@ pub const JsonRpc2_0Rx = struct {
         const block_callback = struct {
             fn handle(index: u32, ctx_ptr: ?*anyopaque) void {
                 const raw_ctx = ctx_ptr orelse return;
-                const ctx = @ptrCast(*BlockPublisherContext, @alignCast(raw_ctx));
+                const ctx: *BlockPublisherContext = @ptrCast(@alignCast(raw_ctx));
 
                 const fetch_result = fetchBlockInternalStatic(ctx, index) catch {
                     return;
@@ -152,7 +153,7 @@ pub const JsonRpc2_0Rx = struct {
         const destroyPublisherContext = struct {
             fn destroy(allocator: std.mem.Allocator, ctx_ptr: ?*anyopaque) void {
                 if (ctx_ptr) |raw| {
-                    const ctx = @ptrCast(*BlockPublisherContext, @alignCast(raw));
+                    const ctx: *BlockPublisherContext = @ptrCast(@alignCast(raw));
                     for (ctx.owned_blocks.items) |stored| {
                         stored.deinit(ctx.allocator);
                         ctx.allocator.destroy(stored);
@@ -163,7 +164,7 @@ pub const JsonRpc2_0Rx = struct {
             }
         }.destroy;
 
-        var publisher_context = try self.allocator.create(BlockPublisherContext);
+        const publisher_context = try self.allocator.create(BlockPublisherContext);
         publisher_context.* = BlockPublisherContext{
             .rx = self,
             .allocator = self.allocator,
@@ -171,7 +172,7 @@ pub const JsonRpc2_0Rx = struct {
             .fetch_fn = fetch_block,
             .callback = callback,
             .full_transactions = full_transaction_objects,
-            .owned_blocks = std.ArrayList(*response_aliases.NeoGetBlock).init(self.allocator),
+            .owned_blocks = ArrayList(*response_aliases.NeoGetBlock).init(self.allocator),
         };
 
         const index_subscription = try self.blockIndexPublisher(
@@ -327,7 +328,7 @@ pub const JsonRpc2_0Rx = struct {
             if (stored.result == null) {
                 stored.deinit(ctx.allocator);
                 ctx.allocator.destroy(stored);
-                return errors.NeoError.InvalidResponse;
+                return errors.NetworkError.InvalidResponse;
             }
             ctx.owned_blocks.append(stored) catch |append_err| {
                 std.log.err("failed to track stored block: {any}", .{append_err});
@@ -354,7 +355,7 @@ pub const JsonRpc2_0Rx = struct {
         const block_ptr = stored_temp.result orelse {
             stored_temp.deinit(self.allocator);
             self.allocator.destroy(stored_temp);
-            return errors.NeoError.InvalidResponse;
+            return errors.NetworkError.InvalidResponse;
         };
 
         return BlockFetchResult{
@@ -445,7 +446,7 @@ const BlockPublisherContext = struct {
     fetch_fn: *const fn (?*anyopaque, u32, bool) anyerror!response_aliases.NeoGetBlock,
     callback: *const fn (BlockData) void,
     full_transactions: bool,
-    owned_blocks: std.ArrayList(*response_aliases.NeoGetBlock),
+    owned_blocks: ArrayList(*response_aliases.NeoGetBlock),
 };
 
 fn fetchBlockInternalStatic(ctx: *BlockPublisherContext, index: u32) !BlockFetchResult {

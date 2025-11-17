@@ -4,6 +4,7 @@
 //! Handles type-safe conversion from JSON to Zig types.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
@@ -18,7 +19,7 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         // Basic types
         Hash256 => try Hash256.initWithString(result.string),
         Hash160 => try Hash160.initWithString(result.string),
-        u32 => @intCast(result.integer),
+        u32 => @as(u32, @intCast(result.integer)),
         i64 => result.integer,
         bool => result.bool,
         []const u8 => try allocator.dupe(u8, result.string),
@@ -31,14 +32,19 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         @import("responses.zig").Nep17Transfers => try @import("responses.zig").Nep17Transfers.fromJson(result, allocator),
         @import("response_aliases.zig").NeoGetRawMemPool => try @import("response_aliases.zig").NeoGetRawMemPool.fromJson(result, allocator),
         @import("response_aliases.zig").NeoGetRawTransaction => try @import("response_aliases.zig").NeoGetRawTransaction.fromJson(result, allocator),
+        @import("responses.zig").NetworkFeeResponse => try @import("responses.zig").NetworkFeeResponse.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep17Balances => try @import("token_responses.zig").NeoGetNep17Balances.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep11Balances => try @import("token_responses.zig").NeoGetNep11Balances.fromJson(result, allocator),
         @import("complete_responses.zig").NeoAccountState => try @import("complete_responses.zig").NeoAccountState.fromJson(result, allocator),
-        @import("complete_responses.zig").NeoGetPeers => try @import("complete_responses.zig").NeoGetPeers.fromJson(result, allocator),
+        @import("protocol_responses.zig").NeoGetPeers => try @import("protocol_responses.zig").NeoGetPeers.fromJson(result, allocator),
         @import("complete_responses.zig").NeoListPlugins => try @import("complete_responses.zig").NeoListPlugins.fromJson(result, allocator),
         @import("remaining_responses.zig").NeoGetVersion => try @import("remaining_responses.zig").NeoGetVersion.fromJson(result, allocator),
 
-        else => try json_utils.cloneValue(result, allocator),
+        else => blk: {
+            if (@hasDecl(T, "fromJson")) break :blk try T.fromJson(result, allocator);
+            if (T == std.json.Value) break :blk try json_utils.cloneValue(result, allocator);
+            @compileError("Unsupported RPC response type: " ++ @typeName(T));
+        },
     };
 }
 
@@ -91,7 +97,9 @@ fn validateResponseValue(value: std.json.Value) !void {
         const error_code = error_obj.get("code").?.integer;
         const error_message = error_obj.get("message").?.string;
 
-        std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
+        if (!builtin.is_test) {
+            std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
+        }
         return error.RPCError;
     }
 }
@@ -155,12 +163,11 @@ test "Stack item parsing utilities" {
 
     // Create test stack item JSON
     var item_obj = std.json.ObjectMap.init(allocator);
-    defer item_obj.deinit();
-
-    try item_obj.put("type", std.json.Value{ .string = "ByteString" });
-    try item_obj.put("value", std.json.Value{ .string = "SGVsbG8gTmVv" }); // "Hello Neo" in base64
+    try json_utils.putOwnedKey(&item_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "ByteString") });
+    try json_utils.putOwnedKey(&item_obj, allocator, "value", std.json.Value{ .string = try allocator.dupe(u8, "SGVsbG8gTmVv") }); // "Hello Neo" in base64
 
     const stack_item = std.json.Value{ .object = item_obj };
+    defer json_utils.freeValue(stack_item, allocator);
 
     // Test string parsing
     const parsed_string = try StackItemParser.parseAsString(stack_item, allocator);
@@ -169,34 +176,31 @@ test "Stack item parsing utilities" {
 
     // Test integer stack item
     var int_obj = std.json.ObjectMap.init(allocator);
-    defer int_obj.deinit();
-
-    try int_obj.put("type", std.json.Value{ .string = "Integer" });
-    try int_obj.put("value", std.json.Value{ .string = "42" });
+    try json_utils.putOwnedKey(&int_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Integer") });
+    try json_utils.putOwnedKey(&int_obj, allocator, "value", std.json.Value{ .string = try allocator.dupe(u8, "42") });
 
     const int_stack_item = std.json.Value{ .object = int_obj };
+    defer json_utils.freeValue(int_stack_item, allocator);
     const parsed_int = try StackItemParser.parseAsInteger(int_stack_item, allocator);
     try testing.expectEqual(@as(i64, 42), parsed_int);
 
     // Test boolean stack item
     var bool_obj = std.json.ObjectMap.init(allocator);
-    defer bool_obj.deinit();
-
-    try bool_obj.put("type", std.json.Value{ .string = "Boolean" });
-    try bool_obj.put("value", std.json.Value{ .string = "true" });
+    try json_utils.putOwnedKey(&bool_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Boolean") });
+    try json_utils.putOwnedKey(&bool_obj, allocator, "value", std.json.Value{ .string = try allocator.dupe(u8, "true") });
 
     const bool_stack_item = std.json.Value{ .object = bool_obj };
+    defer json_utils.freeValue(bool_stack_item, allocator);
     const parsed_bool = try StackItemParser.parseAsBoolean(bool_stack_item, allocator);
     try testing.expect(parsed_bool);
 
     // Test byte array stack item
     var bytes_obj = std.json.ObjectMap.init(allocator);
-    defer bytes_obj.deinit();
-
-    try bytes_obj.put("type", std.json.Value{ .string = "ByteString" });
-    try bytes_obj.put("value", std.json.Value{ .string = "U29tZUJ5dGVz" });
+    try json_utils.putOwnedKey(&bytes_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "ByteString") });
+    try json_utils.putOwnedKey(&bytes_obj, allocator, "value", std.json.Value{ .string = try allocator.dupe(u8, "U29tZUJ5dGVz") });
 
     const bytes_stack_item = std.json.Value{ .object = bytes_obj };
+    defer json_utils.freeValue(bytes_stack_item, allocator);
     const parsed_bytes = try StackItemParser.parseAsByteArray(bytes_stack_item, allocator);
     defer allocator.free(parsed_bytes);
     try testing.expectEqualStrings("SomeBytes", parsed_bytes);

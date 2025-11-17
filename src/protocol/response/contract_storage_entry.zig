@@ -4,6 +4,8 @@
 
 const std = @import("std");
 
+
+
 pub const ContractStorageEntry = struct {
     key: []const u8,
     value: []const u8,

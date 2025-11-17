@@ -4,6 +4,8 @@
 //! Tests verification script creation from public keys and multi-signature setups.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const VerificationScript = @import("../../src/transaction/witness.zig").VerificationScript;
 const PublicKey = @import("../../src/crypto/keys.zig").PublicKey;

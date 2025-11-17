@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// RIPEMD-160 hasher state
 pub const Ripemd160 = struct {
     state: [5]u32,

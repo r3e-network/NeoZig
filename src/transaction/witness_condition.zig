@@ -4,6 +4,9 @@
 //! Provides witness condition logic for smart contract verification.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
@@ -467,7 +470,7 @@ test "WitnessCondition validation limits" {
     const allocator = testing.allocator;
     
     // Test maximum subitems limit
-    var too_many_conditions = try std.ArrayList(WitnessCondition).initCapacity(allocator, WitnessCondition.MAX_SUBITEMS + 1);
+    var too_many_conditions = try ArrayList(WitnessCondition).initCapacity(allocator, WitnessCondition.MAX_SUBITEMS + 1);
     defer too_many_conditions.deinit();
     
     var i: usize = 0;

@@ -4,6 +4,8 @@
 //! Tests NNS domain name resolution and management.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const NeoNameService = @import("../../src/contract/neo_name_service.zig").NeoNameService;
 const NNSName = @import("../../src/contract/nns_name.zig").NNSName;

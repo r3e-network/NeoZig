@@ -4,6 +4,9 @@
 //! Provides invocation script functionality for transaction witnesses.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
@@ -152,7 +155,7 @@ pub const InvocationScript = struct {
     /// Extracts signatures from script (utility method)
     pub fn extractSignatures(self: Self, allocator: std.mem.Allocator) ![]SignatureData {
         // Parse script to extract pushed signatures
-        var signatures = std.ArrayList(SignatureData).init(allocator);
+        var signatures = ArrayList(SignatureData).init(allocator);
         defer signatures.deinit();
         
         var pos: usize = 0;

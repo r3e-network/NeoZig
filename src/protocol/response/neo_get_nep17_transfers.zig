@@ -3,6 +3,8 @@
 //! Complete conversion from NeoSwift NeoGetNep17Transfers.swift
 
 const std = @import("std");
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 

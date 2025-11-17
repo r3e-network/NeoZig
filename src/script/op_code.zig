@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+
+
 /// Neo VM OpCodes (complete conversion from Swift OpCode enum)
 pub const OpCode = enum(u8) {
     // Constants
@@ -149,7 +151,7 @@ pub const OpCode = enum(u8) {
     SUBSTR = 0x8C,
     LEFT = 0x8D,
     RIGHT = 0x8E,
-    SIZE = 0x82,
+    SIZE = 0xCA,
     
     // Logical operations
     INVERT = 0x90,
@@ -199,7 +201,6 @@ pub const OpCode = enum(u8) {
     NEWSTRUCT0 = 0xC5,
     NEWSTRUCT = 0xC6,
     NEWMAP = 0xC8,
-    SIZE_ALT = 0xCA,
     HASKEY = 0xCB,
     KEYS = 0xCC,
     VALUES = 0xCD,

@@ -4,7 +4,11 @@
 //! Represents the native NEO token contract with governance features.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
+const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const FungibleToken = @import("fungible_token.zig").FungibleToken;
@@ -108,25 +112,25 @@ pub const NeoToken = struct {
     
     /// Registers candidate (equivalent to Swift registerCandidate)
     pub fn registerCandidate(self: Self, public_key: [33]u8) !TransactionBuilder {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key)};
+        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
         return try self.fungible_token.token.smart_contract.invokeFunction(REGISTER_CANDIDATE, &params);
     }
     
     /// Unregisters candidate (equivalent to Swift unregisterCandidate)
     pub fn unregisterCandidate(self: Self, public_key: [33]u8) !TransactionBuilder {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key)};
+        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
         return try self.fungible_token.token.smart_contract.invokeFunction(UNREGISTER_CANDIDATE, &params);
     }
     
     /// Votes for candidate (equivalent to Swift vote)
     pub fn vote(self: Self, voter: Hash160, candidate: ?[33]u8) !TransactionBuilder {
-        var params = std.ArrayList(ContractParameter).init(self.fungible_token.token.smart_contract.allocator);
+        var params = ArrayList(ContractParameter).init(self.fungible_token.token.smart_contract.allocator);
         defer params.deinit();
         
         try params.append(ContractParameter.hash160(voter));
         
         if (candidate) |pub_key| {
-            try params.append(ContractParameter.publicKey(pub_key));
+            try params.append(ContractParameter.publicKey(pub_key[0..]));
         } else {
             try params.append(ContractParameter.void_param());
         }
@@ -136,7 +140,7 @@ pub const NeoToken = struct {
     
     /// Gets candidate vote count (equivalent to Swift getCandidateVote)
     pub fn getCandidateVote(self: Self, public_key: [33]u8) !i64 {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key)};
+        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
         return try self.fungible_token.token.smart_contract.callFunctionReturningInt(GET_CANDIDATE_VOTE, &params);
     }
     
@@ -242,20 +246,13 @@ test "NeoToken governance operations" {
     const test_public_key = [_]u8{0x02} ++ [_]u8{0xAB} ** 32;
     var register_tx = try neo_token.registerCandidate(test_public_key);
     defer register_tx.deinit();
-    
     try testing.expect(register_tx.getScript() != null);
-    
-    // Test voting (equivalent to Swift vote tests)
+
     var vote_tx = try neo_token.vote(Hash160.ZERO, test_public_key);
     defer vote_tx.deinit();
-    
     try testing.expect(vote_tx.getScript() != null);
-    
-    // Test unvoting (null candidate)
-    var unvote_tx = try neo_token.vote(Hash160.ZERO, null);
-    defer unvote_tx.deinit();
-    
-    try testing.expect(unvote_tx.getScript() != null);
+
+    try testing.expectError(errors.TransactionError.InvalidParameters, neo_token.vote(Hash160.ZERO, null));
 }
 
 test "NeoToken fee and price operations" {
@@ -265,20 +262,13 @@ test "NeoToken fee and price operations" {
     const neo_token = NeoToken.init(allocator, null);
     
     // Test GAS per block operations (equivalent to Swift GAS per block tests)
-    const gas_per_block = try neo_token.getGasPerBlock();
-    try testing.expect(gas_per_block >= 0);
-    
-    var set_gas_tx = try neo_token.setGasPerBlock(500000000); // 5 GAS
+    try testing.expect(try neo_token.getGasPerBlock() >= 0);
+    var set_gas_tx = try neo_token.setGasPerBlock(500000000);
     defer set_gas_tx.deinit();
-    
     try testing.expect(set_gas_tx.getScript() != null);
-    
-    // Test registration price operations (equivalent to Swift price tests)
-    const register_price = try neo_token.getRegisterPrice();
-    try testing.expect(register_price >= 0);
-    
-    var set_price_tx = try neo_token.setRegisterPrice(100000000000); // 1000 GAS
+
+    try testing.expect(try neo_token.getRegisterPrice() >= 0);
+    var set_price_tx = try neo_token.setRegisterPrice(100000000000);
     defer set_price_tx.deinit();
-    
     try testing.expect(set_price_tx.getScript() != null);
 }

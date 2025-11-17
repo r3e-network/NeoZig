@@ -4,6 +4,8 @@
 //! Tests Base64 encoding and decoding functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 
 test "Base64 encoding and decoding" {

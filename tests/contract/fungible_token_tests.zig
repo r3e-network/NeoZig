@@ -4,6 +4,8 @@
 //! Tests NEP-17 fungible token functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const FungibleToken = @import("../../src/contract/fungible_token.zig").FungibleToken;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;

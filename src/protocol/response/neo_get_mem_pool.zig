@@ -3,6 +3,8 @@
 //! Complete conversion from NeoSwift NeoGetMemPool.swift
 
 const std = @import("std");
+
+
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 
 pub const MemPoolDetails = struct {

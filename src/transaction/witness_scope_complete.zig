@@ -4,6 +4,9 @@
 //! Provides comprehensive witness scope functionality with combination operations.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const errors = @import("../core/errors.zig");
 
 /// Complete witness scope (converted from Swift WitnessScope)
@@ -93,7 +96,7 @@ pub const CompleteWitnessScope = enum(u8) {
             return result;
         }
         
-        var scopes = std.ArrayList(Self).init(allocator);
+        var scopes = ArrayList(Self).init(allocator);
         defer scopes.deinit();
         
         const all_cases = getAllCases();
@@ -204,7 +207,7 @@ pub const WitnessScopesFromString = struct {
     /// Parses from string (equivalent to Swift property wrapper decoding)
     pub fn fromString(string_value: []const u8, allocator: std.mem.Allocator) !Self {
         // Remove spaces and split by commas
-        var cleaned = std.ArrayList(u8).init(allocator);
+        var cleaned = ArrayList(u8).init(allocator);
         defer cleaned.deinit();
         
         for (string_value) |char| {
@@ -213,7 +216,7 @@ pub const WitnessScopesFromString = struct {
             }
         }
         
-        var scopes = std.ArrayList(CompleteWitnessScope).init(allocator);
+        var scopes = ArrayList(CompleteWitnessScope).init(allocator);
         defer scopes.deinit();
         
         var scope_iterator = std.mem.split(u8, cleaned.items, ",");
@@ -232,7 +235,7 @@ pub const WitnessScopesFromString = struct {
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         if (self.scopes.len == 0) return try allocator.dupe(u8, "");
         
-        var result = std.ArrayList(u8).init(allocator);
+        var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
         for (self.scopes, 0..) |scope, i| {

@@ -3,6 +3,8 @@
 //! Complete conversion from NeoSwift RecordState.swift
 
 const std = @import("std");
+
+
 const RecordType = @import("../../types/record_type.zig").RecordType;
 
 pub const RecordState = struct {

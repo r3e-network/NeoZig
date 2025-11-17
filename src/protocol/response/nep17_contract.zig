@@ -4,6 +4,8 @@
 //! Provides NEP-17 token contract representation.
 
 const std = @import("std");
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 
 /// NEP-17 token contract (converted from Swift Nep17Contract)

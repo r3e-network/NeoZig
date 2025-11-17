@@ -4,10 +4,14 @@
 //! Provides comprehensive Neo VM stack item handling with all types.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const json_utils = @import("../utils/json_utils.zig");
 
 /// Complete stack item (converted from Swift StackItem)
 pub const CompleteStackItem = union(enum) {
@@ -187,7 +191,7 @@ pub const CompleteStackItem = union(enum) {
         
         var hash_bytes: [20]u8 = undefined;
         @memcpy(&hash_bytes, bytes);
-        return Hash160.init(hash_bytes);
+        return Hash160.fromArray(hash_bytes);
     }
     
     /// Gets as Hash256 (utility method)
@@ -383,29 +387,29 @@ pub const StackItemUtils = struct {
     pub fn toJson(item: CompleteStackItem, allocator: std.mem.Allocator) !std.json.Value {
         var obj = std.json.ObjectMap.init(allocator);
         
-        try obj.put("type", std.json.Value{ .string = item.getJsonValue() });
+        try json_utils.putOwnedKey(&obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, item.getJsonValue()) });
         
         switch (item) {
             .Boolean => |value| {
-                try obj.put("value", std.json.Value{ .bool = value });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .bool = value });
             },
             .Integer => |value| {
-                try obj.put("value", std.json.Value{ .integer = value });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .integer = value });
             },
             .ByteString => |value| {
                 const base64_value = try @import("../utils/string_extensions.zig").StringUtils.base64Encoded(value, allocator);
                 defer allocator.free(base64_value);
-                try obj.put("value", std.json.Value{ .string = base64_value });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .string = base64_value });
             },
             .Array => |items| {
-                var array_json = std.ArrayList(std.json.Value).init(allocator);
+                var array_json = ArrayList(std.json.Value).init(allocator);
                 for (items) |array_item| {
                     try array_json.append(try toJson(array_item, allocator));
                 }
-                try obj.put("value", std.json.Value{ .array = try array_json.toOwnedSlice() });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .array = try array_json.toOwnedSlice() });
             },
             else => {
-                try obj.put("value", std.json.Value{ .null = {} });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .null = {} });
             },
         }
         

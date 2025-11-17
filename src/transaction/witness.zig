@@ -4,6 +4,8 @@
 //! Provides witness (invocation and verification scripts) for transaction validation.
 
 const std = @import("std");
+
+
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 const SignatureData = @import("../crypto/sign.zig").SignatureData;

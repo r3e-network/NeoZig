@@ -4,6 +4,8 @@
 //! Provides SECP-256r1 key pair management with Swift API compatibility.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -241,6 +243,7 @@ test "ECKeyPair creation from private key" {
 test "ECKeyPair signing operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     const key_pair = try ECKeyPair.createRandom();
     defer {
@@ -340,6 +343,7 @@ test "ECKeyPair encoding operations" {
 test "ECKeyPair validation and comparison" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Test key pair validation (equivalent to Swift validation tests)
     const key_pair1 = try ECKeyPair.createRandom();

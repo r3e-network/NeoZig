@@ -4,6 +4,8 @@
 //! Provides transaction attribute types for Neo blockchain.
 
 const std = @import("std");
+
+
 const BinaryWriter = @import("../../serialization/binary_writer_complete.zig").CompleteBinaryWriter;
 const BinaryReader = @import("../../serialization/binary_reader_complete.zig").CompleteBinaryReader;
 

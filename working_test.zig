@@ -1,5 +1,7 @@
 const std = @import("std");
 
+
+
 test "Neo Zig SDK core validation" {
     const testing = std.testing;
     const allocator = testing.allocator;

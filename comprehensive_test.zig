@@ -1,4 +1,6 @@
 const std = @import("std");
+
+
 const neo = @import("src/neo.zig");
 
 test "Neo SDK main module functionality" {

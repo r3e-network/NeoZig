@@ -4,6 +4,9 @@
 //! Provides blockchain network roles for Neo consensus and services.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 
 /// Blockchain network roles (converted from Swift Role)
 pub const Role = enum(u8) {
@@ -114,7 +117,7 @@ pub const Role = enum(u8) {
     
     /// Extracts roles from combined byte value
     pub fn extractRoles(combined_value: u8, allocator: std.mem.Allocator) ![]Role {
-        var roles = std.ArrayList(Role).init(allocator);
+        var roles = ArrayList(Role).init(allocator);
         defer roles.deinit();
         
         const all_roles = getAllRoles();

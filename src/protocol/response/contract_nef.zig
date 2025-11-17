@@ -4,6 +4,9 @@
 //! Provides contract NEF (Neo Executable Format) representation.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 
 /// Contract method token (referenced in ContractNef)
 pub const ContractMethodToken = struct {
@@ -210,7 +213,7 @@ pub const ContractNef = struct {
     
     /// Gets all method names
     pub fn getMethodNames(self: Self, allocator: std.mem.Allocator) ![][]const u8 {
-        var method_names = try std.ArrayList([]const u8).initCapacity(allocator, self.tokens.len);
+        var method_names = try ArrayList([]const u8).initCapacity(allocator, self.tokens.len);
         defer method_names.deinit();
         
         for (self.tokens) |token| {
@@ -229,7 +232,7 @@ pub const ContractNef = struct {
         defer allocator.free(source_str);
         
         // Encode tokens array
-        var tokens_json = std.ArrayList(u8).init(allocator);
+        var tokens_json = ArrayList(u8).init(allocator);
         defer tokens_json.deinit();
         
         try tokens_json.appendSlice("[");
@@ -274,7 +277,7 @@ pub const ContractNef = struct {
         
         // Parse tokens array
         const tokens_array = json_obj.get("tokens").?.array;
-        var tokens = try std.ArrayList(ContractMethodToken).initCapacity(allocator, tokens_array.items.len);
+        var tokens = try ArrayList(ContractMethodToken).initCapacity(allocator, tokens_array.items.len);
         defer tokens.deinit();
         
         for (tokens_array.items) |token_value| {
@@ -319,7 +322,7 @@ pub const ContractNef = struct {
         else
             null;
         
-        var tokens_copy = try std.ArrayList(ContractMethodToken).initCapacity(allocator, self.tokens.len);
+        var tokens_copy = try ArrayList(ContractMethodToken).initCapacity(allocator, self.tokens.len);
         defer tokens_copy.deinit();
         
         for (self.tokens) |token| {

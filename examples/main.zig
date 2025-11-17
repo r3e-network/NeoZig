@@ -4,13 +4,15 @@
 //! including hash operations, address management, and contract parameters.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     
-    std.log.info("🚀 Neo Zig SDK Examples");
-    std.log.info("========================");
+    std.log.info("🚀 Neo Zig SDK Examples", .{});
+    std.log.info("========================", .{});
     
     // Hash160 Examples
     try demonstrateHash160(allocator);
@@ -24,12 +26,12 @@ pub fn main() !void {
     // Contract Parameter Examples
     try demonstrateContractParameters(allocator);
     
-    std.log.info("✅ All examples completed successfully!");
+    std.log.info("✅ All examples completed successfully!", .{});
 }
 
 /// Demonstrates Hash160 operations
 fn demonstrateHash160(allocator: std.mem.Allocator) !void {
-    std.log.info("\n📋 Hash160 Examples:");
+    std.log.info("\n📋 Hash160 Examples:", .{});
     
     // Create from hex string
     const hex_hash = try neo.Hash160.fromHex("0x1234567890abcdef1234567890abcdef12345678");
@@ -48,15 +50,15 @@ fn demonstrateHash160(allocator: std.mem.Allocator) !void {
     
     // Compare hashes
     if (hex_hash.eql(zero_hash)) {
-        std.log.info("  Hashes are equal");
+        std.log.info("  Hashes are equal", .{});
     } else {
-        std.log.info("  Hashes are different");
+        std.log.info("  Hashes are different", .{});
     }
 }
 
 /// Demonstrates Hash256 operations
 fn demonstrateHash256(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🔐 Hash256 Examples:");
+    std.log.info("\n🔐 Hash256 Examples:", .{});
     
     // Create from integer
     const int_hash = neo.Hash256.fromInt(0x123456789ABCDEF);
@@ -85,13 +87,13 @@ fn demonstrateHash256(allocator: std.mem.Allocator) !void {
     const target = neo.Hash256.fromInt(0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     const mining_hash = neo.Hash256.fromInt(0x00001234567890ABCDEF);
     if (mining_hash.meetsDifficulty(target)) {
-        std.log.info("  Mining hash meets difficulty target! ⛏️");
+        std.log.info("  Mining hash meets difficulty target! ⛏️", .{});
     }
 }
 
 /// Demonstrates Neo address operations
 fn demonstrateAddresses(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🏠 Address Examples:");
+    std.log.info("\n🏠 Address Examples:", .{});
     
     // Create address from Hash160
     var script_bytes: [20]u8 = undefined;
@@ -108,13 +110,13 @@ fn demonstrateAddresses(allocator: std.mem.Allocator) !void {
     
     // Check address properties
     if (address.isValid()) {
-        std.log.info("  ✅ Address is valid");
+        std.log.info("  ✅ Address is valid", .{});
     }
     
     if (address.isStandard()) {
-        std.log.info("  📝 Standard single-signature address");
+        std.log.info("  📝 Standard single-signature address", .{});
     } else if (address.isMultiSig()) {
-        std.log.info("  👥 Multi-signature address");
+        std.log.info("  👥 Multi-signature address", .{});
     }
     
     std.log.info("  Network: {}", .{address.getNetwork()});
@@ -122,13 +124,13 @@ fn demonstrateAddresses(allocator: std.mem.Allocator) !void {
     // Convert back to Hash160
     const recovered_hash = address.toHash160();
     if (script_hash.eql(recovered_hash)) {
-        std.log.info("  ✅ Hash160 round-trip successful");
+        std.log.info("  ✅ Hash160 round-trip successful", .{});
     }
 }
 
 /// Demonstrates contract parameter operations
 fn demonstrateContractParameters(allocator: std.mem.Allocator) !void {
-    std.log.info("\n📝 Contract Parameter Examples:");
+    std.log.info("\n📝 Contract Parameter Examples:", .{});
     
     // Create various parameter types
     const bool_param = neo.ContractParameter.boolean(true);
@@ -175,25 +177,25 @@ fn demonstrateContractParameters(allocator: std.mem.Allocator) !void {
         std.log.warn("  ⚠️ Parameter validation error: {}", .{err});
     };
     
-    std.log.info("  ✅ All parameters valid");
+    std.log.info("  ✅ All parameters valid", .{});
 }
 
 /// Demonstrates error handling
 fn demonstrateErrorHandling() !void {
-    std.log.info("\n⚠️ Error Handling Examples:");
+    std.log.info("\n⚠️ Error Handling Examples:", .{});
     
     // Invalid hex hash
     const invalid_result = neo.Hash160.fromHex("invalid_hex");
     if (invalid_result) |_| {
-        std.log.info("  Unexpected success");
+        std.log.info("  Unexpected success", .{});
     } else |err| {
         std.log.info("  Expected error: {}", .{err});
     }
     
     // Invalid address
     if (neo.Address.validateString("invalid_address", std.heap.page_allocator)) {
-        std.log.info("  Unexpected valid address");
+        std.log.info("  Unexpected valid address", .{});
     } else {
-        std.log.info("  ✅ Invalid address correctly rejected");
+        std.log.info("  ✅ Invalid address correctly rejected", .{});
     }
 }

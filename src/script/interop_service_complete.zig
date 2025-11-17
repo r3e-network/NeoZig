@@ -4,6 +4,9 @@
 //! Provides all Neo VM interop services with pricing and hash information.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -347,7 +350,7 @@ pub const ServiceCategory = enum {
 pub const InteropServiceUtils = struct {
     /// Gets services by category
     pub fn getServicesByCategory(category: ServiceCategory, allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var services = std.ArrayList(CompleteInteropService).init(allocator);
+        var services = ArrayList(CompleteInteropService).init(allocator);
         defer services.deinit();
         
         const all_services = CompleteInteropService.getAllCases();
@@ -422,7 +425,7 @@ pub const InteropServiceUtils = struct {
     
     /// Gets services requiring witness
     pub fn getServicesRequiringWitness(allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var witness_services = std.ArrayList(CompleteInteropService).init(allocator);
+        var witness_services = ArrayList(CompleteInteropService).init(allocator);
         defer witness_services.deinit();
         
         const all_services = CompleteInteropService.getAllCases();
@@ -437,7 +440,7 @@ pub const InteropServiceUtils = struct {
     
     /// Gets read-only services
     pub fn getReadOnlyServices(allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var readonly_services = std.ArrayList(CompleteInteropService).init(allocator);
+        var readonly_services = ArrayList(CompleteInteropService).init(allocator);
         defer readonly_services.deinit();
         
         const all_services = CompleteInteropService.getAllCases();

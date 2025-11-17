@@ -4,6 +4,8 @@
 //! Provides all Swift hash utility methods for bytes and strings.
 
 const std = @import("std");
+
+
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
@@ -85,7 +87,7 @@ pub const BytesHashUtils = struct {
         
         var hash_bytes: [20]u8 = undefined;
         @memcpy(&hash_bytes, bytes);
-        return Hash160.init(hash_bytes);
+        return Hash160.fromArray(hash_bytes);
     }
     
     /// Creates Hash256 from bytes (utility method)
@@ -161,8 +163,8 @@ pub const HashComputeUtils = struct {
         return HashSet{
             .sha256 = sha256_hash,
             .double_sha256 = double_sha256,
-            .ripemd160 = Hash160.init(ripemd160_hash),
-            .sha256_then_ripemd160 = Hash160.init(sha256_then_ripemd),
+            .ripemd160 = Hash160.fromArray(ripemd160_hash),
+            .sha256_then_ripemd160 = Hash160.fromArray(sha256_then_ripemd),
         };
     }
     
@@ -322,7 +324,7 @@ test "HashComputeUtils comprehensive operations" {
     try testing.expect(hash_set.double_sha256.eql(manual_double_sha));
     
     const manual_combined = BytesHashUtils.sha256ThenRipemd160(test_data);
-    try testing.expect(hash_set.sha256_then_ripemd160.eql(Hash160.init(manual_combined)));
+    try testing.expect(hash_set.sha256_then_ripemd160.eql(Hash160.fromArray(manual_combined)));
     
     // Test hash chain verification
     const original_data = "Original data for verification";

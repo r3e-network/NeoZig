@@ -4,6 +4,9 @@
 //! Handles NEF3 file format for smart contract deployment.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -274,7 +277,7 @@ pub const MethodToken = struct {
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         var hash_bytes: [20]u8 = undefined;
         try reader.readBytes(&hash_bytes);
-        const hash = @import("../types/hash160.zig").Hash160.init(hash_bytes);
+        const hash = @import("../types/hash160.zig").Hash160.fromArray(hash_bytes);
         
         const method_len = try reader.readVarInt();
         const method = try allocator.alloc(u8, @intCast(method_len));
@@ -314,7 +317,7 @@ fn calculateChecksum(
     script: []const u8,
 ) ![4]u8 {
     // Build data for checksum calculation (everything except checksum itself)
-    var data = std.ArrayList(u8).init(std.heap.page_allocator);
+    var data = ArrayList(u8).init(std.heap.page_allocator);
     defer data.deinit();
     
     // Magic
@@ -417,7 +420,7 @@ test "NefFile creation and properties" {
     
     // Test NEF file creation (equivalent to Swift NefFile tests)
     const method_tokens = [_]MethodToken{};
-    const script = [_]u8{ 0x41, 0x9D, 0x42 }; // Simple test script
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41, 0x42 }; // Simple test script
     
     const nef_file = try NefFile.init(
         "neo-zig-compiler-v1.0",

@@ -4,6 +4,8 @@
 //! Tests script analysis and opcode conversion.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const ScriptReader = @import("../../src/script/script_reader.zig").ScriptReader;
 

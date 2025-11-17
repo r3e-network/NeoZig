@@ -4,6 +4,8 @@
 //! Provides Neo witness representation for protocol responses.
 
 const std = @import("std");
+
+
 const base64 = std.base64;
 
 /// Neo witness for protocol responses (converted from Swift NeoWitness)
@@ -194,6 +196,7 @@ fn isValidBase64(data: []const u8) bool {
 test "NeoWitness creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Test witness creation (equivalent to Swift init tests)
     const invocation_b64 = "SGVsbG8gV29ybGQ="; // "Hello World" in base64

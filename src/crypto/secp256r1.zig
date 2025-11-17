@@ -3,8 +3,11 @@
 //! Production ECDSA implementation for Neo blockchain using P-256 curve.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const Ecdsa = std.crypto.sign.ecdsa.EcdsaP256Sha256;
 
 pub const Secp256r1 = struct {
     pub const P: u256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF;
@@ -80,86 +83,76 @@ pub const Point = struct {
 };
 
 pub fn derivePublicKey(private_key: [32]u8, compressed: bool, allocator: std.mem.Allocator) ![]u8 {
-    const scalar = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &private_key));
-    if (scalar == 0 or scalar >= Secp256r1.N) return errors.CryptoError.InvalidKey;
-    
-    const generator = Point.generator();
-    const public_point = generator.multiply(scalar);
-    if (public_point.is_infinity) return errors.CryptoError.KeyGenerationFailed;
-    
-    var result = try allocator.alloc(u8, if (compressed) 33 else 65);
-    
+    const key_pair = try loadKeyPair(private_key);
     if (compressed) {
-        result[0] = if (public_point.y & 1 == 0) 0x02 else 0x03;
-        const x_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, public_point.x));
-        @memcpy(result[1..33], &x_bytes);
-    } else {
-        result[0] = 0x04;
-        const x_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, public_point.x));
-        const y_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, public_point.y));
-        @memcpy(result[1..33], &x_bytes);
-        @memcpy(result[33..65], &y_bytes);
+        const encoded = key_pair.public_key.toCompressedSec1();
+        const result = try allocator.alloc(u8, encoded.len);
+        @memcpy(result, &encoded);
+        return result;
     }
-    
+
+    const encoded = key_pair.public_key.toUncompressedSec1();
+    const result = try allocator.alloc(u8, encoded.len);
+    @memcpy(result, &encoded);
     return result;
 }
 
 pub fn sign(hash: [32]u8, private_key: [32]u8) ![64]u8 {
-    const z = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &hash));
-    const d = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &private_key));
-    
-    if (d == 0 or d >= Secp256r1.N) return errors.CryptoError.InvalidKey;
-    
-    const k = generateDeterministicK(hash, private_key);
-    if (k == 0 or k >= Secp256r1.N) return errors.CryptoError.ECDSAOperationFailed;
-    
-    const generator = Point.generator();
-    const k_point = generator.multiply(k);
-    if (k_point.is_infinity) return errors.CryptoError.ECDSAOperationFailed;
-    
-    const r = k_point.x % Secp256r1.N;
-    if (r == 0) return errors.CryptoError.ECDSAOperationFailed;
-    
-    const k_inv = modInverse(k, Secp256r1.N);
-    const rd = modMul(r, d, Secp256r1.N);
-    const z_plus_rd = modAdd(z, rd, Secp256r1.N);
-    var s = modMul(k_inv, z_plus_rd, Secp256r1.N);
-    
-    if (s == 0) return errors.CryptoError.ECDSAOperationFailed;
-    if (s > Secp256r1.HALF_CURVE_ORDER) s = Secp256r1.N - s;
-    
-    var signature: [64]u8 = undefined;
-    @memcpy(signature[0..32], &std.mem.toBytes(std.mem.nativeToBig(u256, r)));
-    @memcpy(signature[32..64], &std.mem.toBytes(std.mem.nativeToBig(u256, s)));
-    
-    return signature;
+    const key_pair = try loadKeyPair(private_key);
+    const signature = key_pair.signPrehashed(hash, null) catch |err| switch (err) {
+        error.IdentityElement => return errors.CryptoError.InvalidKey,
+        error.NonCanonical => return errors.CryptoError.ECDSAOperationFailed,
+    };
+    return signature.toBytes();
 }
 
 pub fn verify(hash: [32]u8, signature: [64]u8, public_key: []const u8) !bool {
-    const r = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature[0..32]));
-    const s = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature[32..64]));
-    
-    if (r == 0 or r >= Secp256r1.N or s == 0 or s >= Secp256r1.N) return false;
-    
-    const public_point = if (public_key.len == 33)
-        try pointFromCompressed(public_key)
-    else if (public_key.len == 65)
-        try pointFromUncompressed(public_key)
-    else
+    const pk = Ecdsa.PublicKey.fromSec1(public_key) catch {
         return errors.CryptoError.InvalidKey;
-    
-    const z = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &hash));
-    const s_inv = modInverse(s, Secp256r1.N);
-    const recovery_u1 = modMul(z, s_inv, Secp256r1.N);
-    const recovery_u2 = modMul(r, s_inv, Secp256r1.N);
-    
-    const generator = Point.generator();
-    const point1 = generator.multiply(recovery_u1);
-    const point2 = public_point.multiply(recovery_u2);
-    const result_point = point1.add(point2);
-    
-    if (result_point.is_infinity) return false;
-    return (result_point.x % Secp256r1.N) == r;
+    };
+    const sig = Ecdsa.Signature.fromBytes(signature);
+    sig.verifyPrehashed(hash, pk) catch |err| switch (err) {
+        error.SignatureVerificationFailed => return false,
+        error.IdentityElement => return errors.CryptoError.InvalidKey,
+        error.NonCanonical => return errors.CryptoError.InvalidSignature,
+    };
+    return true;
+}
+
+pub fn recoverPoint(recovery_id: u8, r: u256, s: u256, message_hash: []const u8) ?Point {
+    if (recovery_id >= 4 or message_hash.len != 32) return null;
+    const n = Secp256r1.N;
+    const p = Secp256r1.P;
+    if (r == 0 or r >= n or s == 0 or s >= n) return null;
+
+    const j = recovery_id >> 1;
+    const is_odd = recovery_id & 1;
+    const x = r + j * n;
+    if (x >= p) return null;
+
+    var compressed: [33]u8 = undefined;
+    compressed[0] = if (is_odd == 0) 0x02 else 0x03;
+    const x_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, x));
+    @memcpy(compressed[1..], &x_bytes);
+
+    const R = pointFromCompressed(&compressed) catch return null;
+    if (!R.multiply(n).is_infinity) return null;
+
+    const r_inv = modInverse(r, n);
+    if (r_inv == 0) return null;
+
+    const e = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, message_hash));
+    const e_mod = e % n;
+    const neg_e = modNeg(e_mod, n);
+
+    const sr = modMul(s, r_inv, n);
+    const er = modMul(neg_e, r_inv, n);
+
+    const sr_point = R.multiply(sr);
+    const er_point = Point.generator().multiply(er);
+    const public_point = sr_point.add(er_point);
+    if (public_point.is_infinity) return null;
+    return public_point;
 }
 
 fn pointFromCompressed(compressed: []const u8) !Point {
@@ -190,7 +183,7 @@ fn generateDeterministicK(hash: [32]u8, private_key: [32]u8) u256 {
     var v = [_]u8{0x01} ** 32;
     var k_hmac = [_]u8{0x00} ** 32;
     
-    var hmac_input = std.ArrayList(u8).init(std.heap.page_allocator);
+    var hmac_input = ArrayList(u8).init(std.heap.page_allocator);
     defer hmac_input.deinit();
     
     hmac_input.appendSlice(&v) catch return 0;
@@ -264,7 +257,11 @@ fn modAdd(a: u256, b: u256, modulus: u256) u256 {
 }
 
 fn modSub(a: u256, b: u256, modulus: u256) u256 {
-    return if (a >= b) a - b else a + modulus - b;
+    if (a >= b) {
+        return a - b;
+    }
+    const diff = b - a;
+    return modulus - diff;
 }
 
 fn modMul(a: u256, b: u256, modulus: u256) u256 {
@@ -318,4 +315,15 @@ fn modPow(base: u256, exponent: u256, modulus: u256) u256 {
         exp >>= 1;
     }
     return result;
+}
+
+fn modNeg(a: u256, modulus: u256) u256 {
+    return if (a == 0) 0 else modulus - a;
+}
+
+fn loadKeyPair(private_key: [32]u8) errors.CryptoError!Ecdsa.KeyPair {
+    const secret_key = try Ecdsa.SecretKey.fromBytes(private_key);
+    return Ecdsa.KeyPair.fromSecretKey(secret_key) catch {
+        return errors.CryptoError.InvalidKey;
+    };
 }

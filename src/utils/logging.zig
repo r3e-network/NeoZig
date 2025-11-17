@@ -4,6 +4,9 @@
 //! Provides structured logging with security and performance monitoring.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const builtin = @import("builtin");
 
 /// Log levels for production use
@@ -85,7 +88,7 @@ pub const Logger = struct {
         const allocator = fba.allocator();
         
         // Build log message
-        var log_msg = std.ArrayList(u8).init(allocator);
+        var log_msg = ArrayList(u8).init(allocator);
         defer log_msg.deinit();
         
         // Timestamp

@@ -4,8 +4,11 @@
 //! Provides JSON-RPC 2.0 response structure and error handling.
 
 const std = @import("std");
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const json_utils = @import("../utils/json_utils.zig");
 
 /// Raw response trait (converted from Swift HasRawResponse protocol)
 pub const HasRawResponse = struct {
@@ -98,25 +101,25 @@ pub fn Response(comptime T: type) type {
         pub fn toJson(self: Self) !std.json.Value {
             var response_obj = std.json.ObjectMap.init(self.allocator);
             
-            try response_obj.put("jsonrpc", std.json.Value{ .string = self.jsonrpc });
-            try response_obj.put("id", std.json.Value{ .integer = @intCast(self.id) });
+            try json_utils.putOwnedKey(&response_obj, self.allocator, "jsonrpc", std.json.Value{ .string = try self.allocator.dupe(u8, self.jsonrpc) });
+            try json_utils.putOwnedKey(&response_obj, self.allocator, "id", std.json.Value{ .integer = @intCast(self.id) });
             
             if (self.result) |result| {
                 // Would serialize result based on type
                 if (T == u32) {
-                    try response_obj.put("result", std.json.Value{ .integer = @intCast(result) });
+                    try json_utils.putOwnedKey(&response_obj, self.allocator, "result", std.json.Value{ .integer = @intCast(result) });
                 } else if (T == []const u8) {
-                    try response_obj.put("result", std.json.Value{ .string = result });
+                    try json_utils.putOwnedKey(&response_obj, self.allocator, "result", std.json.Value{ .string = try self.allocator.dupe(u8, result) });
                 } else if (T == bool) {
-                    try response_obj.put("result", std.json.Value{ .bool = result });
+                    try json_utils.putOwnedKey(&response_obj, self.allocator, "result", std.json.Value{ .bool = result });
                 } else {
                     // For complex types, would call their toJson method
-                    try response_obj.put("result", std.json.Value{ .null = {} });
+                    try json_utils.putOwnedKey(&response_obj, self.allocator, "result", std.json.Value{ .null = {} });
                 }
             }
-            
+
             if (self.response_error) |err| {
-                try response_obj.put("error", try err.toJson(self.allocator));
+                try json_utils.putOwnedKey(&response_obj, self.allocator, "error", try err.toJson(self.allocator));
             }
             
             return std.json.Value{ .object = response_obj };
@@ -214,11 +217,11 @@ pub const ResponseError = struct {
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var error_obj = std.json.ObjectMap.init(allocator);
         
-        try error_obj.put("code", std.json.Value{ .integer = @intCast(self.code) });
-        try error_obj.put("message", std.json.Value{ .string = self.message });
-        
+        try json_utils.putOwnedKey(&error_obj, allocator, "code", std.json.Value{ .integer = @intCast(self.code) });
+        try json_utils.putOwnedKey(&error_obj, allocator, "message", std.json.Value{ .string = try allocator.dupe(u8, self.message) });
+
         if (self.data) |data| {
-            try error_obj.put("data", std.json.Value{ .string = data });
+            try json_utils.putOwnedKey(&error_obj, allocator, "data", std.json.Value{ .string = try allocator.dupe(u8, data) });
         }
         
         return std.json.Value{ .object = error_obj };

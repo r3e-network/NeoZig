@@ -4,6 +4,9 @@
 //! Validates 100% of Neo Zig SDK functionality.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const neo = @import("neo-zig");
 
 /// Advanced cryptographic test suite (converted from advanced Swift crypto tests)
@@ -11,7 +14,7 @@ test "advanced cryptographic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔐 Testing Advanced Cryptographic Operations...");
+    std.log.info("🔐 Testing Advanced Cryptographic Operations...", .{});
     
     // Test ECDSASignature (converted from ECDSASignatureTests.swift)
     const r: u256 = 0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF;
@@ -58,7 +61,7 @@ test "advanced cryptographic operations" {
     try testing.expect(generator.eql(decoded_compressed));
     try testing.expect(generator.eql(decoded_uncompressed));
     
-    std.log.info("✅ Advanced cryptographic operations validated");
+    std.log.info("✅ Advanced cryptographic operations validated", .{});
 }
 
 /// Advanced transaction test suite (converted from advanced Swift transaction tests)
@@ -66,14 +69,14 @@ test "advanced transaction operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💰 Testing Advanced Transaction Operations...");
+    std.log.info("💰 Testing Advanced Transaction Operations...", .{});
     
     // Test NeoTransaction (converted from NeoTransactionTests.swift)
     const signers = [_]neo.transaction.Signer{
         neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry),
     };
     const attributes = [_]neo.transaction.TransactionAttribute{};
-    const script = [_]u8{ 0x41, 0x9D, 0x42 };
+    const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41, 0x42 };
     var witnesses = [_]neo.transaction.Witness{
         neo.transaction.Witness.init(&[_]u8{0x01}, &[_]u8{0x02}),
     };
@@ -129,7 +132,7 @@ test "advanced transaction operations" {
     const global_signer = try neo.transaction.AccountSigner.global(test_account);
     try testing.expectEqual(neo.transaction.WitnessScope.Global, global_signer.getWitnessScope());
     
-    std.log.info("✅ Advanced transaction operations validated");
+    std.log.info("✅ Advanced transaction operations validated", .{});
 }
 
 /// Advanced wallet test suite (converted from advanced Swift wallet tests)
@@ -137,7 +140,7 @@ test "advanced wallet operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("💼 Testing Advanced Wallet Operations...");
+    std.log.info("💼 Testing Advanced Wallet Operations...", .{});
     
     // Test Bip39Account (converted from Bip39AccountTests.swift)
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "bip39_test_password");
@@ -183,7 +186,7 @@ test "advanced wallet operations" {
     const derived_key = try master_key.deriveFromPath(&derivation_path, allocator);
     try testing.expectEqual(@as(i32, 5), derived_key.depth);
     
-    std.log.info("✅ Advanced wallet operations validated");
+    std.log.info("✅ Advanced wallet operations validated", .{});
 }
 
 /// Advanced type system test suite (converted from advanced Swift type tests)
@@ -191,7 +194,7 @@ test "advanced type system operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("📋 Testing Advanced Type System...");
+    std.log.info("📋 Testing Advanced Type System...", .{});
     
     // Test NeoVMStateType (converted from NeoVMStateTypeTests.swift)
     try testing.expectEqualStrings("HALT", neo.types.NeoVMStateType.Halt.getJsonValue());
@@ -226,7 +229,7 @@ test "advanced type system operations" {
     const combined = neo.types.CallFlags.ReadStates.combine(neo.types.CallFlags.WriteStates);
     try testing.expectEqual(neo.types.CallFlags.States, combined);
     
-    std.log.info("✅ Advanced type system validated");
+    std.log.info("✅ Advanced type system validated", .{});
 }
 
 /// Advanced RPC test suite (converted from advanced Swift RPC tests)
@@ -234,7 +237,7 @@ test "advanced RPC response operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🌐 Testing Advanced RPC Response Operations...");
+    std.log.info("🌐 Testing Advanced RPC Response Operations...", .{});
     
     // Test NeoAccountState (converted from account state tests)
     const account_state = neo.rpc.NeoAccountState.init(100000000, 12345, "02b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816");
@@ -268,7 +271,7 @@ test "advanced RPC response operations" {
     const state_root = neo.rpc.NeoGetStateRoot.init();
     try testing.expect(state_root.root_hash.eql(neo.Hash256.ZERO));
     
-    std.log.info("✅ Advanced RPC response operations validated");
+    std.log.info("✅ Advanced RPC response operations validated", .{});
 }
 
 /// Complete serialization test suite (converted from all Swift serialization tests)
@@ -276,7 +279,7 @@ test "complete serialization operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing Complete Serialization Operations...");
+    std.log.info("🔧 Testing Complete Serialization Operations...", .{});
     
     // Test NeoSerializable interface (converted from NeoSerializableTests.swift)
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
@@ -302,7 +305,7 @@ test "complete serialization operations" {
     const round_trip_success = try neo.serialization.SerializationUtils.validateRoundTrip(hash160, allocator);
     try testing.expect(round_trip_success);
     
-    std.log.info("✅ Complete serialization operations validated");
+    std.log.info("✅ Complete serialization operations validated", .{});
 }
 
 /// Complete utility test suite (converted from all Swift utility tests)
@@ -310,7 +313,7 @@ test "complete utility operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔧 Testing Complete Utility Operations...");
+    std.log.info("🔧 Testing Complete Utility Operations...", .{});
     
     // Test advanced string utilities (converted from StringTests.swift)
     const hex_string = "0x1234abcd";
@@ -357,7 +360,7 @@ test "complete utility operations" {
     const all_plugins = neo.types.NodePluginType.getAllCases();
     try testing.expectEqual(@as(usize, 12), all_plugins.len);
     
-    std.log.info("✅ Complete utility operations validated");
+    std.log.info("✅ Complete utility operations validated", .{});
 }
 
 /// Complete integration test suite (converted from all Swift integration tests)
@@ -365,7 +368,7 @@ test "complete integration workflow validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🔗 Testing Complete Integration Workflow...");
+    std.log.info("🔗 Testing Complete Integration Workflow...", .{});
     
     // Create complete workflow: BIP-39 account → transaction → contract call
     
@@ -440,7 +443,7 @@ test "complete integration workflow validation" {
     const balance_request = try client.getNep17Balances(account_script_hash);
     try testing.expectEqualStrings("getnep17balances", balance_request.method);
     
-    std.log.info("✅ Complete integration workflow validated");
+    std.log.info("✅ Complete integration workflow validated", .{});
 }
 
 /// Performance and stress test suite
@@ -448,14 +451,14 @@ test "performance and stress validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("⚡ Testing Performance and Stress Operations...");
+    std.log.info("⚡ Testing Performance and Stress Operations...", .{});
     
     const iterations = 1000;
     var timer = try std.time.Timer.start();
     
     // Stress test: Multiple BIP-39 account creation
     timer.reset();
-    var bip39_accounts = std.ArrayList(neo.wallet.Bip39Account).init(allocator);
+    var bip39_accounts = ArrayList(neo.wallet.Bip39Account).init(allocator);
     defer {
         for (bip39_accounts.items) |*account| {
             account.deinit();
@@ -472,7 +475,7 @@ test "performance and stress validation" {
     
     // Stress test: Multiple transaction building
     timer.reset();
-    var transactions = std.ArrayList(neo.transaction.Transaction).init(allocator);
+    var transactions = ArrayList(neo.transaction.Transaction).init(allocator);
     defer {
         for (transactions.items) |tx| {
             allocator.free(tx.signers);
@@ -490,7 +493,7 @@ test "performance and stress validation" {
         
         const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
         _ = try builder.signer(signer);
-        _ = try builder.script(&[_]u8{ 0x41, 0x9D });
+        _ = try builder.script(&[_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 });
         
         const tx = try builder.build();
         try transactions.append(tx);
@@ -512,12 +515,12 @@ test "performance and stress validation" {
     }
     const crypto_time = timer.read();
     
-    std.log.info("Performance Results:");
+    std.log.info("Performance Results:", .{});
     std.log.info("  BIP-39 account creation: {}ns per operation", .{bip39_time / 10});
     std.log.info("  Transaction building: {}ns per operation", .{tx_time / 100});
     std.log.info("  Crypto operations: {}ns per operation", .{crypto_time / iterations});
     
-    std.log.info("✅ Performance and stress testing completed");
+    std.log.info("✅ Performance and stress testing completed", .{});
 }
 
 /// Final comprehensive validation
@@ -525,7 +528,7 @@ test "final comprehensive Neo SDK validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    std.log.info("🏆 Final Comprehensive Neo Zig SDK Validation...");
+    std.log.info("🏆 Final Comprehensive Neo Zig SDK Validation...", .{});
     
     // Test that ALL major systems work together in complex scenario
     
@@ -613,6 +616,6 @@ test "final comprehensive Neo SDK validation" {
     try testing.expectEqual(@as(usize, 0), invocation_result.script.len);
     try testing.expectEqual(@as(i64, 0), account_state.balance);
     
-    std.log.info("✅ All systems integrated and fully functional");
-    std.log.info("🎉 Neo Zig SDK COMPLETE VALIDATION SUCCESSFUL!");
+    std.log.info("✅ All systems integrated and fully functional", .{});
+    std.log.info("🎉 Neo Zig SDK COMPLETE VALIDATION SUCCESSFUL!", .{});
 }

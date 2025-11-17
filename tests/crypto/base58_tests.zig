@@ -4,6 +4,8 @@
 //! Tests Base58 and Base58Check encoding/decoding functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const Base58 = @import("../../src/crypto/base58.zig").Base58;
 

@@ -4,6 +4,9 @@
 //! Handles node role designation and management.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -71,13 +74,13 @@ pub const RoleManagement = struct {
             return errors.throwIllegalArgument("At least one public key required for designation");
         }
         
-        var params = std.ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
         defer params.deinit();
         
         try params.append(ContractParameter.integer(@intFromEnum(role)));
         
         // Convert public keys to parameters
-        var pub_key_params = std.ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var pub_key_params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
         defer pub_key_params.deinit();
         
         for (public_keys) |pub_key| {

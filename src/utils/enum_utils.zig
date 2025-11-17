@@ -4,6 +4,8 @@
 //! Provides byte enum protocol and JSON conversion utilities.
 
 const std = @import("std");
+
+
 const errors = @import("../core/errors.zig");
 
 /// Byte enum trait (converted from Swift ByteEnum protocol)

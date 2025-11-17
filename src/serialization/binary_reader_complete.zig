@@ -4,6 +4,9 @@
 //! Provides comprehensive binary deserialization with Swift API compatibility.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -190,7 +193,7 @@ pub const CompleteBinaryReader = struct {
     pub fn readHash160(self: *Self) !Hash160 {
         var hash_bytes: [20]u8 = undefined;
         try self.readBytesIntoBuffer(&hash_bytes);
-        return Hash160.init(hash_bytes);
+        return Hash160.fromArray(hash_bytes);
     }
     
     /// Reads Hash256 (equivalent to Swift Hash256 reading)
@@ -268,7 +271,7 @@ pub const CompleteBinaryReader = struct {
             }
         }
         
-        var result = try allocator.alloc(u8, actual_length);
+        const result = try allocator.alloc(u8, actual_length);
         @memcpy(result, bytes[0..actual_length]);
         allocator.free(bytes);
         
@@ -280,6 +283,7 @@ pub const CompleteBinaryReader = struct {
 test "CompleteBinaryReader basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Create test data
     const test_data = [_]u8{
@@ -348,7 +352,7 @@ test "CompleteBinaryReader hash operations" {
     const hash160_bytes = [_]u8{0x01} ** 20;
     const hash256_bytes = [_]u8{0x02} ** 32;
     
-    var test_data = std.ArrayList(u8).init(allocator);
+    var test_data = ArrayList(u8).init(allocator);
     defer test_data.deinit();
     
     try test_data.appendSlice(&hash160_bytes);
@@ -367,6 +371,7 @@ test "CompleteBinaryReader hash operations" {
 test "CompleteBinaryReader mark and reset" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     const test_data = [_]u8{ 0x01, 0x02, 0x03, 0x04, 0x05 };
     var reader = CompleteBinaryReader.init(&test_data);
@@ -391,6 +396,7 @@ test "CompleteBinaryReader mark and reset" {
 test "CompleteBinaryReader signed integer operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
     
     // Create test data with signed integers
     const test_data = [_]u8{

@@ -4,6 +4,8 @@
 //! Tests contract management functionality.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const ContractManagement = @import("../../src/contract/contract_management.zig").ContractManagement;
 

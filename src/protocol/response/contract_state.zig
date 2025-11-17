@@ -4,6 +4,8 @@
 //! Provides smart contract state information.
 
 const std = @import("std");
+
+
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const ContractNef = @import("contract_nef.zig").ContractNef;
 const ContractManifest = @import("contract_manifest.zig").ContractManifest;

@@ -3,13 +3,15 @@
 //! Comprehensive example showing all converted Swift functionality.
 
 const std = @import("std");
+
+
 const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     
-    std.log.info("🚀 Neo Zig SDK - Complete Swift Conversion Demo");
-    std.log.info("================================================");
+    std.log.info("🚀 Neo Zig SDK - Complete Swift Conversion Demo", .{});
+    std.log.info("================================================", .{});
     
     // Demonstrate all converted Swift functionality
     try demonstrateKeyManagement(allocator);
@@ -19,12 +21,12 @@ pub fn main() !void {
     try demonstrateWalletManagement(allocator);
     try demonstrateRpcClient(allocator);
     
-    std.log.info("✅ All Swift functionality successfully converted and demonstrated!");
+    std.log.info("✅ All Swift functionality successfully converted and demonstrated!", .{});
 }
 
 /// Demonstrates key management (converted from Swift key examples)
 fn demonstrateKeyManagement(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🔑 Key Management (Swift API Compatible):");
+    std.log.info("\n🔑 Key Management (Swift API Compatible):", .{});
     
     // Generate key pair (equivalent to Swift ECKeyPair generation)
     const key_pair = try neo.crypto.generateKeyPair(true);
@@ -33,7 +35,7 @@ fn demonstrateKeyManagement(allocator: std.mem.Allocator) !void {
         mutable_key_pair.zeroize();
     }
     
-    std.log.info("  ✅ Generated key pair with compressed public key");
+    std.log.info("  ✅ Generated key pair with compressed public key", .{});
     
     // Test WIF encoding (equivalent to Swift WIF methods)
     const wif_mainnet = try neo.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
@@ -45,7 +47,7 @@ fn demonstrateKeyManagement(allocator: std.mem.Allocator) !void {
     const decoded = try neo.crypto.decodeWIF(wif_mainnet, allocator);
     
     if (decoded.private_key.eql(key_pair.private_key)) {
-        std.log.info("  ✅ WIF round-trip successful");
+        std.log.info("  ✅ WIF round-trip successful", .{});
     }
     
     std.log.info("  🌐 Network: {}, Compressed: {}", .{ decoded.network, decoded.compressed });
@@ -53,7 +55,7 @@ fn demonstrateKeyManagement(allocator: std.mem.Allocator) !void {
 
 /// Demonstrates hash operations (converted from Swift hash examples)
 fn demonstrateHashOperations(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🔐 Hash Operations (Swift Compatible):");
+    std.log.info("\n🔐 Hash Operations (Swift Compatible):", .{});
     
     const test_data = "Neo Zig SDK hash test data";
     
@@ -78,13 +80,13 @@ fn demonstrateHashOperations(allocator: std.mem.Allocator) !void {
     // Test hash comparison and operations
     const same_sha = neo.Hash256.sha256(test_data);
     if (sha_hash.eql(same_sha)) {
-        std.log.info("  ✅ Hash consistency verified");
+        std.log.info("  ✅ Hash consistency verified", .{});
     }
 }
 
 /// Demonstrates address operations (converted from Swift address examples)
 fn demonstrateAddressOperations(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🏠 Address Operations (Swift Compatible):");
+    std.log.info("\n🏠 Address Operations (Swift Compatible):", .{});
     
     // Create address from public key (equivalent to Swift address generation)
     const private_key = neo.crypto.generatePrivateKey();
@@ -99,11 +101,11 @@ fn demonstrateAddressOperations(allocator: std.mem.Allocator) !void {
     
     // Validate address properties (equivalent to Swift address validation)
     if (address.isValid()) {
-        std.log.info("  ✅ Address is valid");
+        std.log.info("  ✅ Address is valid", .{});
     }
     
     if (address.isStandard()) {
-        std.log.info("  📝 Standard single-signature address");
+        std.log.info("  📝 Standard single-signature address", .{});
     }
     
     // Test address conversion back to Hash160 (equivalent to Swift round-trip)
@@ -111,19 +113,19 @@ fn demonstrateAddressOperations(allocator: std.mem.Allocator) !void {
     const recovered_address = neo.Address.fromHash160(script_hash);
     
     if (address.eql(recovered_address)) {
-        std.log.info("  ✅ Address round-trip successful");
+        std.log.info("  ✅ Address round-trip successful", .{});
     }
     
     // Test Hash160 from address (equivalent to Swift Hash160.fromAddress)
     const hash_from_address = try neo.Hash160.fromAddress(address_str, allocator);
     if (script_hash.eql(hash_from_address)) {
-        std.log.info("  ✅ Hash160 from address conversion successful");
+        std.log.info("  ✅ Hash160 from address conversion successful", .{});
     }
 }
 
 /// Demonstrates transaction building (converted from Swift transaction examples)
 fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
-    std.log.info("\n💰 Transaction Building (Swift Compatible):");
+    std.log.info("\n💰 Transaction Building (Swift Compatible):", .{});
     
     var builder = neo.transaction.TransactionBuilder.init(allocator);
     defer builder.deinit();
@@ -133,13 +135,13 @@ fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
         .additionalNetworkFee(500000)
         .additionalSystemFee(1000000);
     
-    std.log.info("  ⚙️ Transaction configured - Version: 0, Network Fee: 500000, System Fee: 1000000");
+    std.log.info("  ⚙️ Transaction configured - Version: 0, Network Fee: 500000, System Fee: 1000000", .{});
     
     // Add signer (equivalent to Swift signer addition)
     const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
     _ = try builder.signer(signer);
     
-    std.log.info("  👤 Signer added with CalledByEntry scope");
+    std.log.info("  👤 Signer added with CalledByEntry scope", .{});
     
     // Build GAS transfer (equivalent to Swift transferToken)
     _ = try builder.transferToken(
@@ -149,13 +151,13 @@ fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
         100000000,        // 1 GAS
     );
     
-    std.log.info("  💸 GAS transfer script built (1.00000000 GAS)");
+    std.log.info("  💸 GAS transfer script built (1.00000000 GAS)", .{});
     
     // Add high priority (equivalent to Swift highPriority())
     _ = try builder.highPriority();
     
     if (builder.isHighPriority()) {
-        std.log.info("  ⚡ High priority attribute added");
+        std.log.info("  ⚡ High priority attribute added", .{});
     }
     
     // Build final transaction (equivalent to Swift build())
@@ -168,7 +170,7 @@ fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
     }
     
     try transaction.validate();
-    std.log.info("  ✅ Transaction built and validated successfully");
+    std.log.info("  ✅ Transaction built and validated successfully", .{});
     
     // Calculate transaction hash (equivalent to Swift getHash())
     const tx_hash = try transaction.getHash(allocator);
@@ -180,7 +182,7 @@ fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
 
 /// Demonstrates wallet management (converted from Swift wallet examples)
 fn demonstrateWalletManagement(allocator: std.mem.Allocator) !void {
-    std.log.info("\n💼 Wallet Management (Swift Compatible):");
+    std.log.info("\n💼 Wallet Management (Swift Compatible):", .{});
     
     // Create wallet (equivalent to Swift Wallet creation)
     var wallet = neo.wallet.Wallet.init(allocator);
@@ -195,7 +197,7 @@ fn demonstrateWalletManagement(allocator: std.mem.Allocator) !void {
     
     // Verify default account (equivalent to Swift defaultAccount logic)
     if (wallet.isDefault(account)) {
-        std.log.info("  🎯 Account set as default");
+        std.log.info("  🎯 Account set as default", .{});
     }
     
     std.log.info("  📊 Wallet has {} accounts", .{wallet.getAccountCount()});
@@ -212,13 +214,13 @@ fn demonstrateWalletManagement(allocator: std.mem.Allocator) !void {
     const found_account = wallet.getAccount(script_hash);
     
     if (found_account != null) {
-        std.log.info("  ✅ Account lookup successful");
+        std.log.info("  ✅ Account lookup successful", .{});
     }
 }
 
 /// Demonstrates RPC client (converted from Swift RPC examples)
 fn demonstrateRpcClient(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🌐 RPC Client (Swift Compatible):");
+    std.log.info("\n🌐 RPC Client (Swift Compatible):", .{});
     
     // Create RPC client (equivalent to Swift NeoSwift.build)
     const config = neo.rpc.NeoSwiftConfig.init();
@@ -251,5 +253,5 @@ fn demonstrateRpcClient(allocator: std.mem.Allocator) !void {
     const balances_request = try client.getNep17Balances(test_script_hash);
     std.log.info("  💰 Created balance request: {s}", .{balances_request.method});
     
-    std.log.info("  ✅ All RPC requests created successfully");
+    std.log.info("  ✅ All RPC requests created successfully", .{});
 }

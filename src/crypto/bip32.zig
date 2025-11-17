@@ -4,6 +4,9 @@
 //! Provides hierarchical deterministic wallet functionality.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -116,7 +119,7 @@ pub const Bip32ECKeyPair = struct {
             @as(i32, @intCast(child_number));
         
         // Prepare derivation data
-        var derivation_data = std.ArrayList(u8).init(allocator);
+        var derivation_data = ArrayList(u8).init(allocator);
         defer derivation_data.deinit();
         
         if (hardened) {
@@ -176,7 +179,7 @@ pub const Bip32ECKeyPair = struct {
     
     /// Gets extended private key (equivalent to Swift extended key serialization)
     pub fn getExtendedPrivateKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var extended_key = std.ArrayList(u8).init(allocator);
+        var extended_key = ArrayList(u8).init(allocator);
         defer extended_key.deinit();
         
         // Version (4 bytes) - mainnet private key
@@ -207,7 +210,7 @@ pub const Bip32ECKeyPair = struct {
     
     /// Gets extended public key (equivalent to Swift extended public key serialization)
     pub fn getExtendedPublicKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var extended_key = std.ArrayList(u8).init(allocator);
+        var extended_key = ArrayList(u8).init(allocator);
         defer extended_key.deinit();
         
         // Version (4 bytes) - mainnet public key

@@ -4,6 +4,9 @@
 //! Ensures security and correctness of all external inputs.
 
 const std = @import("std");
+const ArrayList = std.array_list.Managed;
+
+
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -226,13 +229,9 @@ pub const InputValidator = struct {
     
     /// Validates JSON structure
     pub fn validateJsonStructure(json_str: []const u8, allocator: std.mem.Allocator) !void {
-        var json_parser = std.json.Parser.init(allocator, .alloc_always);
-        defer json_parser.deinit();
-        
-        var json_tree = json_parser.parse(json_str) catch {
+        _ = std.json.parseFromSlice(std.json.Value, allocator, json_str, .{}) catch {
             return errors.ValidationError.InvalidFormat;
         };
-        defer json_tree.deinit();
         
         // Basic structure validation passed if parsing succeeded
     }
@@ -282,7 +281,7 @@ pub const Sanitizer = struct {
     /// Sanitizes error messages (removes sensitive information)
     pub fn sanitizeErrorMessage(error_msg: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // Remove file paths and sensitive data from error messages
-        var sanitized = std.ArrayList(u8).init(allocator);
+        var sanitized = ArrayList(u8).init(allocator);
         defer sanitized.deinit();
         
         var i: usize = 0;

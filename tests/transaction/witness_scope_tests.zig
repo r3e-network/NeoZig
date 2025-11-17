@@ -4,6 +4,8 @@
 //! Tests witness scope functionality and combinations.
 
 const std = @import("std");
+
+
 const testing = std.testing;
 const WitnessScope = @import("../../src/transaction/witness_scope_complete.zig").WitnessScope;
 
