@@ -4,6 +4,7 @@
 [![Neo](https://img.shields.io/badge/Neo-N3-brightgreen)](https://neo.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/NeoZig)
+[![Release](https://img.shields.io/github/v/release/r3e-network/NeoZig?sort=semver&display_name=tag)](https://github.com/r3e-network/NeoZig/releases/latest)
 
 A **complete, production-ready Neo blockchain SDK** implemented in Zig, providing type-safe, memory-efficient, and high-performance tools for interacting with the Neo N3 blockchain.
 
@@ -40,6 +41,9 @@ production workloads. This release rolls up the full remediation plan captured i
 - 📘 **Hardened docs + examples** – README, demos, benchmarks, and migration
   guides now match the production surface area and are verified against the new
   tests.
+
+Read the full changelog and download artifacts from the
+[GitHub release notes](https://github.com/r3e-network/NeoZig/releases/tag/v1.0.0).
 
 Grab the release straight from GitHub:
 
