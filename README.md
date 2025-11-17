@@ -23,8 +23,8 @@ A **complete, production-ready Neo blockchain SDK** implemented in Zig, providin
 ## 🆕 v1.0.0 Release
 
 The Neo Zig SDK has officially reached the `v1.0.0` milestone and is ready for
-production workloads. This release rolls up the full remediation plan captured in
-`ISSUE_FIX_PLAN.md` and delivers:
+production workloads. This release rolls up the full remediation plan and
+delivers:
 
 - ✅ **Bug-complete cryptography + address handling** – Base58/Base58Check,
   `Hash160` helpers, NEP-2, WIF, and RIPEMD160 now match the Neo reference
