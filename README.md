@@ -19,6 +19,44 @@ A **complete, production-ready Neo blockchain SDK** implemented in Zig, providin
 - **🧪 Comprehensive Testing**: 100+ test scenarios with complete validation coverage
 - **📚 Complete Documentation**: Rich examples, API docs, and migration guides
 
+## 🆕 v1.0.0 Release
+
+The Neo Zig SDK has officially reached the `v1.0.0` milestone and is ready for
+production workloads. This release rolls up the full remediation plan captured in
+`ISSUE_FIX_PLAN.md` and delivers:
+
+- ✅ **Bug-complete cryptography + address handling** – Base58/Base58Check,
+  `Hash160` helpers, NEP-2, WIF, and RIPEMD160 now match the Neo reference
+  vectors and are exercised by the crypto test suites.
+- 🧾 **Deterministic transaction + wallet flows** – Transaction builder,
+  account abstractions, and witness handling enforce caller supplied
+  parameters and use persisted key material for signatures.
+- 🌐 **Production RPC client** – Request builders emit correct JSON-RPC payloads
+  and every response type has full JSON parsing coverage, unlocking all Neo
+  node APIs from Zig.
+- 🧪 **Comprehensive regression coverage** – 100% of the Swift SDK behavior is
+  mirrored in Zig with parity tests for contracts, RPC, wallets, serialization,
+  and transaction modules.
+- 📘 **Hardened docs + examples** – README, demos, benchmarks, and migration
+  guides now match the production surface area and are verified against the new
+  tests.
+
+Grab the release straight from GitHub:
+
+```bash
+git clone --branch v1.0.0 https://github.com/r3e-network/NeoZig.git
+cd NeoZig
+zig build test
+```
+
+or require it from `build.zig.zon`:
+
+```zig
+.dependencies = .{
+    ."neo-zig" = .{ .url = "https://github.com/r3e-network/NeoZig/archive/refs/tags/v1.0.0.tar.gz" },
+};
+```
+
 ## 🏗️ Architecture
 
 ```
