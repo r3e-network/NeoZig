@@ -27,6 +27,18 @@ pub fn Iterator(comptime T: type) type {
 
         const Self = @This();
 
+        fn deinitMappedItem(item: T, allocator: std.mem.Allocator) void {
+            const ti = @typeInfo(T);
+            switch (ti) {
+                .pointer => |ptr_info| {
+                    if (ptr_info.size == .slice and ptr_info.child == u8) {
+                        allocator.free(@constCast(item));
+                    }
+                },
+                else => {},
+            }
+        }
+
         /// Creates iterator (equivalent to Swift init)
         pub fn init(
             allocator: std.mem.Allocator,
@@ -62,18 +74,17 @@ pub fn Iterator(comptime T: type) type {
 
             const stack_items = response.getTraverseIterator() orelse &[_]StackItem{};
             var mapped_items = try self.allocator.alloc(T, stack_items.len);
+            var mapped_count: usize = 0;
             errdefer {
-                for (mapped_items) |*entry| {
-                    // Best-effort cleanup for partially mapped items.
-                    // Most mapped types are plain values; complex types should
-                    // provide their own deinit if needed.
-                    _ = entry;
+                for (mapped_items[0..mapped_count]) |entry| {
+                    deinitMappedItem(entry, self.allocator);
                 }
                 self.allocator.free(mapped_items);
             }
 
             for (stack_items, 0..) |item, i| {
                 mapped_items[i] = try self.mapper(item, self.allocator);
+                mapped_count += 1;
             }
 
             return mapped_items;
@@ -100,6 +111,11 @@ pub fn Iterator(comptime T: type) type {
         /// Traverses all remaining items (utility method)
         pub fn traverseAll(self: Self, max_items: u32) ![]T {
             var all_items = ArrayList(T).init(self.allocator);
+            errdefer {
+                for (all_items.items) |entry| {
+                    deinitMappedItem(entry, self.allocator);
+                }
+            }
             defer all_items.deinit();
 
             const batch_size = @min(100, max_items); // Reasonable batch size
@@ -110,11 +126,18 @@ pub fn Iterator(comptime T: type) type {
                 const this_batch = @min(batch_size, remaining);
 
                 const batch_items = try self.traverse(this_batch);
+                var cleanup_batch = true;
+                errdefer if (cleanup_batch) {
+                    for (batch_items) |entry| {
+                        deinitMappedItem(entry, self.allocator);
+                    }
+                };
                 defer self.allocator.free(batch_items);
 
                 if (batch_items.len == 0) break; // No more items
 
                 try all_items.appendSlice(batch_items);
+                cleanup_batch = false;
                 total_retrieved += @intCast(batch_items.len);
 
                 if (batch_items.len < this_batch) break; // Fewer items than requested
@@ -132,7 +155,12 @@ pub fn Iterator(comptime T: type) type {
                     else => err,
                 };
             };
-            defer self.allocator.free(test_items);
+            defer {
+                for (test_items) |entry| {
+                    deinitMappedItem(entry, self.allocator);
+                }
+                self.allocator.free(test_items);
+            }
 
             return test_items.len > 0;
         }
