@@ -9,6 +9,9 @@
 //! - Use throwIllegalArgument/throwIllegalState for Swift API compatibility
 
 const std = @import("std");
+const builtin = @import("builtin");
+
+const log = std.log.scoped(.neo_errors);
 
 /// General Neo SDK errors (converted from NeoSwiftError)
 pub const NeoError = error{
@@ -134,22 +137,23 @@ pub const ContractError = error{
 };
 
 /// Utility function to convert Swift error messages.
-/// Logs the error message for debugging before returning the error.
-/// This provides context that Zig's error system cannot carry.
+/// Emits a debug log (in Debug builds) before returning the error.
+/// This provides context that Zig's error system cannot carry. Enable debug logs by
+/// setting `std_options.log_level = .debug` in your root file.
 pub fn throwIllegalArgument(message: []const u8) NeoError {
-    // Log error context for debugging (only in debug builds to avoid overhead)
-    if (@import("builtin").mode == .Debug) {
-        std.debug.print("[ERROR] IllegalArgument: {s}\n", .{message});
+    // Best-effort diagnostic context; no hard stdout/stderr side effects.
+    if (builtin.mode == .Debug) {
+        log.debug("IllegalArgument: {s}", .{message});
     }
     return NeoError.IllegalArgument;
 }
 
 /// Utility function to convert Swift error messages.
-/// Logs the error message for debugging before returning the error.
+/// Emits a debug log (in Debug builds) before returning the error.
 pub fn throwIllegalState(message: []const u8) NeoError {
-    // Log error context for debugging (only in debug builds to avoid overhead)
-    if (@import("builtin").mode == .Debug) {
-        std.debug.print("[ERROR] IllegalState: {s}\n", .{message});
+    // Best-effort diagnostic context; no hard stdout/stderr side effects.
+    if (builtin.mode == .Debug) {
+        log.debug("IllegalState: {s}", .{message});
     }
     return NeoError.IllegalState;
 }
