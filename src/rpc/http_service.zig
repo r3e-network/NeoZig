@@ -136,6 +136,7 @@ fn sendWithHeaders(
         .redirect_behavior = .not_allowed,
         .keep_alive = false,
         .response_storage = .{ .dynamic = &response_body },
+        .max_append_size = @import("http_client.zig").HttpClient.DEFAULT_MAX_RESPONSE_BYTES,
     }) catch |err| {
         return mapFetchError(err);
     };

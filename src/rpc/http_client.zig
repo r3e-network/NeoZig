@@ -14,6 +14,10 @@ const Uri = std.Uri;
 const log = std.log.scoped(.neo_rpc);
 
 pub const HttpClient = struct {
+    /// Upper bound for HTTP response bodies captured into memory.
+    /// This prevents unbounded growth when a node (or attacker) returns a huge body.
+    pub const DEFAULT_MAX_RESPONSE_BYTES: usize = 32 * 1024 * 1024; // 32 MiB
+
     allocator: std.mem.Allocator,
     endpoint: []const u8,
     owns_endpoint: bool,
@@ -227,8 +231,10 @@ fn defaultSend(
             .content_type = .{ .override = "application/json" },
             .user_agent = .{ .override = "Neo-Zig-SDK/1.0" },
         },
+        .redirect_behavior = .not_allowed,
         .keep_alive = false,
         .response_storage = .{ .dynamic = &response_body },
+        .max_append_size = HttpClient.DEFAULT_MAX_RESPONSE_BYTES,
     }) catch |err| {
         return mapFetchError(err);
     };
