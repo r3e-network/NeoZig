@@ -4,6 +4,7 @@
 //! Provides reactive programming support for Neo blockchain operations.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
@@ -12,6 +13,8 @@ const response_aliases = @import("../rpc/response_aliases.zig");
 const responses = @import("../rpc/responses.zig");
 const BlockIndexPolling = @import("block_index_polling.zig").BlockIndexPolling;
 const PollingSource = @import("block_index_polling.zig").PollingSource;
+
+const log = std.log.scoped(.neo_protocol);
 
 /// JSON-RPC 2.0 reactive extension (converted from Swift JsonRpc2_0Rx)
 pub const JsonRpc2_0Rx = struct {
@@ -320,7 +323,9 @@ pub const JsonRpc2_0Rx = struct {
 
         if (storage) |ctx| {
             const stored = ctx.allocator.create(response_aliases.NeoGetBlock) catch |err| {
-                std.log.err("failed to allocate stored block context: {any}", .{err});
+                if (!builtin.is_test) {
+                    log.warn("failed to allocate stored block context: {any}", .{err});
+                }
                 response.deinit(ctx.allocator);
                 return err;
             };
@@ -331,7 +336,9 @@ pub const JsonRpc2_0Rx = struct {
                 return errors.NetworkError.InvalidResponse;
             }
             ctx.owned_blocks.append(stored) catch |append_err| {
-                std.log.err("failed to track stored block: {any}", .{append_err});
+                if (!builtin.is_test) {
+                    log.warn("failed to track stored block: {any}", .{append_err});
+                }
                 stored.deinit(ctx.allocator);
                 ctx.allocator.destroy(stored);
                 return append_err;
@@ -347,7 +354,9 @@ pub const JsonRpc2_0Rx = struct {
         }
 
         const stored_temp = self.allocator.create(response_aliases.NeoGetBlock) catch |err| {
-            std.log.err("failed to allocate temporary block: {any}", .{err});
+            if (!builtin.is_test) {
+                log.warn("failed to allocate temporary block: {any}", .{err});
+            }
             response.deinit(self.allocator);
             return err;
         };
@@ -517,7 +526,9 @@ pub const ReplaySubscription = struct {
 
         const block_index = self.blocks[self.current_index];
         const fetch_result = self.rx_client.fetchBlockForReplay(block_index, self.full_transactions) catch |err| {
-            std.log.err("failed to fetch block {d} during replay: {any}", .{ block_index, err });
+            if (!builtin.is_test) {
+                log.warn("failed to fetch block {d} during replay: {any}", .{ block_index, err });
+            }
             self.current_index += 1;
             return false;
         };

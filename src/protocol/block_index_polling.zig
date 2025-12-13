@@ -4,11 +4,14 @@
 //! Provides block polling functionality for real-time blockchain monitoring.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const AtomicBool = std.atomic.Value(bool);
 const AtomicU32 = std.atomic.Value(u32);
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+
+const log = std.log.scoped(.neo_protocol);
 
 /// Block index actor for thread-safe block tracking (converted from Swift BlockIndexActor)
 pub const BlockIndexActor = struct {
@@ -268,7 +271,9 @@ const PollingTask = struct {
     pub fn loop(self: *Self) void {
         while (self.is_running.load(.seq_cst)) {
             const maybe_blocks = self.polling.pollForNewBlocks(self.source, self.allocator) catch |err| {
-                std.log.err("pollForNewBlocks failed: {any}", .{err});
+                if (!builtin.is_test) {
+                    log.warn("pollForNewBlocks failed: {any}", .{err});
+                }
                 std.time.sleep(self.interval_ms.load(.seq_cst) * std.time.ns_per_ms);
                 continue;
             };

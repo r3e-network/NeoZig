@@ -4,10 +4,13 @@
 //! Provides reactive block index monitoring and polling.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 const Thread = std.Thread;
 const Mutex = Thread.Mutex;
+
+const log = std.log.scoped(.neo_protocol);
 
 /// Block index actor for thread-safe state management (converted from Swift BlockIndexActor)
 pub const BlockIndexActor = struct {
@@ -179,11 +182,15 @@ pub const BlockIndexPolling = struct {
     /// Handles polling errors
     fn handlePollingError(self: *Self, err: anyerror, error_count: *u32) void {
         error_count.* += 1;
-        
-        std.log.err("Block polling error #{}: {}", .{ error_count.*, err });
+
+        if (!builtin.is_test) {
+            log.warn("Block polling error #{}: {}", .{ error_count.*, err });
+        }
         
         if (!self.config.enable_recovery or error_count.* >= self.config.max_errors) {
-            std.log.err("Maximum polling errors reached, stopping polling", .{});
+            if (!builtin.is_test) {
+                log.warn("Maximum polling errors reached, stopping polling", .{});
+            }
             return;
         }
         
