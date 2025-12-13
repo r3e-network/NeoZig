@@ -23,6 +23,7 @@ pub const HttpClient = struct {
     owns_endpoint: bool,
     timeout_ms: u32,
     max_retries: u32,
+    max_response_bytes: usize = DEFAULT_MAX_RESPONSE_BYTES,
     send_fn: ?*const SendFn,
     send_context: ?*anyopaque,
 
@@ -84,6 +85,12 @@ pub const HttpClient = struct {
         self.max_retries = max_retries;
     }
 
+    /// Sets the maximum response body size captured into memory.
+    /// Passing 0 resets to the default cap.
+    pub fn setMaxResponseBytes(self: *Self, max_response_bytes: usize) void {
+        self.max_response_bytes = if (max_response_bytes == 0) DEFAULT_MAX_RESPONSE_BYTES else max_response_bytes;
+    }
+
     /// Overrides outbound transport (useful for tests/mocks).
     pub fn withSender(self: *Self, send_fn: *const SendFn, context: ?*anyopaque) void {
         self.send_fn = send_fn;
@@ -98,7 +105,10 @@ pub const HttpClient = struct {
         var overall = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
         var attempt: u32 = 0;
         while (attempt <= self.max_retries) {
-            const response = sender(self.send_context, self.allocator, self.endpoint, json_payload, self.timeout_ms) catch |err| {
+            const response = (if (sender == &defaultSend and self.send_context == null)
+                sendFetch(self.allocator, self.endpoint, json_payload, self.timeout_ms, self.max_response_bytes)
+            else
+                sender(self.send_context, self.allocator, self.endpoint, json_payload, self.timeout_ms)) catch |err| {
                 if (overall.read() / std.time.ns_per_ms >= self.timeout_ms) {
                     return errors.NetworkError.NetworkTimeout;
                 }
@@ -197,22 +207,18 @@ pub const HttpClientFactory = struct {
 
 fn shouldRetry(err: errors.NetworkError) bool {
     return switch (err) {
-        error.ConnectionFailed,
-        error.ServerError,
-        error.NetworkUnavailable,
-        error.RequestFailed => true,
+        error.ConnectionFailed, error.ServerError, error.NetworkUnavailable, error.RequestFailed => true,
         else => false,
     };
 }
 
-fn defaultSend(
-    ctx: ?*anyopaque,
+fn sendFetch(
     allocator: std.mem.Allocator,
     endpoint: []const u8,
     payload: []const u8,
     timeout_ms: u32,
+    max_response_bytes: usize,
 ) errors.NetworkError![]u8 {
-    _ = ctx;
     var timer = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
 
     var client = http.Client{ .allocator = allocator };
@@ -234,7 +240,7 @@ fn defaultSend(
         .redirect_behavior = .not_allowed,
         .keep_alive = false,
         .response_storage = .{ .dynamic = &response_body },
-        .max_append_size = HttpClient.DEFAULT_MAX_RESPONSE_BYTES,
+        .max_append_size = max_response_bytes,
     }) catch |err| {
         return mapFetchError(err);
     };
@@ -253,26 +259,26 @@ fn defaultSend(
     return body;
 }
 
+fn defaultSend(
+    ctx: ?*anyopaque,
+    allocator: std.mem.Allocator,
+    endpoint: []const u8,
+    payload: []const u8,
+    timeout_ms: u32,
+) errors.NetworkError![]u8 {
+    _ = ctx;
+    return sendFetch(allocator, endpoint, payload, timeout_ms, HttpClient.DEFAULT_MAX_RESPONSE_BYTES);
+}
+
 fn mapFetchError(err: anyerror) errors.NetworkError {
     return switch (err) {
-        error.UnsupportedUriScheme,
-        error.UriMissingHost,
-        error.UriHostTooLong => errors.NetworkError.InvalidEndpoint,
+        error.UnsupportedUriScheme, error.UriMissingHost, error.UriHostTooLong => errors.NetworkError.InvalidEndpoint,
 
-        error.NetworkUnreachable,
-        error.ConnectionRefused,
-        error.ConnectionResetByPeer,
-        error.UnknownHostName,
-        error.HostLacksNetworkAddresses,
-        error.UnexpectedConnectFailure => errors.NetworkError.ConnectionFailed,
+        error.NetworkUnreachable, error.ConnectionRefused, error.ConnectionResetByPeer, error.UnknownHostName, error.HostLacksNetworkAddresses, error.UnexpectedConnectFailure => errors.NetworkError.ConnectionFailed,
 
         error.ConnectionTimedOut => errors.NetworkError.NetworkTimeout,
-        error.TemporaryNameServerFailure,
-        error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
-        error.CertificateBundleLoadFailure,
-        error.StreamTooLong,
-        error.WriteFailed,
-        error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
+        error.TemporaryNameServerFailure, error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
+        error.CertificateBundleLoadFailure, error.StreamTooLong, error.WriteFailed, error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
         else => errors.NetworkError.RequestFailed,
     };
 }
