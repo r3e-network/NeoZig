@@ -3,8 +3,8 @@
 [![Zig](https://img.shields.io/badge/Zig-0.14.0+-orange)](https://ziglang.org/)
 [![Neo](https://img.shields.io/badge/Neo-N3-brightgreen)](https://neo.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/NeoZig)
-[![Release](https://img.shields.io/github/v/release/r3e-network/NeoZig?sort=semver&display_name=tag)](https://github.com/r3e-network/NeoZig/releases/latest)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/neo-zig-sdk)
+[![Release](https://img.shields.io/github/v/release/r3e-network/neo-zig-sdk?sort=semver&display_name=tag)](https://github.com/r3e-network/neo-zig-sdk/releases/latest)
 
 A **complete, production-ready Neo blockchain SDK** implemented in Zig, providing type-safe, memory-efficient, and high-performance tools for interacting with the Neo N3 blockchain.
 
@@ -33,8 +33,8 @@ surface. Highlights:
 Grab the release straight from GitHub:
 
 ```bash
-git clone --branch v1.0.0 https://github.com/r3e-network/NeoZig.git
-cd NeoZig
+git clone --branch v1.0.0 https://github.com/r3e-network/neo-zig-sdk.git
+cd neo-zig-sdk
 zig build test
 # Individual suites:
 zig build parity-test
@@ -64,9 +64,9 @@ required `.hash` is recorded in your `build.zig.zon`):
 
 ```zig
 .dependencies = .{
-    // Added via: `zig fetch --save https://github.com/r3e-network/NeoZig/archive/refs/tags/v1.0.0.tar.gz`
+    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.0.tar.gz`
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/NeoZig/archive/refs/tags/v1.0.0.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.0.tar.gz",
         .hash = "...",
     },
 };
@@ -332,7 +332,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ### Development Setup
 
 1. Install [Zig 0.14.0+](https://ziglang.org/download/)
-2. Clone the repository: `git clone git@github.com:r3e-network/NeoZig.git`
+2. Clone the repository: `git clone git@github.com:r3e-network/neo-zig-sdk.git`
 3. Build: `zig build`
 4. Test: `zig build test`
 
@@ -357,8 +357,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/r3e-network/NeoZig/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/r3e-network/NeoZig/discussions)
+- **Issues**: [GitHub Issues](https://github.com/r3e-network/neo-zig-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/r3e-network/neo-zig-sdk/discussions)
 - **Email**: jimmy@r3e.network
 - **Documentation**: run `zig build docs` and open `zig-out/docs/index.html`
 

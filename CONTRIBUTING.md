@@ -14,7 +14,7 @@ The Neo Zig SDK is a complete, production-ready implementation of a Neo blockcha
 
 ### Prerequisites
 
-- [Zig 0.12.0+](https://ziglang.org/download/)
+- [Zig 0.14.0+](https://ziglang.org/download/)
 - Git
 - Basic understanding of Neo blockchain
 - Familiarity with Zig programming language
@@ -23,8 +23,8 @@ The Neo Zig SDK is a complete, production-ready implementation of a Neo blockcha
 
 1. **Clone the repository**
    ```bash
-   git clone git@github.com:r3e-network/NeoZig.git
-   cd NeoZig
+   git clone git@github.com:r3e-network/neo-zig-sdk.git
+   cd neo-zig-sdk
    ```
 
 2. **Build the project**
