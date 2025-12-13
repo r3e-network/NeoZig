@@ -19,12 +19,18 @@ pub const NeoSwiftService = struct {
 
     const Self = @This();
 
-    fn initFromUrl(url: []const u8) Self {
-        const allocator = std.heap.page_allocator;
-        const http_service = allocator.create(@import("http_service.zig").HttpService) catch unreachable;
-        http_service.* = @import("http_service.zig").HttpService.init(allocator, url, false);
+    /// Creates a service instance for a URL using the provided allocator.
+    /// Prefer this over `init("https://...")` if you want to handle allocation failure.
+    pub fn initWithAllocator(allocator: std.mem.Allocator, url: []const u8) !Self {
+        const HttpService = @import("http_service.zig").HttpService;
+        const http_service = try allocator.create(HttpService);
+        http_service.* = HttpService.init(allocator, url, false);
         const impl = ServiceImplementation.init(http_service, allocator, true);
         return Self{ .service_impl = impl };
+    }
+
+    fn initFromUrl(url: []const u8) Self {
+        return initWithAllocator(std.heap.page_allocator, url) catch @panic("NeoSwiftService.init: out of memory");
     }
 
     /// Creates Neo Swift service.
