@@ -174,7 +174,8 @@ pub const HttpService = struct {
             error.ConnectionTimedOut => errors.NetworkError.NetworkTimeout,
             error.TemporaryNameServerFailure, error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
 
-            error.CertificateBundleLoadFailure, error.StreamTooLong, error.WriteFailed, error.UnsupportedCompressionMethod, error.TooManyHttpRedirects => errors.NetworkError.RequestFailed,
+            error.StreamTooLong => errors.NetworkError.InvalidResponse,
+            error.CertificateBundleLoadFailure, error.WriteFailed, error.UnsupportedCompressionMethod, error.TooManyHttpRedirects => errors.NetworkError.RequestFailed,
             else => errors.NetworkError.RequestFailed,
         };
     }
@@ -436,4 +437,9 @@ test "HttpService configuration" {
     try testing.expectEqualStrings("https://test.node:443", config.url);
     try testing.expect(!config.include_raw_responses);
     try testing.expectEqual(@as(u32, 0), config.header_count);
+}
+
+test "HttpService maps oversized response to InvalidResponse" {
+    const testing = std.testing;
+    try testing.expectEqual(errors.NetworkError.InvalidResponse, HttpService.mapFetchError(error.StreamTooLong));
 }

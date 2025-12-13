@@ -278,7 +278,8 @@ fn mapFetchError(err: anyerror) errors.NetworkError {
 
         error.ConnectionTimedOut => errors.NetworkError.NetworkTimeout,
         error.TemporaryNameServerFailure, error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
-        error.CertificateBundleLoadFailure, error.StreamTooLong, error.WriteFailed, error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
+        error.StreamTooLong => errors.NetworkError.InvalidResponse,
+        error.CertificateBundleLoadFailure, error.WriteFailed, error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
         else => errors.NetworkError.RequestFailed,
     };
 }
@@ -319,4 +320,9 @@ test "HttpClient custom sender" {
     const result = try client.jsonRpcRequest("getnumber", params, 1);
     try testing.expectEqual(@as(i64, 42), result.integer);
     try testing.expectEqualStrings("{\"jsonrpc\":\"2.0\",\"method\":\"getnumber\",\"params\":[],\"id\":1}", captured.items);
+}
+
+test "HttpClient maps oversized response to InvalidResponse" {
+    const testing = std.testing;
+    try testing.expectEqual(errors.NetworkError.InvalidResponse, mapFetchError(error.StreamTooLong));
 }
