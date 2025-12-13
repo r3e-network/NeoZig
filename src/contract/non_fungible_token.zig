@@ -6,7 +6,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -27,45 +26,45 @@ pub const NonFungibleToken = struct {
     pub const TRANSFER = "transfer";
     pub const TOKENS = "tokens";
     pub const PROPERTIES = "properties";
-    
+
     /// Base token contract
     token: Token,
-    
+
     const Self = @This();
-    
+
     /// Creates new NonFungibleToken instance (equivalent to Swift init)
     pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, neo_swift: ?*anyopaque) Self {
         return Self{
             .token = Token.init(allocator, script_hash, neo_swift),
         };
     }
-    
+
     /// Gets NFT balance for owner (equivalent to Swift balanceOf(_ owner: Hash160))
     pub fn balanceOf(self: Self, owner: Hash160) !i64 {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.token.smart_contract.callFunctionReturningInt(BALANCE_OF, &params);
     }
-    
+
     /// Gets tokens owned by address (equivalent to Swift tokensOf(_ owner: Hash160))
     pub fn tokensOf(self: Self, owner: Hash160) !TokenIterator {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.callFunctionReturningIterator(TOKENS_OF, &params);
     }
-    
+
     /// Gets tokens owned by address (unwrapped version)
     pub fn tokensOfUnwrapped(self: Self, owner: Hash160, max_items: u32) ![][]u8 {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.callFunctionAndUnwrapIterator(TOKENS_OF, &params, max_items);
     }
-    
+
     /// Gets owner of specific token (equivalent to Swift ownerOf)
     pub fn ownerOf(self: Self, token_id: []const u8) !Hash160 {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
-        
+
         // This would make actual RPC call and parse owner
         return try self.token.smart_contract.callFunctionReturningHash160(OWNER_OF, &params);
     }
-    
+
     /// Gets token properties (equivalent to Swift properties)
     pub fn properties(self: Self, token_id: []const u8) !TokenProperties {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
@@ -88,7 +87,7 @@ pub const NonFungibleToken = struct {
         const stack_item = try invocation.getFirstStackItem();
         return try TokenProperties.fromStackItem(stack_item, smart_contract.allocator);
     }
-    
+
     /// Transfers NFT (equivalent to Swift transfer for non-divisible NFTs)
     pub fn transfer(
         self: Self,
@@ -99,18 +98,18 @@ pub const NonFungibleToken = struct {
     ) !TransactionBuilder {
         var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
-        
+
         try params.append(ContractParameter.hash160(from));
         try params.append(ContractParameter.hash160(to));
         try params.append(ContractParameter.byteArray(token_id));
-        
+
         if (data) |transfer_data| {
             try params.append(transfer_data);
         }
-        
+
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
-    
+
     /// Transfers divisible NFT (equivalent to Swift transfer for divisible NFTs)
     pub fn transferDivisible(
         self: Self,
@@ -122,29 +121,29 @@ pub const NonFungibleToken = struct {
     ) !TransactionBuilder {
         var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
-        
+
         try params.append(ContractParameter.hash160(from));
         try params.append(ContractParameter.hash160(to));
         try params.append(ContractParameter.integer(amount));
         try params.append(ContractParameter.byteArray(token_id));
-        
+
         if (data) |transfer_data| {
             try params.append(transfer_data);
         }
-        
+
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
-    
+
     /// Gets all tokens (equivalent to Swift tokens())
     pub fn tokens(self: Self) !TokenIterator {
         return try self.callFunctionReturningIterator(TOKENS, &[_]ContractParameter{});
     }
-    
+
     /// Gets all tokens unwrapped
     pub fn tokensUnwrapped(self: Self, max_items: u32) ![][]u8 {
         return try self.callFunctionAndUnwrapIterator(TOKENS, &[_]ContractParameter{}, max_items);
     }
-    
+
     /// Helper methods for iterator handling
     fn callFunctionReturningIterator(
         self: Self,
@@ -153,7 +152,7 @@ pub const NonFungibleToken = struct {
     ) !TokenIterator {
         const smart_contract = self.token.smart_contract;
         if (smart_contract.neo_swift == null) {
-            return TokenIterator.init();
+            return TokenIterator.initWithAllocator(smart_contract.allocator);
         }
 
         const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
@@ -180,7 +179,7 @@ pub const NonFungibleToken = struct {
             interop.iterator_id,
         );
     }
-    
+
     fn callFunctionAndUnwrapIterator(
         self: Self,
         function_name: []const u8,
@@ -240,16 +239,20 @@ pub const TokenIterator = struct {
     inner: ?iterator_mod.Iterator([]u8),
     buffer: ArrayList([]u8),
     exhausted: bool,
-    
+
     const Self = @This();
-    
+
     pub fn init() Self {
+        return initWithAllocator(std.heap.page_allocator);
+    }
+
+    pub fn initWithAllocator(allocator: std.mem.Allocator) Self {
         return Self{
             .session_id = "",
             .iterator_id = "",
-            .allocator = std.heap.page_allocator,
+            .allocator = allocator,
             .inner = null,
-            .buffer = ArrayList([]u8).init(std.heap.page_allocator),
+            .buffer = ArrayList([]u8).init(allocator),
             .exhausted = true,
         };
     }
@@ -347,9 +350,9 @@ pub const TokenProperties = struct {
     image: ?[]const u8,
     custom_properties: std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage),
     allocator: std.mem.Allocator,
-    
+
     const Self = @This();
-    
+
     /// Creates a properties container backed by a caller-provided allocator.
     pub fn initWithAllocator(allocator: std.mem.Allocator) Self {
         return Self{
@@ -364,7 +367,7 @@ pub const TokenProperties = struct {
     pub fn init() Self {
         return initWithAllocator(std.heap.page_allocator);
     }
-    
+
     pub fn deinit(self: *Self) void {
         if (self.name) |name| self.allocator.free(name);
         if (self.description) |desc| self.allocator.free(desc);
@@ -422,7 +425,7 @@ pub const StringContext = struct {
         _ = self;
         return std.hash_map.hashString(key);
     }
-    
+
     pub fn eql(self: @This(), a: []const u8, b: []const u8) bool {
         _ = self;
         return std.mem.eql(u8, a, b);
@@ -433,10 +436,10 @@ pub const StringContext = struct {
 test "NonFungibleToken creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     const nft_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
-    
+
     // Test balance operations (equivalent to Swift balanceOf tests)
     const balance = try nft.balanceOf(Hash160.ZERO);
     try testing.expect(balance >= 0);
@@ -445,10 +448,10 @@ test "NonFungibleToken creation and basic operations" {
 test "NonFungibleToken transfer operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     const nft_hash = Hash160.ZERO;
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
-    
+
     // Test NFT transfer (equivalent to Swift transfer tests)
     const token_id = "test_token_123";
     var transfer_tx = try nft.transfer(
@@ -458,43 +461,43 @@ test "NonFungibleToken transfer operations" {
         null, // no data
     );
     defer transfer_tx.deinit();
-    
+
     try testing.expect(transfer_tx.getScript() != null);
-    
+
     // Test divisible NFT transfer
     var divisible_transfer_tx = try nft.transferDivisible(
         Hash160.ZERO, // from
         Hash160.ZERO, // to
-        1,            // amount
+        1, // amount
         token_id,
-        null,         // no data
+        null, // no data
     );
     defer divisible_transfer_tx.deinit();
-    
+
     try testing.expect(divisible_transfer_tx.getScript() != null);
 }
 
 test "NonFungibleToken token enumeration" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     const nft_hash = Hash160.ZERO;
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
-    
+
     // Test tokens enumeration (equivalent to Swift tokens tests)
     var all_tokens_iter = try nft.tokens();
     defer all_tokens_iter.deinit();
     try testing.expect(!all_tokens_iter.hasNext()); // stub returns false
-    
+
     var owner_tokens_iter = try nft.tokensOf(Hash160.ZERO);
     defer owner_tokens_iter.deinit();
     try testing.expect(!owner_tokens_iter.hasNext()); // stub returns false
-    
+
     // Test unwrapped versions
     const all_tokens = try nft.tokensUnwrapped(100);
     defer allocator.free(all_tokens);
     try testing.expectEqual(@as(usize, 0), all_tokens.len);
-    
+
     const owner_tokens = try nft.tokensOfUnwrapped(Hash160.ZERO, 100);
     defer allocator.free(owner_tokens);
     try testing.expectEqual(@as(usize, 0), owner_tokens.len);
