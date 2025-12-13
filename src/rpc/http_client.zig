@@ -245,9 +245,7 @@ fn sendFetch(
         return mapFetchError(err);
     };
 
-    if (result.status.class() == .server_error) {
-        return errors.NetworkError.ServerError;
-    }
+    validateHttpStatus(result.status) catch |err| return err;
 
     const body = response_body.toOwnedSlice() catch return errors.NetworkError.RequestFailed;
 
@@ -257,6 +255,22 @@ fn sendFetch(
     }
 
     return body;
+}
+
+fn validateHttpStatus(status: std.http.Status) errors.NetworkError!void {
+    switch (status) {
+        .ok => {},
+        .bad_request => return errors.NetworkError.RequestFailed,
+        .unauthorized => return errors.NetworkError.AuthenticationFailed,
+        .not_found => return errors.NetworkError.InvalidEndpoint,
+        .internal_server_error => return errors.NetworkError.ServerError,
+        .service_unavailable => return errors.NetworkError.NetworkUnavailable,
+        .gateway_timeout => return errors.NetworkError.NetworkTimeout,
+        else => {
+            if (status.class() == .server_error) return errors.NetworkError.ServerError;
+            return errors.NetworkError.InvalidResponse;
+        },
+    }
 }
 
 fn defaultSend(
@@ -325,4 +339,12 @@ test "HttpClient custom sender" {
 test "HttpClient maps oversized response to InvalidResponse" {
     const testing = std.testing;
     try testing.expectEqual(errors.NetworkError.InvalidResponse, mapFetchError(error.StreamTooLong));
+}
+
+test "HttpClient validates HTTP status codes" {
+    const testing = std.testing;
+    try validateHttpStatus(.ok);
+    try testing.expectError(errors.NetworkError.InvalidEndpoint, validateHttpStatus(.not_found));
+    try testing.expectError(errors.NetworkError.AuthenticationFailed, validateHttpStatus(.unauthorized));
+    try testing.expectError(errors.NetworkError.RequestFailed, validateHttpStatus(.bad_request));
 }

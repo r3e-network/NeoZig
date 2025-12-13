@@ -23,7 +23,7 @@ const witness_rule_mod = @import("witness_rule.zig");
 pub const TransactionBuilder = struct {
     /// GAS token hash (matches Swift GAS_TOKEN_HASH)
     pub const GAS_TOKEN_HASH: Hash160 = blk: {
-        break :blk Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf") catch unreachable;
+        break :blk Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf") catch |err| @panic(@errorName(err));
     };
 
     /// Balance function name (matches Swift BALANCE_OF_FUNCTION)
@@ -1059,7 +1059,7 @@ pub const Account = struct {
         @memcpy(script_buf[offset .. offset + syscall_bytes.len], &syscall_bytes);
         offset += syscall_bytes.len;
 
-        const script_hash = Hash160.fromScript(script_buf[0..offset]) catch unreachable;
+        const script_hash = Hash160.fromScript(script_buf[0..offset]) catch |err| @panic(@errorName(err));
 
         return Account{
             .script_hash = script_hash,
