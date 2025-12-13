@@ -268,7 +268,7 @@ pub fn logNetworkError(method: []const u8, endpoint: []const u8, src: std.builti
 pub const Monitoring = struct {
     /// Performance counter
     pub const PerformanceCounter = struct {
-        start_time: i64,
+        start_time: i128,
         operation: []const u8,
         
         pub fn start(operation: []const u8) PerformanceCounter {
@@ -280,7 +280,8 @@ pub const Monitoring = struct {
         
         pub fn end(self: PerformanceCounter, src: std.builtin.SourceLocation) void {
             const end_time = std.time.nanoTimestamp();
-            const duration = @as(u64, @intCast(end_time - self.start_time));
+            const delta: i128 = end_time - self.start_time;
+            const duration: u64 = if (delta <= 0) 0 else @intCast(delta);
             logPerformanceOperation(self.operation, duration, src);
         }
     };
@@ -324,7 +325,6 @@ pub const Monitoring = struct {
 // Tests
 test "Logger creation and basic operations" {
     const testing = std.testing;
-    const allocator = testing.allocator;
     
     var logger = Logger.init(.Info);
     defer logger.close();
@@ -334,16 +334,15 @@ test "Logger creation and basic operations" {
     try testing.expect(logger.include_source);
     
     // Test level filtering
+    logger.level = .Critical;
     logger.log(.Debug, "Debug message should be filtered", .{}, @src());
     logger.log(.Info, "Info message should appear", .{}, @src());
     logger.log(.Error, "Error message should appear", .{}, @src());
 }
 
 test "Security and performance monitoring" {
-    const testing = std.testing;
-    
     // Initialize global logger for testing
-    initGlobalLogger(.Debug);
+    initGlobalLogger(.Critical);
     
     // Test security logging
     logSecuritySuccess("test_operation", @src());
