@@ -250,8 +250,8 @@ pub const ContractManagement = struct {
 };
 
 /// Contract iterator (converted from Swift Iterator pattern).
-/// NOTE: Iterator pagination via RPC is not implemented yet; the current
-/// implementation is a stub returning no items.
+/// Iterator traversal is performed via the Neo RPC `traverseiterator` mechanism.
+/// When constructed without a NeoSwift instance, this iterator is empty.
 pub const ContractIterator = struct {
     session_id: []const u8,
     iterator_id: []const u8,

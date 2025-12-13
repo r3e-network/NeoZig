@@ -230,8 +230,8 @@ pub const NonFungibleToken = struct {
 };
 
 /// Token iterator (converted from Swift Iterator pattern).
-/// NOTE: Iterator pagination via RPC is not implemented yet; this is a stub
-/// that returns no items.
+/// Iterator traversal is performed via the Neo RPC `traverseiterator` mechanism.
+/// When constructed without a NeoSwift instance, this iterator is empty.
 pub const TokenIterator = struct {
     session_id: []const u8,
     iterator_id: []const u8,
