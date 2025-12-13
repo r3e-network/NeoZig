@@ -373,6 +373,7 @@ The SDK aims for full NeoSwift parity, but a few higher-level surfaces are still
 Allocator notes:
 
 - Most public APIs accept an allocator. A small number of convenience constructors still fall back to `std.heap.page_allocator`; allocator-taking variants are available (for example `NefFile.initWithAllocator` and `TokenProperties.initWithAllocator`).
+- Prefer allocator-aware constructors in long-running processes (for example `NeoSwiftService.initWithAllocator`) to avoid relying on `std.heap.page_allocator`.
 
 Networking notes:
 
