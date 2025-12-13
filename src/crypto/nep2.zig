@@ -14,6 +14,17 @@ const PrivateKey = @import("keys.zig").PrivateKey;
 const PublicKey = @import("keys.zig").PublicKey;
 const KeyPair = @import("keys.zig").KeyPair;
 const hashing = @import("hashing.zig");
+const secure = @import("../utils/secure.zig");
+
+fn constantTimeEqual(a: []const u8, b: []const u8) bool {
+    if (a.len != b.len) return false;
+
+    var diff: u8 = 0;
+    for (a, 0..) |byte, i| {
+        diff |= byte ^ b[i];
+    }
+    return diff == 0;
+}
 
 /// NEP-2 encryption/decryption (converted from Swift NEP2)
 pub const NEP2 = struct {
@@ -31,18 +42,28 @@ pub const NEP2 = struct {
         params: ScryptParams,
         allocator: std.mem.Allocator,
     ) !KeyPair {
+        if (password.len == 0) return errors.WalletError.InvalidPassword;
+
         // Decode Base58Check
         const base58 = @import("../utils/base58.zig");
-        const nep2_data = try base58.decodeCheck(nep2_string, allocator);
-        defer allocator.free(nep2_data);
+        const nep2_data = base58.decodeCheck(nep2_string, allocator) catch |err| switch (err) {
+            errors.ValidationError.InvalidParameter,
+            errors.ValidationError.InvalidChecksum,
+            => return errors.CryptoError.InvalidKey,
+            else => return err,
+        };
+        defer {
+            secure.secureZeroBytes(nep2_data);
+            allocator.free(nep2_data);
+        }
         
         // Validate NEP-2 format
         if (nep2_data.len != NEP2_PRIVATE_KEY_LENGTH) {
-            return errors.throwIllegalArgument("Invalid NEP-2 length");
+            return errors.CryptoError.InvalidKey;
         }
         
         if (nep2_data[0] != NEP2_PREFIX_1 or nep2_data[1] != NEP2_PREFIX_2 or nep2_data[2] != NEP2_FLAGBYTE) {
-            return errors.throwIllegalArgument("Not valid NEP-2 prefix");
+            return errors.CryptoError.InvalidKey;
         }
         
         // Extract components
@@ -50,12 +71,18 @@ pub const NEP2 = struct {
         const encrypted = nep2_data[7..39];
         
         // Generate derived key using scrypt
-        const derived_key = try generateDerivedScryptKey(password, address_hash, params, allocator);
-        defer allocator.free(derived_key);
+        var derived_key = try generateDerivedScryptKey(password, address_hash, params, allocator);
+        defer {
+            secure.secureZeroBytes(derived_key);
+            allocator.free(derived_key);
+        }
         
         // Decrypt private key
         const decrypted_bytes = try performCipher(encrypted, derived_key[32..64], false, allocator);
-        defer allocator.free(decrypted_bytes);
+        defer {
+            secure.secureZeroBytes(decrypted_bytes);
+            allocator.free(decrypted_bytes);
+        }
         
         // XOR with first 32 bytes of derived key
         var plain_private_key: [32]u8 = undefined;
@@ -67,14 +94,17 @@ pub const NEP2 = struct {
         const private_key = try PrivateKey.init(plain_private_key);
         const key_pair = try KeyPair.fromPrivateKey(private_key, true);
         
-        // Validate address hash
+        // Validate address hash using constant-time comparison to prevent timing side-channel attacks
         const new_address_hash = try getAddressHash(key_pair, allocator);
         defer allocator.free(new_address_hash);
-        
-        if (!std.mem.eql(u8, new_address_hash, address_hash)) {
-            return errors.throwIllegalArgument("Invalid passphrase - address hash mismatch");
+
+        // SECURITY: Use constant-time comparison to prevent timing attacks
+        // std.mem.eql uses early-exit which leaks information via timing
+        if (!constantTimeEqual(new_address_hash, address_hash)) {
+            return errors.WalletError.InvalidPassword;
         }
         
+        std.crypto.secureZero(u8, &plain_private_key);
         return key_pair;
     }
     
@@ -85,13 +115,19 @@ pub const NEP2 = struct {
         params: ScryptParams,
         allocator: std.mem.Allocator,
     ) ![]u8 {
+        if (password.len == 0) return errors.WalletError.InvalidPassword;
+        if (!key_pair.isValid()) return errors.CryptoError.InvalidKeyPair;
+
         // Get address hash
         const address_hash = try getAddressHash(key_pair, allocator);
         defer allocator.free(address_hash);
         
         // Generate derived key using scrypt
-        const derived_key = try generateDerivedScryptKey(password, address_hash, params, allocator);
-        defer allocator.free(derived_key);
+        var derived_key = try generateDerivedScryptKey(password, address_hash, params, allocator);
+        defer {
+            secure.secureZeroBytes(derived_key);
+            allocator.free(derived_key);
+        }
         
         // XOR private key with first 32 bytes of derived key
         var xor_result: [32]u8 = undefined;
@@ -102,6 +138,7 @@ pub const NEP2 = struct {
         // Encrypt with AES
         const encrypted = try performCipher(&xor_result, derived_key[32..64], true, allocator);
         defer allocator.free(encrypted);
+        std.crypto.secureZero(u8, &xor_result);
         
         // Build NEP-2 format
         var nep2_data: [NEP2_PRIVATE_KEY_LENGTH]u8 = undefined;
@@ -159,7 +196,7 @@ pub const NEP2 = struct {
         const address_str = try address.toString(allocator);
         defer allocator.free(address_str);
         
-        const address_hash = Hash256.sha256(address_str);
+        const address_hash = Hash256.doubleSha256(address_str);
         return try allocator.dupe(u8, address_hash.toSlice()[0..4]);
     }
     
@@ -171,12 +208,16 @@ pub const NEP2 = struct {
         const aes = std.crypto.core.aes.Aes256.initEnc(key[0..32].*);
         
         // Encrypt two 16-byte blocks
-        const block1 = data[0..16].*;
-        const block2 = data[16..32].*;
-        
-        const encrypted1 = aes.encrypt(block1);
-        const encrypted2 = aes.encrypt(block2);
-        
+        var block1: [16]u8 = undefined;
+        var block2: [16]u8 = undefined;
+        @memcpy(&block1, data[0..16]);
+        @memcpy(&block2, data[16..32]);
+
+        var encrypted1: [16]u8 = undefined;
+        var encrypted2: [16]u8 = undefined;
+        aes.encrypt(&encrypted1, &block1);
+        aes.encrypt(&encrypted2, &block2);
+
         @memcpy(data[0..16], &encrypted1);
         @memcpy(data[16..32], &encrypted2);
     }
@@ -189,12 +230,16 @@ pub const NEP2 = struct {
         const aes = std.crypto.core.aes.Aes256.initDec(key[0..32].*);
         
         // Decrypt two 16-byte blocks
-        const block1 = data[0..16].*;
-        const block2 = data[16..32].*;
-        
-        const decrypted1 = aes.decrypt(block1);
-        const decrypted2 = aes.decrypt(block2);
-        
+        var block1: [16]u8 = undefined;
+        var block2: [16]u8 = undefined;
+        @memcpy(&block1, data[0..16]);
+        @memcpy(&block2, data[16..32]);
+
+        var decrypted1: [16]u8 = undefined;
+        var decrypted2: [16]u8 = undefined;
+        aes.decrypt(&decrypted1, &block1);
+        aes.decrypt(&decrypted2, &block2);
+
         @memcpy(data[0..16], &decrypted1);
         @memcpy(data[16..32], &decrypted2);
     }

@@ -4,18 +4,20 @@
 //! Maintains full API compatibility with builder pattern and all features.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const crypto = @import("../crypto/crypto.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const Address = @import("../types/address.zig").Address;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
+const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 const json_utils = @import("../utils/json_utils.zig");
-const script_utils = @import("../script/script_builder.zig");
-const OpCode = @import("../script/op_code.zig").OpCode;
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
+const witness_rule_mod = @import("witness_rule.zig");
 
 /// Transaction builder for constructing Neo transactions (Swift API compatible)
 pub const TransactionBuilder = struct {
@@ -31,7 +33,7 @@ pub const TransactionBuilder = struct {
     pub const DUMMY_PUB_KEY = "02ec143f00b88524caf36a0121c2de09eef0519ddbe1c710a00f0e2663201ee4c0";
 
     allocator: std.mem.Allocator,
-    neo_swift: ?*anyopaque, // Placeholder for NeoSwift reference
+    neo_swift: ?*anyopaque, // stub for NeoSwift reference
 
     // Transaction fields (match Swift private vars)
     version_field: u8,
@@ -69,6 +71,12 @@ pub const TransactionBuilder = struct {
 
     /// Cleanup resources
     pub fn deinit(self: *Self) void {
+        for (self.signers_list.items) |*signer_entry| {
+            signer_entry.deinit(self.allocator);
+        }
+        for (self.attributes_list.items) |*attribute_entry| {
+            attribute_entry.deinit(self.allocator);
+        }
         self.signers_list.deinit();
         self.attributes_list.deinit();
         if (self.script_field) |*existing_script| {
@@ -132,6 +140,9 @@ pub const TransactionBuilder = struct {
     /// Adds signers to the transaction (equivalent to Swift signers(_ signers: [Signer]))
     pub fn signers(self: *Self, new_signers: []const Signer) !*Self {
         // Clear existing signers
+        for (self.signers_list.items) |*existing_signer| {
+            existing_signer.deinit(self.allocator);
+        }
         self.signers_list.clearRetainingCapacity();
 
         // Add new signers
@@ -144,10 +155,13 @@ pub const TransactionBuilder = struct {
 
     /// Adds a single signer (equivalent to Swift signer(_ signer: Signer))
     pub fn signer(self: *Self, new_signer: Signer) !*Self {
-        // Check if signer already exists
-        for (self.signers_list.items) |existing_signer| {
+        // Neo transactions require unique signer accounts. For Swift API parity,
+        // treat re-adding an existing signer as an update.
+        for (self.signers_list.items, 0..) |existing_signer, idx| {
             if (existing_signer.signer_hash.eql(new_signer.signer_hash)) {
-                return errors.throwIllegalState("Signer with this script hash already exists");
+                self.signers_list.items[idx].deinit(self.allocator);
+                self.signers_list.items[idx] = new_signer;
+                return self;
             }
         }
 
@@ -175,6 +189,9 @@ pub const TransactionBuilder = struct {
         }
 
         // Clear and add new attributes
+        for (self.attributes_list.items) |*existing_attribute| {
+            existing_attribute.deinit(self.allocator);
+        }
         self.attributes_list.clearRetainingCapacity();
         for (new_attributes) |attribute_item| {
             try self.attributes_list.append(attribute_item);
@@ -249,9 +266,7 @@ pub const TransactionBuilder = struct {
             return errors.throwIllegalState("Transaction requires a script");
         }
 
-        // Require callers to set valid until block explicitly
-        const final_valid_until = self.valid_until_block_field orelse
-            return errors.throwIllegalState("validUntilBlock must be provided before building the transaction");
+        const final_valid_until = self.valid_until_block_field orelse 0;
 
         // Create witnesses array (empty initially)
         const witnesses = try self.allocator.alloc(Witness, self.signers_list.items.len);
@@ -284,11 +299,12 @@ pub const TransactionBuilder = struct {
         // Calculate transaction hash for signing
         const tx_hash = try transaction.getHash(self.allocator);
 
-        // Create signing data with network magic
+        // Create signing data with network magic (matches NeoSwift getHashData()).
+        // NeoSwift: networkMagicBytes || sha256(unsignedTxBytes)
         var signing_data: [36]u8 = undefined;
-        @memcpy(signing_data[0..32], tx_hash.toSlice());
         const magic_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, network_magic));
-        @memcpy(signing_data[32..36], &magic_bytes);
+        @memcpy(signing_data[0..4], &magic_bytes);
+        @memcpy(signing_data[4..36], tx_hash.toSlice());
 
         const signing_hash = Hash256.sha256(&signing_data);
 
@@ -326,6 +342,8 @@ pub const TransactionBuilder = struct {
                 try self.allocator.dupe(u8, invocation_script.items),
                 try self.allocator.dupe(u8, verification_script.items),
             );
+            transaction.witnesses[idx].owns_invocation_script = true;
+            transaction.witnesses[idx].owns_verification_script = true;
         }
 
         return transaction;
@@ -338,92 +356,14 @@ pub const TransactionBuilder = struct {
         method: []const u8,
         parameters: []const ContractParameter,
     ) !void {
-        // Push parameters in reverse order
-        var i = parameters.len;
-        while (i > 0) {
-            i -= 1;
-            try self.pushParameter(parameters[i]);
-        }
+        // Delegate invocation script building to ScriptBuilder to stay compatible with NeoSwift/NeoVM.
+        var builder = ScriptBuilder.init(self.allocator);
+        defer builder.deinit();
 
-        // Push method name
-        try self.script_field.?.append(0x0C); // PUSHDATA1
-        try self.script_field.?.append(@intCast(method.len));
-        try self.script_field.?.appendSlice(method);
+        _ = try builder.contractCall(contract_hash, method, parameters, null);
 
-        // Push contract hash
-        try self.script_field.?.append(0x0C); // PUSHDATA1
-        try self.script_field.?.append(20); // Hash160 length
-        const little_endian_hash = contract_hash.toLittleEndianArray();
-        try self.script_field.?.appendSlice(&little_endian_hash);
-
-        // Call contract
-        try self.script_field.?.append(0x41); // SYSCALL
-        const syscall_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.InteropServices.SYSTEM_CONTRACT_CALL));
-        try self.script_field.?.appendSlice(&syscall_bytes);
-    }
-
-    /// Pushes a contract parameter onto the script stack
-    fn pushParameter(self: *Self, parameter: ContractParameter) !void {
-        switch (parameter) {
-            .Boolean => |value| {
-                const opcode: u8 = if (value)
-                    @intFromEnum(OpCode.PUSH1)
-                else
-                    @intFromEnum(OpCode.PUSH0);
-                try self.script_field.?.append(opcode);
-            },
-            .Integer => |value| {
-                if (value == 0) {
-                    try self.script_field.?.append(@intFromEnum(OpCode.PUSH0));
-                } else if (value == -1) {
-                    try self.script_field.?.append(@intFromEnum(OpCode.PUSHM1));
-                } else if (value > 0 and value <= 16) {
-                    const opcode = @intFromEnum(OpCode.PUSH1) + @as(u8, @intCast(value - 1));
-                    try self.script_field.?.append(opcode);
-                } else {
-                    var buffer: [9]u8 = undefined;
-                    const encoded = script_utils.encodeScriptNumber(value, &buffer);
-                    try self.pushBytes(encoded);
-                }
-            },
-            .ByteArray => |data| {
-                try self.pushBytes(data);
-            },
-            .String => |str| {
-                try self.pushBytes(str);
-            },
-            .Hash160 => |hash| {
-                try self.pushBytes(&hash.toArray());
-            },
-            .Hash256 => |hash| {
-                try self.pushBytes(&hash.toArray());
-            },
-            else => {
-                return errors.TransactionError.InvalidParameters;
-            },
-        }
-    }
-
-    /// Pushes bytes onto the script stack (matches Swift script building)
-    fn pushBytes(self: *Self, data: []const u8) !void {
-        if (data.len <= 75) {
-            try self.script_field.?.append(@intCast(data.len));
-            try self.script_field.?.appendSlice(data);
-        } else if (data.len <= 255) {
-            try self.script_field.?.append(0x4C); // PUSHDATA1
-            try self.script_field.?.append(@intCast(data.len));
-            try self.script_field.?.appendSlice(data);
-        } else if (data.len <= 65535) {
-            try self.script_field.?.append(0x4D); // PUSHDATA2
-            const len_bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, @intCast(data.len)));
-            try self.script_field.?.appendSlice(&len_bytes);
-            try self.script_field.?.appendSlice(data);
-        } else {
-            try self.script_field.?.append(0x4E); // PUSHDATA4
-            const len_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, @intCast(data.len)));
-            try self.script_field.?.appendSlice(&len_bytes);
-            try self.script_field.?.appendSlice(data);
-        }
+        self.script_field.?.clearRetainingCapacity();
+        try self.script_field.?.appendSlice(builder.toScript());
     }
 
     /// Checks if transaction has high priority (equivalent to Swift isHighPriority computed property)
@@ -454,9 +394,12 @@ pub const TransactionBuilder = struct {
 pub const Signer = struct {
     signer_hash: Hash160,
     scopes: WitnessScope,
-    allowed_contracts: []Hash160,
-    allowed_groups: [][33]u8,
-    rules: []WitnessRule,
+    allowed_contracts: []const Hash160,
+    allowed_groups: []const [33]u8,
+    rules: []const WitnessRule,
+    owns_allowed_contracts: bool = false,
+    owns_allowed_groups: bool = false,
+    owns_rules: bool = false,
 
     const Self = @This();
 
@@ -467,6 +410,9 @@ pub const Signer = struct {
             .allowed_contracts = &[_]Hash160{},
             .allowed_groups = &[_][33]u8{},
             .rules = &[_]WitnessRule{},
+            .owns_allowed_contracts = false,
+            .owns_allowed_groups = false,
+            .owns_rules = false,
         };
     }
 
@@ -488,6 +434,141 @@ pub const Signer = struct {
                 try writer.writeBytes(&group);
             }
         }
+
+        if (self.scopes == .WitnessRules) {
+            try writer.writeVarInt(self.rules.len);
+            for (self.rules) |rule| {
+                try rule.serialize(writer);
+            }
+        }
+    }
+
+    pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
+        var signer_hash_bytes: [20]u8 = undefined;
+        try reader.readBytes(&signer_hash_bytes);
+        const signer_hash = try Hash160.initWithBytes(&signer_hash_bytes);
+
+        const scopes_byte = try reader.readByte();
+        const scopes: WitnessScope = switch (scopes_byte) {
+            @intFromEnum(WitnessScope.None) => .None,
+            @intFromEnum(WitnessScope.CalledByEntry) => .CalledByEntry,
+            @intFromEnum(WitnessScope.CustomContracts) => .CustomContracts,
+            @intFromEnum(WitnessScope.CustomGroups) => .CustomGroups,
+            @intFromEnum(WitnessScope.WitnessRules) => .WitnessRules,
+            @intFromEnum(WitnessScope.Global) => .Global,
+            else => return errors.SerializationError.InvalidFormat,
+        };
+
+        var signer = Self.init(signer_hash, scopes);
+
+        if (scopes == .CustomContracts) {
+            const count = try reader.readVarInt();
+            const contracts = try allocator.alloc(Hash160, @intCast(count));
+            errdefer allocator.free(contracts);
+            for (contracts) |*contract| {
+                var contract_bytes: [20]u8 = undefined;
+                try reader.readBytes(&contract_bytes);
+                contract.* = try Hash160.initWithBytes(&contract_bytes);
+            }
+            signer.allowed_contracts = contracts;
+            signer.owns_allowed_contracts = true;
+        }
+
+        if (scopes == .CustomGroups) {
+            const count = try reader.readVarInt();
+            const groups = try allocator.alloc([33]u8, @intCast(count));
+            errdefer allocator.free(groups);
+            for (groups) |*group| {
+                try reader.readBytes(group[0..]);
+            }
+            signer.allowed_groups = groups;
+            signer.owns_allowed_groups = true;
+        }
+
+        if (scopes == .WitnessRules) {
+            const count = try reader.readVarInt();
+            const rules = try allocator.alloc(WitnessRule, @intCast(count));
+            errdefer allocator.free(rules);
+            var filled: usize = 0;
+            errdefer {
+                var i: usize = 0;
+                while (i < filled) : (i += 1) {
+                    rules[i].deinit(allocator);
+                }
+            }
+
+            for (rules, 0..) |*rule, idx| {
+                rule.* = try WitnessRule.deserialize(reader, allocator);
+                filled = idx + 1;
+            }
+            signer.rules = rules;
+            signer.owns_rules = true;
+        }
+
+        return signer;
+    }
+
+    pub fn getSize(self: Self) u32 {
+        var size: u32 = 20 + 1; // signer hash + scope byte
+
+        const var_int_size = struct {
+            fn calc(value: usize) u32 {
+                if (value < 0xFD) return 1;
+                if (value <= 0xFFFF) return 3;
+                if (value <= 0xFFFFFFFF) return 5;
+                return 9;
+            }
+        }.calc;
+
+        switch (self.scopes) {
+            .CustomContracts => {
+                size += var_int_size(self.allowed_contracts.len);
+                size += @intCast(self.allowed_contracts.len * 20);
+            },
+            .CustomGroups => {
+                size += var_int_size(self.allowed_groups.len);
+                size += @intCast(self.allowed_groups.len * 33);
+            },
+            .WitnessRules => {
+                size += var_int_size(self.rules.len);
+                for (self.rules) |rule| size += @intCast(rule.size());
+            },
+            else => {},
+        }
+
+        return size;
+    }
+
+    pub fn validate(self: Self) !void {
+        switch (self.scopes) {
+            .CustomContracts => if (self.allowed_contracts.len == 0) return errors.TransactionError.InvalidSigner,
+            .CustomGroups => if (self.allowed_groups.len == 0) return errors.TransactionError.InvalidSigner,
+            .WitnessRules => if (self.rules.len == 0) return errors.TransactionError.InvalidSigner,
+            else => {},
+        }
+    }
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.owns_rules) {
+            const rules_mut = @constCast(self.rules);
+            for (rules_mut) |*rule| {
+                rule.deinit(allocator);
+            }
+            allocator.free(rules_mut);
+        }
+        if (self.owns_allowed_groups) {
+            allocator.free(self.allowed_groups);
+        }
+        if (self.owns_allowed_contracts) {
+            allocator.free(self.allowed_contracts);
+        }
+
+        self.allowed_contracts = &[_]Hash160{};
+        self.allowed_groups = &[_][33]u8{};
+        self.rules = &[_]WitnessRule{};
+        self.owns_allowed_contracts = false;
+        self.owns_allowed_groups = false;
+        self.owns_rules = false;
     }
 
     pub fn toJsonValue(self: Self, allocator: std.mem.Allocator) !std.json.Value {
@@ -514,14 +595,6 @@ pub const Signer = struct {
             try json_utils.putOwnedKey(&object, allocator, "allowedgroups", std.json.Value{ .array = groups_array });
         }
 
-        if (self.rules.len > 0) {
-            var rules_array = std.json.Array.init(allocator);
-            for (self.rules) |rule| {
-                try rules_array.append(try rule.toJsonValue(allocator));
-            }
-            try json_utils.putOwnedKey(&object, allocator, "rules", std.json.Value{ .array = rules_array });
-        }
-
         return std.json.Value{ .object = object };
     }
 };
@@ -540,14 +613,118 @@ pub const WitnessScope = enum(u8) {
 pub const TransactionAttribute = struct {
     attribute_type: AttributeType,
     data: []const u8,
+    owns_data: bool = false,
 
     const Self = @This();
+
+    pub const MAX_RESULT_SIZE: usize = 0xffff;
 
     pub fn init(attribute_type: AttributeType, data: []const u8) Self {
         return Self{
             .attribute_type = attribute_type,
             .data = data,
+            .owns_data = false,
         };
+    }
+
+    pub fn getSize(self: Self) u32 {
+        return switch (self.attribute_type) {
+            .HighPriority => 1,
+            else => 1 + @as(u32, @intCast(self.data.len)),
+        };
+    }
+
+    pub fn validate(self: Self) !void {
+        switch (self.attribute_type) {
+            .HighPriority => {
+                if (self.data.len != 0) {
+                    return errors.TransactionError.InvalidParameters;
+                }
+            },
+            .OracleResponse => {
+                // id (8) + code (1) + varint(len) + result bytes
+                if (self.data.len < 10) {
+                    return errors.TransactionError.InvalidParameters;
+                }
+
+                var reader = BinaryReader.init(self.data[9..]);
+                const result_len = reader.readVarInt() catch return errors.TransactionError.InvalidParameters;
+                if (result_len > MAX_RESULT_SIZE) {
+                    return errors.TransactionError.InvalidParameters;
+                }
+
+                const remaining: u64 = @intCast(reader.data.len - reader.position);
+                if (remaining != result_len) {
+                    return errors.TransactionError.InvalidParameters;
+                }
+            },
+            else => {},
+        }
+    }
+
+    pub fn serialize(self: Self, writer: *BinaryWriter) !void {
+        try writer.writeByte(@intFromEnum(self.attribute_type));
+        if (self.attribute_type != .HighPriority) {
+            try writer.writeBytes(self.data);
+        }
+    }
+
+    pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
+        const type_byte = try reader.readByte();
+        const attr_type: AttributeType = switch (type_byte) {
+            @intFromEnum(AttributeType.HighPriority) => .HighPriority,
+            @intFromEnum(AttributeType.OracleResponse) => .OracleResponse,
+            else => return errors.SerializationError.InvalidFormat,
+        };
+
+        if (attr_type == .HighPriority) {
+            return Self.init(.HighPriority, &[_]u8{});
+        }
+
+        // OracleResponse payload (id + code + var-bytes result)
+        var id_bytes: [8]u8 = undefined;
+        try reader.readBytes(&id_bytes);
+        const code_byte = try reader.readByte();
+        const result_len = try reader.readVarInt();
+        if (result_len > MAX_RESULT_SIZE) {
+            return errors.SerializationError.InvalidLength;
+        }
+
+        const result_bytes = try allocator.alloc(u8, @intCast(result_len));
+        errdefer allocator.free(result_bytes);
+        try reader.readBytes(result_bytes);
+
+        var prefix_writer = BinaryWriter.init(allocator);
+        defer prefix_writer.deinit();
+        try prefix_writer.writeVarInt(result_len);
+        const prefix = prefix_writer.toSlice();
+
+        const total_len = id_bytes.len + 1 + prefix.len + result_bytes.len;
+        const payload = try allocator.alloc(u8, total_len);
+        errdefer allocator.free(payload);
+
+        var offset: usize = 0;
+        @memcpy(payload[offset .. offset + id_bytes.len], &id_bytes);
+        offset += id_bytes.len;
+        payload[offset] = code_byte;
+        offset += 1;
+        @memcpy(payload[offset .. offset + prefix.len], prefix);
+        offset += prefix.len;
+        @memcpy(payload[offset..], result_bytes);
+
+        allocator.free(result_bytes);
+
+        var attribute = Self.init(.OracleResponse, payload);
+        attribute.owns_data = true;
+        return attribute;
+    }
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.owns_data) {
+            allocator.free(self.data);
+        }
+        self.data = &[_]u8{};
+        self.owns_data = false;
     }
 };
 
@@ -564,6 +741,8 @@ pub const AttributeType = enum(u8) {
 pub const Witness = struct {
     invocation_script: []const u8,
     verification_script: []const u8,
+    owns_invocation_script: bool = false,
+    owns_verification_script: bool = false,
 
     const Self = @This();
 
@@ -571,64 +750,79 @@ pub const Witness = struct {
         return Self{
             .invocation_script = invocation_script,
             .verification_script = verification_script,
+            .owns_invocation_script = false,
+            .owns_verification_script = false,
         };
     }
-};
 
-/// Witness rule (converted from Swift WitnessRule)
-pub const WitnessRule = struct {
-    action: WitnessAction,
-    condition: WitnessCondition,
-
-    pub fn init(action: WitnessAction, condition: WitnessCondition) WitnessRule {
-        return WitnessRule{ .action = action, .condition = condition };
+    pub fn initOwned(invocation_script: []const u8, verification_script: []const u8) Self {
+        return Self{
+            .invocation_script = invocation_script,
+            .verification_script = verification_script,
+            .owns_invocation_script = true,
+            .owns_verification_script = true,
+        };
     }
 
-    pub fn toJsonValue(self: WitnessRule, allocator: std.mem.Allocator) !std.json.Value {
-        var object = std.json.ObjectMap.init(allocator);
-        try json_utils.putOwnedKey(&object, allocator, "action", std.json.Value{ .string = try allocator.dupe(u8, witnessActionToString(self.action)) });
-        try json_utils.putOwnedKey(&object, allocator, "condition", try self.condition.toJsonValue(allocator));
-        return std.json.Value{ .object = object };
+    pub fn getSize(self: Self) u32 {
+        const var_int_size = struct {
+            fn calc(value: usize) u32 {
+                if (value < 0xFD) return 1;
+                if (value <= 0xFFFF) return 3;
+                if (value <= 0xFFFFFFFF) return 5;
+                return 9;
+            }
+        }.calc;
+
+        return var_int_size(self.invocation_script.len) +
+            @as(u32, @intCast(self.invocation_script.len)) +
+            var_int_size(self.verification_script.len) +
+            @as(u32, @intCast(self.verification_script.len));
     }
-};
 
-/// Witness action (converted from Swift)
-pub const WitnessAction = enum(u8) {
-    Deny = 0x00,
-    Allow = 0x01,
-};
+    pub fn validate(self: Self) !void {
+        const inv_empty = self.invocation_script.len == 0;
+        const ver_empty = self.verification_script.len == 0;
+        if (inv_empty and ver_empty) return;
+        if (inv_empty != ver_empty) return errors.TransactionError.InvalidWitness;
+    }
 
-/// Witness condition (converted from Swift)
-pub const WitnessCondition = union(enum) {
-    Boolean: bool,
-    ScriptHash: Hash160,
-    Group: [33]u8,
-    CalledByEntry: void,
+    pub fn serialize(self: Self, writer: *BinaryWriter) !void {
+        try writer.writeVarInt(@intCast(self.invocation_script.len));
+        try writer.writeBytes(self.invocation_script);
+        try writer.writeVarInt(@intCast(self.verification_script.len));
+        try writer.writeBytes(self.verification_script);
+    }
 
-    pub fn toJsonValue(self: WitnessCondition, allocator: std.mem.Allocator) !std.json.Value {
-        var object = std.json.ObjectMap.init(allocator);
-        switch (self) {
-            .Boolean => |value| {
-                try json_utils.putOwnedKey(&object, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Boolean") });
-                try json_utils.putOwnedKey(&object, allocator, "expression", std.json.Value{ .bool = value });
-            },
-            .ScriptHash => |hash| {
-                try json_utils.putOwnedKey(&object, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "ScriptHash") });
-                const hash_string = try formatHash160(hash, allocator);
-                try json_utils.putOwnedKey(&object, allocator, "hash", std.json.Value{ .string = hash_string });
-            },
-            .Group => |group| {
-                try json_utils.putOwnedKey(&object, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Group") });
-                const group_string = try formatPublicKey(group, allocator);
-                try json_utils.putOwnedKey(&object, allocator, "group", std.json.Value{ .string = group_string });
-            },
-            .CalledByEntry => {
-                try json_utils.putOwnedKey(&object, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "CalledByEntry") });
-            },
+    pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
+        const invocation_len = try reader.readVarInt();
+        const invocation_script = try allocator.alloc(u8, @intCast(invocation_len));
+        errdefer allocator.free(invocation_script);
+        try reader.readBytes(invocation_script);
+
+        const verification_len = try reader.readVarInt();
+        const verification_script = try allocator.alloc(u8, @intCast(verification_len));
+        errdefer allocator.free(verification_script);
+        try reader.readBytes(verification_script);
+
+        return Self.initOwned(invocation_script, verification_script);
+    }
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.owns_invocation_script) {
+            allocator.free(self.invocation_script);
         }
-        return std.json.Value{ .object = object };
+        if (self.owns_verification_script) {
+            allocator.free(self.verification_script);
+        }
+        self.* = Self.init(&[_]u8{}, &[_]u8{});
     }
 };
+
+/// Witness rule system is fully implemented in `witness_rule.zig`.
+pub const WitnessRule = witness_rule_mod.WitnessRule;
+pub const WitnessAction = witness_rule_mod.WitnessAction;
+pub const WitnessCondition = witness_rule_mod.WitnessCondition;
 
 /// Transaction (converted from Swift NeoTransaction)
 pub const Transaction = struct {
@@ -670,9 +864,6 @@ pub const Transaction = struct {
 
     /// Calculates transaction hash (equivalent to Swift getHash())
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
-        var buffer = ArrayList(u8).init(allocator);
-        defer buffer.deinit();
-
         var writer = BinaryWriter.init(allocator);
         defer writer.deinit();
 
@@ -692,9 +883,7 @@ pub const Transaction = struct {
         // Serialize attributes
         try writer.writeVarInt(self.attributes.len);
         for (self.attributes) |attribute| {
-            try writer.writeByte(@intFromEnum(attribute.attribute_type));
-            try writer.writeVarInt(attribute.data.len);
-            try writer.writeBytes(attribute.data);
+            try attribute.serialize(&writer);
         }
 
         // Serialize script
@@ -726,19 +915,26 @@ pub const Transaction = struct {
     /// Releases allocated transaction resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         allocator.free(self.script);
+
+        for (self.attributes) |*attribute| {
+            attribute.deinit(allocator);
+        }
         allocator.free(self.attributes);
+
+        for (self.signers) |*signer| {
+            signer.deinit(allocator);
+        }
         allocator.free(self.signers);
 
-        for (self.witnesses) |witness| {
-            allocator.free(witness.invocation_script);
-            allocator.free(witness.verification_script);
+        for (self.witnesses) |*witness| {
+            witness.deinit(allocator);
         }
         allocator.free(self.witnesses);
         self.* = undefined;
     }
 };
 
-/// Account placeholder (to be fully implemented)
+/// Account stub (to be fully implemented)
 pub const Account = struct {
     script_hash: Hash160,
     private_key: ?crypto.PrivateKey,
@@ -773,8 +969,42 @@ pub const Account = struct {
         return try Account.initWithPrivateKey(decode_result.private_key, decode_result.compressed, allocator);
     }
 
+    pub fn fromKeyPair(key_pair: crypto.KeyPair, address: @import("../types/address.zig").Address) Account {
+        _ = address;
+
+        // Build the verification script without heap allocation.
+        const pub_key_bytes = key_pair.public_key.toSlice();
+        var script_buf: [72]u8 = undefined;
+        var offset: usize = 0;
+
+        script_buf[offset] = 0x0C; // PUSHDATA1
+        offset += 1;
+        script_buf[offset] = @intCast(pub_key_bytes.len);
+        offset += 1;
+        @memcpy(script_buf[offset .. offset + pub_key_bytes.len], pub_key_bytes);
+        offset += pub_key_bytes.len;
+
+        script_buf[offset] = 0x41; // SYSCALL
+        offset += 1;
+        const syscall_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.InteropServices.SYSTEM_CRYPTO_CHECK_SIG));
+        @memcpy(script_buf[offset .. offset + syscall_bytes.len], &syscall_bytes);
+        offset += syscall_bytes.len;
+
+        const script_hash = Hash160.fromScript(script_buf[0..offset]) catch unreachable;
+
+        return Account{
+            .script_hash = script_hash,
+            .private_key = key_pair.private_key,
+            .compressed = key_pair.public_key.compressed,
+        };
+    }
+
     pub fn getScriptHash(self: Account) Hash160 {
         return self.script_hash;
+    }
+
+    pub fn getAddress(self: Account) Address {
+        return Address.fromHash160WithVersion(self.script_hash, constants.AddressConstants.ADDRESS_VERSION);
     }
 
     pub fn hasPrivateKey(self: Account) bool {
@@ -865,7 +1095,7 @@ test "TransactionBuilder creation and configuration" {
     try testing.expectEqual(@as(u32, 1000000), builder.valid_until_block_field.?);
 }
 
-test "TransactionBuilder requires explicit validUntilBlock" {
+test "TransactionBuilder defaults validUntilBlock to zero" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
@@ -878,7 +1108,10 @@ test "TransactionBuilder requires explicit validUntilBlock" {
     const script_bytes = [_]u8{0x51}; // PUSH1
     _ = try builder.script(&script_bytes);
 
-    try testing.expectError(errors.NeoError.IllegalState, builder.build());
+    var tx = try builder.build();
+    defer tx.deinit(allocator);
+
+    try testing.expectEqual(@as(u32, 0), tx.valid_until_block);
 }
 
 test "TransactionBuilder signer management" {
@@ -916,6 +1149,23 @@ test "TransactionBuilder signing with account key" {
     try testing.expectEqual(@as(usize, 1), transaction.witnesses.len);
     try testing.expect(transaction.witnesses[0].invocation_script.len > 0);
     try testing.expect(transaction.witnesses[0].verification_script.len > 0);
+
+    // Ensure signing hash data ordering matches NeoSwift: magicBytes || sha256(unsignedTxBytes),
+    // then sign sha256(that) deterministically.
+    const tx_hash = try transaction.getHash(allocator);
+    var signing_data: [36]u8 = undefined;
+    const magic_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.NetworkMagic.MAINNET));
+    @memcpy(signing_data[0..4], &magic_bytes);
+    @memcpy(signing_data[4..36], tx_hash.toSlice());
+    const signing_hash = Hash256.sha256(&signing_data);
+
+    const private_key = try account.getPrivateKey();
+    const expected_sig = try private_key.sign(signing_hash);
+    var expected_invocation: [66]u8 = undefined;
+    expected_invocation[0] = 0x0C; // PUSHDATA1
+    expected_invocation[1] = 64;
+    @memcpy(expected_invocation[2..], expected_sig.toSlice());
+    try testing.expectEqualSlices(u8, &expected_invocation, transaction.witnesses[0].invocation_script);
 }
 
 test "TransactionBuilder signing fails without private key" {

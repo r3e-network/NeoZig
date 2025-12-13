@@ -13,6 +13,9 @@ pub const FungibleToken = @import("fungible_token.zig").FungibleToken;
 pub const NonFungibleToken = @import("non_fungible_token.zig").NonFungibleToken;
 pub const GasToken = @import("gas_token.zig").GasToken;
 pub const NeoToken = @import("neo_token.zig").NeoToken;
+pub const PolicyContract = @import("policy_contract.zig").PolicyContract;
+pub const RoleManagement = @import("role_management.zig").RoleManagement;
+pub const Role = @import("role_management.zig").Role;
 pub const Token = @import("token.zig").Token;
 pub const TransferRecipient = @import("fungible_token.zig").TransferRecipient;
 

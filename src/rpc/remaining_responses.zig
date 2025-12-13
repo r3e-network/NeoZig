@@ -4,7 +4,7 @@
 //! Ensures absolute 100% protocol coverage.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");

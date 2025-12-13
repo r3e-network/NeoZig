@@ -19,17 +19,29 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 // Export crypto submodules
 pub const keys = @import("keys.zig");
 pub const signatures = @import("signatures.zig");
+pub const sign = @import("sign.zig");
 pub const hashing = @import("hashing.zig");
 pub const wif = @import("wif.zig");
 pub const random = @import("random.zig");
 pub const secp256r1 = @import("secp256r1.zig");
 pub const ripemd160 = @import("ripemd160.zig");
+pub const nep2 = @import("nep2.zig");
+pub const bip32 = @import("bip32.zig");
+pub const hash_extensions = @import("hash_extensions.zig");
 
 // Re-export commonly used types
 pub const PrivateKey = keys.PrivateKey;
 pub const PublicKey = keys.PublicKey;
 pub const KeyPair = keys.KeyPair;
+pub const ECKeyPair = @import("ec_key_pair.zig").ECKeyPair;
 pub const Signature = signatures.Signature;
+pub const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
+pub const ECPoint = @import("ec_point.zig").ECPoint;
+pub const BytesHashUtils = hash_extensions.BytesHashUtils;
+pub const StringHashUtils = hash_extensions.StringHashUtils;
+pub const HashComputeUtils = hash_extensions.HashComputeUtils;
+pub const HashSet = hash_extensions.HashSet;
+pub const HashBenchmark = hash_extensions.HashBenchmark;
 
 /// Generates a new cryptographically secure private key
 pub fn generatePrivateKey() PrivateKey {

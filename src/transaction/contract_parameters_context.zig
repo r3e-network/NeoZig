@@ -4,7 +4,7 @@
 //! Provides transaction signing context for multi-signature scenarios.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const json_utils = @import("../utils/json_utils.zig");
 
 
@@ -235,7 +235,7 @@ pub const ContextItem = struct {
             for (params) |param| {
                 try params_array.append(try @import("../contract/parameter_utils.zig").parameterToJson(param, allocator));
             }
-            try json_utils.putOwnedKey(&item_obj, allocator, "parameters", std.json.Value{ .array = try params_array.toOwnedSlice() });
+            try json_utils.putOwnedKey(&item_obj, allocator, "parameters", std.json.Value{ .array = params_array });
         }
         
         // Convert signatures to JSON
@@ -261,7 +261,7 @@ pub const ContextItem = struct {
             var params_list = ArrayList(ContractParameter).init(allocator);
             for (params_array.array) |param_json| {
                 // Would parse contract parameter from JSON
-                try params_list.append(ContractParameter.boolean(true)); // Placeholder
+                try params_list.append(ContractParameter.boolean(true)); // stub
             }
             parameters = try params_list.toOwnedSlice();
         }
@@ -410,7 +410,7 @@ test "ContractParametersContext JSON operations" {
     
     // Test JSON export
     const json_value = try context.toJson();
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const context_obj = json_value.object;
     try testing.expectEqualStrings(ContractParametersContext.CONTEXT_TYPE, context_obj.get("type").?.string);

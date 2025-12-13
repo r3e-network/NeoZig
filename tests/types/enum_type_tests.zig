@@ -5,18 +5,15 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const WitnessScope = @import("../../src/transaction/witness_scope_complete.zig").WitnessScope;
-const RecordType = @import("../../src/types/record_type.zig").RecordType;
-const Role = @import("../../src/types/role.zig").Role;
+const neo = @import("neo-zig");
+const RecordType = neo.types.RecordType;
+const Role = neo.types.Role;
 
 test "ByteEnum protocol implementation" {
-    const testing = std.testing;
-    
     // Test RecordType byte enum functionality
-    try testing.expectEqual(@as(u8, 1), RecordType.A.toByte());
-    try testing.expectEqual(@as(u8, 5), RecordType.CNAME.toByte());
+    try testing.expectEqual(@as(u8, 1), RecordType.A.getByte());
+    try testing.expectEqual(@as(u8, 5), RecordType.CNAME.getByte());
     
     try testing.expectEqual(RecordType.A, RecordType.fromByte(1).?);
     try testing.expectEqual(RecordType.CNAME, RecordType.fromByte(5).?);
@@ -32,26 +29,22 @@ test "ByteEnum protocol implementation" {
 }
 
 test "Enum JSON serialization" {
-    const testing = std.testing;
-    
     // Test JSON value conversion
-    try testing.expectEqualStrings("A", RecordType.A.toJsonString());
-    try testing.expectEqualStrings("CNAME", RecordType.CNAME.toJsonString());
+    try testing.expectEqualStrings("A", RecordType.A.getJsonValue());
+    try testing.expectEqualStrings("CNAME", RecordType.CNAME.getJsonValue());
     
     try testing.expectEqualStrings("StateValidator", Role.StateValidator.toJsonString());
     try testing.expectEqualStrings("Oracle", Role.Oracle.toJsonString());
     
     // Test from JSON conversion
-    try testing.expectEqual(RecordType.A, RecordType.fromJsonString("A").?);
+    try testing.expectEqual(RecordType.A, RecordType.fromJsonValue("A").?);
     try testing.expectEqual(Role.Oracle, Role.fromJsonString("Oracle").?);
-    try testing.expect(RecordType.fromJsonString("Invalid") == null);
+    try testing.expect(RecordType.fromJsonValue("Invalid") == null);
 }
 
 test "Enum case iteration" {
-    const testing = std.testing;
-    
     // Test getting all cases
-    const all_record_types = RecordType.getAllTypes();
+    const all_record_types = RecordType.getAllCases();
     try testing.expect(all_record_types.len >= 4);
     
     const all_roles = Role.getAllRoles();

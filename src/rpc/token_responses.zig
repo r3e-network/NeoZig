@@ -4,7 +4,7 @@
 //! Ensures 100% NEP-17/NEP-11 response handling.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");

@@ -1,0 +1,31 @@
+.{
+    // Default package name used by `zig fetch --save`.
+    .name = .neo_zig,
+
+    // Semantic version.
+    .version = "1.0.0",
+
+    // Generated once; never change unless intentionally forking/renaming.
+    .fingerprint = 0xa85f40d43ed3e65e, // Changing this has security and trust implications.
+
+    // Earliest supported Zig toolchain.
+    .minimum_zig_version = "0.14.0",
+
+    .dependencies = .{},
+
+    // Files included in the package hash/distribution.
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "docs/SWIFT_MIGRATION.md",
+        "src",
+        "tests",
+        "benchmarks",
+        "examples",
+        "final_demo.zig",
+        "LICENSE",
+        "README.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+    },
+}

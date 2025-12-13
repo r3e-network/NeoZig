@@ -4,15 +4,19 @@
 //! Handles contract deployment, management, and state operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+const StackItem = @import("../types/stack_item.zig").StackItem;
 const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
+const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const Signer = @import("../transaction/transaction_builder.zig").Signer;
+const iterator_mod = @import("iterator.zig");
 
 /// Contract Management contract (converted from Swift ContractManagement)
 pub const ContractManagement = struct {
@@ -150,8 +154,34 @@ pub const ContractManagement = struct {
         function_name: []const u8,
         params: []const ContractParameter,
     ) !ContractIterator {
-        // This would make actual RPC call and return iterator
-        return try self.smart_contract.callFunctionReturningIterator(function_name, params);
+        const smart_contract = self.smart_contract;
+        if (smart_contract.neo_swift == null) {
+            return ContractIterator.init();
+        }
+
+        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
+        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const session_id = invocation.session orelse return errors.NetworkError.InvalidResponse;
+        const first_item = try invocation.getFirstStackItem();
+        const interop = switch (first_item) {
+            .InteropInterface => |iface| iface,
+            else => return errors.SerializationError.InvalidFormat,
+        };
+
+        return try ContractIterator.initWithIterator(
+            smart_contract.allocator,
+            smart_contract.neo_swift.?,
+            session_id,
+            interop.iterator_id,
+        );
     }
     
     fn callFunctionAndUnwrapIterator(
@@ -160,22 +190,76 @@ pub const ContractManagement = struct {
         params: []const ContractParameter,
         max_items: u32,
     ) ![]ContractIdentifiers {
-        // This would make actual RPC call and unwrap iterator results
-        const iterator = try self.callFunctionReturningIterator(function_name, params);
-        return try self.unwrapIterator(iterator, max_items);
+        const smart_contract = self.smart_contract;
+        if (smart_contract.neo_swift == null) {
+            return try smart_contract.allocator.alloc(ContractIdentifiers, 0);
+        }
+
+        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
+        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const session_id = invocation.session orelse return errors.NetworkError.InvalidResponse;
+        const first_item = try invocation.getFirstStackItem();
+        const interop = switch (first_item) {
+            .InteropInterface => |iface| iface,
+            else => return errors.SerializationError.InvalidFormat,
+        };
+
+        const mapper = struct {
+            fn map(stack_item: StackItem, allocator: std.mem.Allocator) !ContractIdentifiers {
+                return try ContractIdentifiers.fromStackItem(stack_item, allocator);
+            }
+        }.map;
+
+        var iterator = try iterator_mod.Iterator(ContractIdentifiers).init(
+            smart_contract.allocator,
+            smart_contract.neo_swift.?,
+            session_id,
+            interop.iterator_id,
+            mapper,
+        );
+        defer iterator.deinit();
+
+        const items = try iterator.traverseAll(max_items);
+        iterator.terminateSession() catch {};
+        return items;
     }
     
     fn unwrapIterator(self: Self, iterator: ContractIterator, max_items: u32) ![]ContractIdentifiers {
-        _ = iterator;
-        _ = max_items;
-        return try self.smart_contract.allocator.alloc(ContractIdentifiers, 0);
+        var iter = iterator;
+        defer iter.deinit();
+
+        var items = ArrayList(ContractIdentifiers).init(self.smart_contract.allocator);
+        defer items.deinit();
+
+        var retrieved: u32 = 0;
+        while (retrieved < max_items and iter.hasNext()) {
+            const entry = try iter.next();
+            try items.append(entry);
+            retrieved += 1;
+        }
+
+        return try items.toOwnedSlice();
     }
 };
 
-/// Contract iterator (converted from Swift Iterator pattern)
+/// Contract iterator (converted from Swift Iterator pattern).
+/// NOTE: Iterator pagination via RPC is not implemented yet; the current
+/// implementation is a stub returning no items.
 pub const ContractIterator = struct {
     session_id: []const u8,
     iterator_id: []const u8,
+    allocator: std.mem.Allocator,
+    inner: ?iterator_mod.Iterator(ContractIdentifiers),
+    buffer: ArrayList(ContractIdentifiers),
+    exhausted: bool,
     
     const Self = @This();
     
@@ -183,17 +267,85 @@ pub const ContractIterator = struct {
         return Self{
             .session_id = "",
             .iterator_id = "",
+            .allocator = std.heap.page_allocator,
+            .inner = null,
+            .buffer = ArrayList(ContractIdentifiers).init(std.heap.page_allocator),
+            .exhausted = true,
         };
     }
     
-    pub fn hasNext(self: Self) bool {
-        _ = self;
-        return false; // Placeholder
+    pub fn initWithIterator(
+        allocator: std.mem.Allocator,
+        neo_swift: *anyopaque,
+        session_id: []const u8,
+        iterator_id: []const u8,
+    ) !Self {
+        const mapper = struct {
+            fn map(stack_item: StackItem, alloc: std.mem.Allocator) !ContractIdentifiers {
+                return try ContractIdentifiers.fromStackItem(stack_item, alloc);
+            }
+        }.map;
+
+        const inner_iter = try iterator_mod.Iterator(ContractIdentifiers).init(
+            allocator,
+            neo_swift,
+            session_id,
+            iterator_id,
+            mapper,
+        );
+
+        return Self{
+            .session_id = inner_iter.session_id,
+            .iterator_id = inner_iter.iterator_id,
+            .allocator = allocator,
+            .inner = inner_iter,
+            .buffer = ArrayList(ContractIdentifiers).init(allocator),
+            .exhausted = false,
+        };
     }
-    
-    pub fn next(self: Self) !ContractIdentifiers {
-        _ = self;
-        return ContractIdentifiers.init();
+
+    pub fn deinit(self: *Self) void {
+        if (self.inner) |*inner_iter| {
+            inner_iter.terminateSession() catch {};
+            inner_iter.deinit();
+            self.inner = null;
+        }
+        self.buffer.deinit();
+        self.exhausted = true;
+        self.session_id = "";
+        self.iterator_id = "";
+    }
+
+    fn fetchNext(self: *Self) !bool {
+        if (self.exhausted or self.inner == null) return false;
+
+        var inner_iter = &self.inner.?;
+        const batch = try inner_iter.traverse(1);
+        defer self.allocator.free(batch);
+
+        if (batch.len == 0) {
+            self.exhausted = true;
+            return false;
+        }
+
+        try self.buffer.appendSlice(batch);
+        return true;
+    }
+
+    pub fn hasNext(self: *Self) bool {
+        if (self.buffer.items.len > 0) return true;
+        _ = self.fetchNext() catch return false;
+        return self.buffer.items.len > 0;
+    }
+
+    pub fn next(self: *Self) !ContractIdentifiers {
+        if (self.buffer.items.len == 0) {
+            if (!self.hasNext()) {
+                return errors.throwIllegalState("Iterator exhausted");
+            }
+        }
+
+        return self.buffer.orderedRemove(0);
     }
 };
 
@@ -211,9 +363,30 @@ pub const ContractIdentifiers = struct {
         };
     }
     
-    pub fn fromStackItem(stack_item: anytype) !Self {
-        _ = stack_item;
-        return Self.init();
+    pub fn fromStackItem(stack_item: StackItem, allocator: std.mem.Allocator) !Self {
+        const item = stack_item;
+        const values = try item.getArray();
+        if (values.len < 2) return errors.SerializationError.InvalidFormat;
+
+        const id_value = try values[0].getInteger();
+        if (id_value < std.math.minInt(i32) or id_value > std.math.maxInt(i32)) {
+            return errors.SerializationError.InvalidFormat;
+        }
+
+        const hash_bytes = try values[1].getByteArray(allocator);
+        defer allocator.free(hash_bytes);
+        if (hash_bytes.len != constants.HASH160_SIZE) {
+            return errors.SerializationError.InvalidFormat;
+        }
+
+        var buf: [constants.HASH160_SIZE]u8 = undefined;
+        @memcpy(&buf, hash_bytes);
+        std.mem.reverse(u8, &buf);
+
+        return Self{
+            .id = @intCast(id_value),
+            .hash = Hash160.fromArray(buf),
+        };
     }
 };
 
@@ -424,7 +597,7 @@ test "ContractManagement fee operations" {
     
     // Test minimum deployment fee operations (equivalent to Swift fee tests)
     const min_fee = try contract_mgmt.getMinimumDeploymentFee();
-    try testing.expectEqual(@as(i64, 0), min_fee); // Placeholder returns 0
+    try testing.expectEqual(@as(i64, 0), min_fee); // stub returns 0
     
     // Test setting minimum fee
     var set_fee_tx = try contract_mgmt.setMinimumDeploymentFee(1000000);

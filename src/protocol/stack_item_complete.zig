@@ -4,7 +4,7 @@
 //! Provides comprehensive Neo VM stack item handling with all types.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -406,7 +406,7 @@ pub const StackItemUtils = struct {
                 for (items) |array_item| {
                     try array_json.append(try toJson(array_item, allocator));
                 }
-                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .array = try array_json.toOwnedSlice() });
+                try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .array = array_json });
             },
             else => {
                 try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .null = {} });
@@ -561,7 +561,7 @@ test "CompleteStackItem JSON operations" {
     const original_item = CompleteStackItem.integer(54321);
     
     const json_value = try StackItemUtils.toJson(original_item, allocator);
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const obj = json_value.object;
     try testing.expectEqualStrings("Integer", obj.get("type").?.string);

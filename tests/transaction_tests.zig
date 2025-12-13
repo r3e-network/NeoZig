@@ -7,7 +7,7 @@ const std = @import("std");
 
 const neo = @import("neo-zig");
 
-/// Tests transaction builder (converted from Swift TransactionBuilderTests)
+// Tests transaction builder (converted from Swift TransactionBuilderTests)
 test "transaction builder creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -35,7 +35,7 @@ test "transaction builder creation and configuration" {
     try testing.expectEqual(@as(u64, 1000000), builder.additional_system_fee);
 }
 
-/// Tests signer management (converted from Swift signer tests)
+// Tests signer management (converted from Swift signer tests)
 test "transaction builder signer management" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -55,7 +55,7 @@ test "transaction builder signer management" {
     try testing.expectEqual(neo.transaction.WitnessScope.CalledByEntry, signers[0].scopes);
 }
 
-/// Tests token transfer (converted from Swift token transfer tests)
+// Tests token transfer (converted from Swift token transfer tests)
 test "transaction builder token transfer" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -64,11 +64,12 @@ test "transaction builder token transfer" {
     defer builder.deinit();
     
     // Build GAS token transfer (matches Swift transferToken functionality)
+    const amount: u64 = 100000000; // 1 GAS (8 decimals)
     _ = try builder.transferToken(
         neo.transaction.TransactionBuilder.GAS_TOKEN_HASH,
         neo.Hash160.ZERO, // from
         neo.Hash160.ZERO, // to
-        100000000,        // 1 GAS (8 decimals)
+        amount,
     );
     
     // Verify script was created (equivalent to Swift script validation)
@@ -78,9 +79,20 @@ test "transaction builder token transfer" {
     
     // Script should contain contract call elements
     try testing.expect(std.mem.indexOf(u8, script.?, &[_]u8{0x41}) != null); // SYSCALL opcode
+
+    // Verify full script matches ScriptBuilder output.
+    const params = [_]neo.ContractParameter{
+        neo.ContractParameter.hash160(neo.Hash160.ZERO),
+        neo.ContractParameter.hash160(neo.Hash160.ZERO),
+        neo.ContractParameter.integer(@intCast(amount)),
+    };
+    var expected = neo.script.ScriptBuilder.init(allocator);
+    defer expected.deinit();
+    _ = try expected.contractCall(neo.transaction.TransactionBuilder.GAS_TOKEN_HASH, "transfer", &params, null);
+    try testing.expectEqualSlices(u8, expected.toScript(), script.?);
 }
 
-/// Tests contract function invocation (converted from Swift contract tests)
+// Tests contract function invocation (converted from Swift contract tests)
 test "transaction builder contract invocation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -101,9 +113,63 @@ test "transaction builder contract invocation" {
     const script = builder.getScript();
     try testing.expect(script != null);
     try testing.expect(script.?.len > 0);
+
+    // Verify full script matches ScriptBuilder output.
+    var expected = neo.script.ScriptBuilder.init(allocator);
+    defer expected.deinit();
+    _ = try expected.contractCall(neo.Hash160.ZERO, "testMethod", &params, null);
+    try testing.expectEqualSlices(u8, expected.toScript(), script.?);
 }
 
-/// Tests transaction building (converted from Swift build tests)
+test "transaction hash matches NeoTransaction with attributes" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var builder = neo.transaction.TransactionBuilder.init(allocator);
+    defer builder.deinit();
+
+    const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
+    _ = try builder.signer(signer);
+    _ = try builder.script(&[_]u8{0x51});
+    _ = try builder.highPriority();
+
+    const transaction = try builder.build();
+    defer {
+        allocator.free(transaction.signers);
+        allocator.free(transaction.attributes);
+        allocator.free(transaction.script);
+        allocator.free(transaction.witnesses);
+    }
+
+    const tx_hash = try transaction.getHash(allocator);
+
+    const neo_transaction = neo.transaction.NeoTransaction.init(
+        null,
+        transaction.version,
+        transaction.nonce,
+        transaction.valid_until_block,
+        transaction.signers,
+        transaction.system_fee,
+        transaction.network_fee,
+        transaction.attributes,
+        transaction.script,
+        transaction.witnesses,
+        null,
+    );
+    const neo_hash = try neo_transaction.getHash(allocator);
+    try testing.expect(tx_hash.eql(neo_hash));
+}
+
+comptime {
+    // Additional transaction-focused tests live under `tests/transaction/`.
+    _ = @import("transaction/witness_scope_tests.zig");
+    _ = @import("transaction/serializable_transaction_tests.zig");
+    _ = @import("transaction/witness_tests.zig");
+    _ = @import("transaction/signer_tests.zig");
+    _ = @import("transaction/transaction_builder_tests.zig");
+}
+
+// Tests transaction building (converted from Swift build tests)
 test "transaction builder complete workflow" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -121,7 +187,7 @@ test "transaction builder complete workflow" {
     _ = try builder.signer(signer);
     
     // Add script
-    _ = try builder.script(&[_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 }); // SYSCALL CheckSig
+    _ = try builder.script(&[_]u8{ 0x41, 0x56, 0xE7, 0xB3, 0x27 }); // SYSCALL CheckSig
     
     // Build transaction (equivalent to Swift build())
     const transaction = try builder.build();
@@ -146,7 +212,7 @@ test "transaction builder complete workflow" {
     try testing.expect(!tx_hash.eql(neo.Hash256.ZERO));
 }
 
-/// Tests high priority attribute (converted from Swift attribute tests)
+// Tests high priority attribute (converted from Swift attribute tests)
 test "transaction builder high priority attribute" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -161,7 +227,7 @@ test "transaction builder high priority attribute" {
     try testing.expect(builder.isHighPriority());
 }
 
-/// Tests witness scope validation (converted from Swift witness tests)
+// Tests witness scope validation (converted from Swift witness tests)
 test "witness scope validation" {
     const testing = std.testing;
     

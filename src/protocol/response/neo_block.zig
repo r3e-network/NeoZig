@@ -4,7 +4,7 @@
 //! Provides Neo block structure for blockchain data.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const Hash256 = @import("../../types/hash256.zig").Hash256;

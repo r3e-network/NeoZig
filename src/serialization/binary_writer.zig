@@ -3,7 +3,7 @@
 //! Converted from Swift BinaryWriter with full API compatibility.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -27,6 +27,10 @@ pub const BinaryWriter = struct {
     
     pub fn writeByte(self: *Self, byte: u8) !void {
         try self.buffer.append(byte);
+    }
+
+    pub fn writeBool(self: *Self, value: bool) !void {
+        try self.writeByte(if (value) 1 else 0);
     }
     
     pub fn writeU16(self: *Self, value: u16) !void {
@@ -58,6 +62,29 @@ pub const BinaryWriter = struct {
             try self.writeU64(value);
         }
     }
+
+    pub fn writeVarBytes(self: *Self, bytes: []const u8) !void {
+        try self.writeVarInt(@intCast(bytes.len));
+        try self.writeBytes(bytes);
+    }
+
+    pub fn writeVarString(self: *Self, value: []const u8) !void {
+        try self.writeVarBytes(value);
+    }
+
+    /// Convenience wrapper around the value's `serialize` method.
+    /// This keeps the writer API ergonomic without creating import cycles.
+    pub fn writeSerializable(self: *Self, value: anytype) !void {
+        try value.serialize(self);
+    }
+
+    pub fn writeHash160(self: *Self, value: anytype) !void {
+        try self.writeSerializable(value);
+    }
+
+    pub fn writeHash256(self: *Self, value: anytype) !void {
+        try self.writeSerializable(value);
+    }
     
     pub fn toSlice(self: *Self) []const u8 {
         return self.buffer.items;
@@ -65,5 +92,13 @@ pub const BinaryWriter = struct {
 
     pub fn getAllocator(self: Self) std.mem.Allocator {
         return self.buffer.allocator;
+    }
+
+    pub fn clear(self: *Self) void {
+        self.buffer.clearRetainingCapacity();
+    }
+
+    pub fn reset(self: *Self) void {
+        self.clear();
     }
 };

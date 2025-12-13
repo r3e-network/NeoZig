@@ -9,13 +9,13 @@ const std = @import("std");
 const testing = std.testing;
 const FungibleToken = @import("../../src/contract/fungible_token.zig").FungibleToken;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "Fungible token creation and validation" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const token_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
     const fungible_token = FungibleToken.init(token_hash, neo_swift);
@@ -27,9 +27,8 @@ test "Fungible token creation and validation" {
 test "NEP-17 standard methods" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const token_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
     const fungible_token = FungibleToken.init(token_hash, neo_swift);

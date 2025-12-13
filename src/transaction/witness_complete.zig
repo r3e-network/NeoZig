@@ -292,7 +292,7 @@ pub const VerificationScript = struct {
         var key_bytes = try allocator.alloc([]const u8, public_keys.len);
         defer allocator.free(key_bytes);
         
-        for (public_keys, 0..) |pub_key, i| {
+        for (public_keys, 0..) |*pub_key, i| {
             key_bytes[i] = pub_key.toSlice();
         }
         
@@ -464,7 +464,7 @@ test "CompleteWitness creation and basic operations" {
     try testing.expectEqual(@as(usize, 0), empty_witness.verification_script.script.len);
     
     // Test witness from bytes (equivalent to Swift init with bytes tests)
-    const invocation_bytes = [_]u8{ 0x0C, 0x40 }; // PUSHDATA + signature placeholder
+    const invocation_bytes = [_]u8{ 0x0C, 0x40 }; // PUSHDATA + signature stub
     const verification_bytes = [_]u8{ 0x0C, 0x21, 0x02, 0x03, 0x41, 0x30, 0x64, 0x76, 0x41 }; // Verification script
     
     var witness_from_bytes = try CompleteWitness.initFromBytes(&invocation_bytes, &verification_bytes, allocator);

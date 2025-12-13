@@ -81,6 +81,20 @@ private-keys/
 *.dll
 *.exe
 
+# Root-level scratch binaries (no extension)
+/align_ptr
+/array_test
+/case
+/cast_test
+/intcast
+/intcast_test
+/json_test
+/jsonmap
+/managed_test
+/ptr_const_test
+/ptrcast_test
+/test
+
 # Archives
 *.zip
 *.tar.gz

@@ -54,6 +54,10 @@ pub const ScriptBuilder = struct {
         params: []const ContractParameter,
         call_flags: ?CallFlags,
     ) !*Self {
+        if (method.len == 0) {
+            return errors.throwIllegalArgument("Method name cannot be empty");
+        }
+
         // Push parameters (equivalent to Swift pushParams)
         if (params.len == 0) {
             _ = try self.opCode(&[_]OpCode{.NEWARRAY0});
@@ -79,27 +83,19 @@ pub const ScriptBuilder = struct {
     /// System call (equivalent to Swift sysCall(_ operation: InteropService))
     pub fn sysCall(self: *Self, operation: InteropService) !*Self {
         _ = try self.opCode(&[_]OpCode{.SYSCALL});
-        
-        // Get hash for the interop service
-        const writer_allocator = self.writer.getAllocator();
-        const hash_hex = try operation.getHash(writer_allocator);
-        defer writer_allocator.free(hash_hex);
 
-        // Convert hex string to bytes and write
-        const hash_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(hash_hex, writer_allocator);
-        defer writer_allocator.free(hash_bytes);
-        
-        try self.writer.writeBytes(hash_bytes);
+        // Interop service hashes are the first 4 bytes of SHA256(<ascii name>), written as-is.
+        var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+        std.crypto.hash.sha2.Sha256.hash(operation.toString(), &digest, .{});
+        try self.writer.writeBytes(digest[0..4]);
         return self;
     }
     
     /// Push contract parameters (equivalent to Swift pushParams)
     pub fn pushParams(self: *Self, params: []const ContractParameter) !*Self {
-        // Push parameters in reverse order
-        var i = params.len;
-        while (i > 0) {
-            i -= 1;
-            _ = try self.pushParam(params[i]);
+        // Push parameters in the provided order (matches NeoSwift).
+        for (params) |param| {
+            _ = try self.pushParam(param);
         }
         
         // Push parameter count
@@ -112,6 +108,9 @@ pub const ScriptBuilder = struct {
     /// Push single parameter (equivalent to Swift parameter handling)
     pub fn pushParam(self: *Self, param: ContractParameter) !*Self {
         switch (param) {
+            .Any, .Void => {
+                _ = try self.opCode(&[_]OpCode{.PUSHNULL});
+            },
             .Boolean => |value| {
                 const op = if (value) OpCode.PUSH1 else OpCode.PUSH0;
                 _ = try self.opCode(&[_]OpCode{op});
@@ -126,10 +125,12 @@ pub const ScriptBuilder = struct {
                 _ = try self.pushData(data);
             },
             .Hash160 => |hash| {
-                _ = try self.pushData(&hash.toArray());
+                const le = hash.toLittleEndianArray();
+                _ = try self.pushData(&le);
             },
             .Hash256 => |hash| {
-                _ = try self.pushData(&hash.toArray());
+                const le = hash.toLittleEndianArray();
+                _ = try self.pushData(&le);
             },
             .PublicKey => |key| {
                 _ = try self.pushData(&key);
@@ -138,17 +139,41 @@ pub const ScriptBuilder = struct {
                 _ = try self.pushData(&sig);
             },
             .Array => |items| {
+                if (items.len == 0) {
+                    _ = try self.opCode(&[_]OpCode{.NEWARRAY0});
+                    return self;
+                }
+
                 for (items) |item| {
                     _ = try self.pushParam(item);
                 }
                 _ = try self.pushInteger(@intCast(items.len));
                 _ = try self.opCode(&[_]OpCode{.PACK});
             },
+            .Map => |map| {
+                var it = map.iterator();
+                while (it.next()) |entry| {
+                    _ = try self.pushParam(entry.value_ptr.*);
+                    _ = try self.pushParam(entry.key_ptr.*);
+                }
+                _ = try self.pushInteger(@intCast(map.count()));
+                _ = try self.opCode(&[_]OpCode{.PACKMAP});
+            },
             else => {
                 return errors.TransactionError.InvalidParameters;
             },
         }
         return self;
+    }
+
+    /// Pushes an array of parameters (equivalent to Swift pushArray)
+    pub fn pushArray(self: *Self, items: []const ContractParameter) !*Self {
+        return try self.pushParam(ContractParameter.array(items));
+    }
+
+    /// Pushes a boolean value (equivalent to Swift pushBoolean)
+    pub fn pushBoolean(self: *Self, value: bool) !*Self {
+        return try self.pushParam(ContractParameter.boolean(value));
     }
     
     /// Push integer value (equivalent to Swift pushInteger)
@@ -162,19 +187,31 @@ pub const ScriptBuilder = struct {
             const op = @as(OpCode, @enumFromInt(op_value));
             _ = try self.opCode(&[_]OpCode{ op });
         } else {
-            var buffer: [9]u8 = undefined;
-            const encoded = encodeScriptNumber(value, &buffer);
-            _ = try self.pushData(encoded);
+            // NeoVM encodes integers in two's complement, little-endian order using PUSHINT* opcodes.
+            if (value >= @as(i64, std.math.minInt(i8)) and value <= @as(i64, std.math.maxInt(i8))) {
+                var buf: [1]u8 = undefined;
+                std.mem.writeInt(i8, &buf, @intCast(value), .little);
+                _ = try self.opCodeWithArg(.PUSHINT8, &buf);
+            } else if (value >= @as(i64, std.math.minInt(i16)) and value <= @as(i64, std.math.maxInt(i16))) {
+                var buf: [2]u8 = undefined;
+                std.mem.writeInt(i16, &buf, @intCast(value), .little);
+                _ = try self.opCodeWithArg(.PUSHINT16, &buf);
+            } else if (value >= @as(i64, std.math.minInt(i32)) and value <= @as(i64, std.math.maxInt(i32))) {
+                var buf: [4]u8 = undefined;
+                std.mem.writeInt(i32, &buf, @intCast(value), .little);
+                _ = try self.opCodeWithArg(.PUSHINT32, &buf);
+            } else {
+                var buf: [8]u8 = undefined;
+                std.mem.writeInt(i64, &buf, value, .little);
+                _ = try self.opCodeWithArg(.PUSHINT64, &buf);
+            }
         }
         return self;
     }
     
     /// Push data (equivalent to Swift pushData)
     pub fn pushData(self: *Self, data: []const u8) !*Self {
-        if (data.len <= 75) {
-            try self.writer.writeByte(@intCast(data.len));
-            try self.writer.writeBytes(data);
-        } else if (data.len <= 255) {
+        if (data.len <= 255) {
             _ = try self.opCode(&[_]OpCode{ .PUSHDATA1 });
             try self.writer.writeByte(@intCast(data.len));
             try self.writer.writeBytes(data);
@@ -215,6 +252,16 @@ pub const ScriptBuilder = struct {
             return errors.throwIllegalArgument("Invalid signing threshold");
         }
         
+        // Neo requires public keys to be sorted lexicographically (matches NeoSwift).
+        var sorted_keys = try allocator.alloc([]const u8, public_keys.len);
+        defer allocator.free(sorted_keys);
+        for (public_keys, 0..) |key, i| sorted_keys[i] = key;
+        std.sort.heap([]const u8, sorted_keys, {}, struct {
+            fn lessThan(_: void, a: []const u8, b: []const u8) bool {
+                return std.mem.order(u8, a, b) == .lt;
+            }
+        }.lessThan);
+
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
         
@@ -222,7 +269,7 @@ pub const ScriptBuilder = struct {
         _ = try builder.pushInteger(@intCast(signing_threshold));
         
         // Push public keys
-        for (public_keys) |pub_key| {
+        for (sorted_keys) |pub_key| {
             _ = try builder.pushData(pub_key);
         }
         

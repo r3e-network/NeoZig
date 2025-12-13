@@ -6,13 +6,14 @@ const std = @import("std");
 const errors = @import("../core/errors.zig");
 const json_utils = @import("../utils/json_utils.zig");
 
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const http = std.http;
 const Uri = std.Uri;
 
 pub const HttpClient = struct {
     allocator: std.mem.Allocator,
     endpoint: []const u8,
+    owns_endpoint: bool,
     timeout_ms: u32,
     max_retries: u32,
     send_fn: ?*const SendFn,
@@ -22,14 +23,50 @@ pub const HttpClient = struct {
     const SendFn = fn (ctx: ?*anyopaque, allocator: std.mem.Allocator, endpoint: []const u8, payload: []const u8, timeout_ms: u32) errors.NetworkError![]u8;
 
     pub fn init(allocator: std.mem.Allocator, endpoint: []const u8) Self {
+        const endpoint_copy = allocator.dupe(u8, endpoint) catch endpoint;
         return Self{
             .allocator = allocator,
-            .endpoint = endpoint,
+            .endpoint = endpoint_copy,
+            .owns_endpoint = endpoint_copy.ptr != endpoint.ptr,
             .timeout_ms = 30_000,
             .max_retries = 3,
             .send_fn = &defaultSend,
             .send_context = null,
         };
+    }
+
+    /// Initializes a client that borrows the endpoint slice.
+    /// The caller must ensure the endpoint memory outlives the client.
+    pub fn initBorrowed(allocator: std.mem.Allocator, endpoint: []const u8) Self {
+        return Self{
+            .allocator = allocator,
+            .endpoint = endpoint,
+            .owns_endpoint = false,
+            .timeout_ms = 30_000,
+            .max_retries = 3,
+            .send_fn = &defaultSend,
+            .send_context = null,
+        };
+    }
+
+    /// Initializes a client that takes ownership of an already-allocated endpoint buffer.
+    pub fn initOwned(allocator: std.mem.Allocator, endpoint: []u8) Self {
+        return Self{
+            .allocator = allocator,
+            .endpoint = endpoint,
+            .owns_endpoint = true,
+            .timeout_ms = 30_000,
+            .max_retries = 3,
+            .send_fn = &defaultSend,
+            .send_context = null,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        if (self.owns_endpoint) {
+            self.allocator.free(self.endpoint);
+            self.owns_endpoint = false;
+        }
     }
 
     pub fn setTimeout(self: *Self, timeout_ms: u32) void {
@@ -46,11 +83,18 @@ pub const HttpClient = struct {
         self.send_context = context;
     }
 
+    /// Posts JSON-RPC payload with best-effort timeout/retry enforcement.
+    /// Note: actual socket-level deadlines are not enforced by std.http; we fall back
+    /// to elapsed-time checks and retry bounds to avoid hanging forever.
     pub fn post(self: Self, json_payload: []const u8) ![]u8 {
-    const sender = self.send_fn orelse return errors.NetworkError.NetworkUnavailable;
+        const sender = self.send_fn orelse return errors.NetworkError.NetworkUnavailable;
+        var overall = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
         var attempt: u32 = 0;
         while (attempt <= self.max_retries) {
             const response = sender(self.send_context, self.allocator, self.endpoint, json_payload, self.timeout_ms) catch |err| {
+                if (overall.read() / std.time.ns_per_ms >= self.timeout_ms) {
+                    return errors.NetworkError.NetworkTimeout;
+                }
                 attempt += 1;
                 if (attempt > self.max_retries or !shouldRetry(err)) {
                     return err;
@@ -81,12 +125,7 @@ pub const HttpClient = struct {
 
         const request_json = std.json.Value{ .object = request_obj };
 
-        var writer_state = std.Io.Writer.Allocating.init(self.allocator);
-        defer writer_state.deinit();
-        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{} };
-        try stringify.write(request_json);
-
-        const request_bytes = try writer_state.toOwnedSlice();
+        const request_bytes = try std.json.stringifyAlloc(self.allocator, request_json, .{});
         defer self.allocator.free(request_bytes);
 
         const response_body = try self.post(request_bytes);
@@ -109,7 +148,8 @@ pub const HttpClient = struct {
     }
 
     pub fn validateConnection(self: Self) !bool {
-        const params_array = std.json.Array.init(self.allocator);
+        var params_array = std.json.Array.init(self.allocator);
+        defer params_array.deinit();
         const params = std.json.Value{ .array = params_array };
         _ = self.jsonRpcRequest("getversion", params, 1) catch |err| {
             switch (err) {
@@ -122,7 +162,8 @@ pub const HttpClient = struct {
 
     pub fn getNetworkLatency(self: Self) !u64 {
         var timer = try std.time.Timer.start();
-        const params_array = std.json.Array.init(self.allocator);
+        var params_array = std.json.Array.init(self.allocator);
+        defer params_array.deinit();
         const params = std.json.Value{ .array = params_array };
         _ = try self.jsonRpcRequest("getblockcount", params, 1);
         return timer.read() / std.time.ns_per_ms;
@@ -140,15 +181,14 @@ pub const HttpClientFactory = struct {
 
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) HttpClient {
         const actual_port = port orelse 20332;
-        const endpoint = std.fmt.allocPrint(allocator, "http://localhost:{d}", .{actual_port}) catch "http://localhost:20332";
-        return HttpClient.init(allocator, endpoint);
+        const endpoint = std.fmt.allocPrint(allocator, "http://localhost:{d}", .{actual_port}) catch return HttpClient.init(allocator, "http://localhost:20332");
+        return HttpClient.initOwned(allocator, endpoint);
     }
 };
 
 fn shouldRetry(err: errors.NetworkError) bool {
     return switch (err) {
         error.ConnectionFailed,
-        error.NetworkTimeout,
         error.ServerError,
         error.NetworkUnavailable,
         error.RequestFailed => true,
@@ -164,45 +204,40 @@ fn defaultSend(
     timeout_ms: u32,
 ) errors.NetworkError![]u8 {
     _ = ctx;
-    _ = timeout_ms;
+    var timer = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
 
     var client = http.Client{ .allocator = allocator };
     defer client.deinit();
 
     const uri = std.Uri.parse(endpoint) catch return errors.NetworkError.InvalidEndpoint;
 
-    var request = client.request(.POST, uri, .{
+    var response_body = ArrayList(u8).init(allocator);
+    defer response_body.deinit();
+
+    const result = client.fetch(.{
+        .location = .{ .uri = uri },
+        .method = .POST,
+        .payload = payload,
         .headers = .{
             .content_type = .{ .override = "application/json" },
             .user_agent = .{ .override = "Neo-Zig-SDK/1.0" },
         },
         .keep_alive = false,
-    }) catch return errors.NetworkError.ConnectionFailed;
-    defer request.deinit();
+        .response_storage = .{ .dynamic = &response_body },
+    }) catch |err| {
+        return mapFetchError(err);
+    };
 
-    request.transfer_encoding = .{ .content_length = payload.len };
-    var body_buffer: [512]u8 = undefined;
-    var body_writer = request.sendBody(&body_buffer) catch return errors.NetworkError.RequestFailed;
-    body_writer.writer.writeAll(payload) catch return errors.NetworkError.RequestFailed;
-    body_writer.end() catch return errors.NetworkError.RequestFailed;
-
-    var redirect_buffer: [0]u8 = .{};
-    var response = request.receiveHead(redirect_buffer[0..]) catch return errors.NetworkError.InvalidResponse;
-
-    if (response.head.status.class() == .server_error) {
+    if (result.status.class() == .server_error) {
         return errors.NetworkError.ServerError;
     }
 
-    if (response.head.content_encoding != .identity) {
-        return errors.NetworkError.InvalidResponse;
-    }
+    const body = response_body.toOwnedSlice() catch return errors.NetworkError.RequestFailed;
 
-    var transfer_buffer: [1024]u8 = undefined;
-    var reader_ptr = response.reader(&transfer_buffer);
-    var response_writer = std.Io.Writer.Allocating.init(allocator);
-    defer response_writer.deinit();
-    _ = reader_ptr.streamRemaining(&response_writer.writer) catch return errors.NetworkError.InvalidResponse;
-    const body = response_writer.toOwnedSlice() catch return errors.NetworkError.RequestFailed;
+    if (timer.read() / std.time.ns_per_ms > timeout_ms) {
+        allocator.free(body);
+        return errors.NetworkError.NetworkTimeout;
+    }
 
     return body;
 }
@@ -258,9 +293,11 @@ test "HttpClient custom sender" {
 
     var context = StubContext{ .storage = &captured };
     var client = HttpClient.init(allocator, "http://example.com");
+    defer client.deinit();
     client.withSender(stubSend, &context);
 
-    const params_array = std.json.Array.init(allocator);
+    var params_array = std.json.Array.init(allocator);
+    defer params_array.deinit();
     const params = std.json.Value{ .array = params_array };
     const result = try client.jsonRpcRequest("getnumber", params, 1);
     try testing.expectEqual(@as(i64, 42), result.integer);

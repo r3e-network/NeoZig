@@ -4,7 +4,7 @@
 //! Provides service protocol for Neo RPC communication.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const meta = std.meta;
 const json_utils = @import("../utils/json_utils.zig");
 
@@ -30,13 +30,7 @@ const MockContext = struct {
 };
 
 fn stringifyJsonValue(value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-    var buffer = ArrayList(u8).init(allocator);
-    defer buffer.deinit();
-
-    var stringify = std.json.Stringify{ .writer = buffer.writer(), .options = .{} };
-    try stringify.write(value);
-
-    return try buffer.toOwnedSlice();
+    return try std.json.stringifyAlloc(allocator, value, .{});
 }
 
 fn decodeResultValue(comptime U: type, value: std.json.Value, allocator: std.mem.Allocator) !U {

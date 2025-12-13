@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const base64 = std.base64;
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const json_utils = @import("../utils/json_utils.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;

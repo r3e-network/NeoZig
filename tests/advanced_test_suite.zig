@@ -4,7 +4,7 @@
 //! Validates 100% of Neo Zig SDK functionality.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const neo = @import("neo-zig");
@@ -109,13 +109,8 @@ test "advanced transaction operations" {
     const serialized = try neo_transaction.serialize(allocator);
     defer allocator.free(serialized);
     
-    const deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
-    defer {
-        allocator.free(deserialized.signers);
-        allocator.free(deserialized.attributes);
-        allocator.free(deserialized.script);
-        allocator.free(deserialized.witnesses);
-    }
+    var deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
+    defer deserialized.deinit(allocator);
     
     try testing.expectEqual(neo_transaction.version, deserialized.version);
     try testing.expectEqual(neo_transaction.nonce, deserialized.nonce);
@@ -437,8 +432,9 @@ test "complete integration workflow validation" {
     
     // 8. Test RPC client integration
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     const balance_request = try client.getNep17Balances(account_script_hash);
     try testing.expectEqualStrings("getnep17balances", balance_request.method);
@@ -591,8 +587,9 @@ test "final comprehensive Neo SDK validation" {
     
     // 6. Test complete RPC integration
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     // Test all major RPC methods are available
     const best_block_request = try client.getBestBlockHash();

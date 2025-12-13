@@ -7,7 +7,8 @@ const std = @import("std");
 
 
 const testing = std.testing;
-const StackItem = @import("../../src/types/stack_item.zig").StackItem;
+const neo = @import("neo-zig");
+const StackItem = neo.rpc.StackItem;
 
 test "Stack item creation and type checking" {
     const allocator = testing.allocator;

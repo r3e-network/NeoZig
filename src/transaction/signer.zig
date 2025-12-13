@@ -4,7 +4,7 @@
 //! Provides transaction signer with scope management.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");

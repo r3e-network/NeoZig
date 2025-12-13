@@ -4,7 +4,7 @@
 //! Provides witness condition logic for smart contract verification.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -96,7 +96,7 @@ pub const WitnessCondition = union(enum) {
             BOOLEAN_BYTE => Self{ .Boolean = false }, // Default value
             NOT_BYTE => blk: {
                 const inner = try allocator.create(WitnessCondition);
-                inner.* = Self{ .Boolean = false }; // Placeholder
+                inner.* = Self{ .Boolean = false }; // stub
                 break :blk Self{ .Not = inner };
             },
             AND_BYTE => Self{ .And = &[_]WitnessCondition{} },

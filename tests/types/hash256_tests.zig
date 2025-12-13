@@ -5,12 +5,11 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const Hash256 = @import("../../src/types/hash256.zig").Hash256;
-const errors = @import("../../src/core/errors.zig");
+const neo = @import("neo-zig");
+const Hash256 = neo.Hash256;
 
-/// Test creating Hash256 from valid hash strings (converted from Swift testFromValidHash)
+// Test creating Hash256 from valid hash strings (converted from Swift testFromValidHash)
 test "Hash256 from valid hash strings" {
     const allocator = testing.allocator;
     
@@ -44,10 +43,8 @@ test "Hash256 from valid hash strings" {
     try testing.expect(hash_with_prefix.eql(hash_without_prefix));
 }
 
-/// Test Hash256 creation error conditions (converted from Swift testCreationThrows)
+// Test Hash256 creation error conditions (converted from Swift testCreationThrows)
 test "Hash256 creation error conditions" {
-    const allocator = testing.allocator;
-    
     // Test invalid hex characters (equivalent to Swift "String argument is not hexadecimal" errors)
     const invalid_hex_cases = [_][]const u8{
         "g804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21a", // Invalid hex character 'g'
@@ -55,10 +52,7 @@ test "Hash256 creation error conditions" {
     };
     
     for (invalid_hex_cases) |invalid_hex| {
-        try testing.expectError(
-            anyerror, // Could be InvalidHex or InvalidLength
-            Hash256.initWithString(invalid_hex)
-        );
+        try testing.expectError(neo.NeoError.IllegalArgument, Hash256.initWithString(invalid_hex));
     }
     
     // Test wrong length cases (equivalent to Swift "Hash must be 32 bytes long" errors)
@@ -68,14 +62,11 @@ test "Hash256 creation error conditions" {
     };
     
     for (wrong_length_cases) |wrong_length| {
-        try testing.expectError(
-            errors.ValidationError.InvalidLength,
-            Hash256.initWithString(wrong_length)
-        );
+        try testing.expectError(neo.NeoError.IllegalArgument, Hash256.initWithString(wrong_length));
     }
 }
 
-/// Test Hash256 array operations
+// Test Hash256 array operations
 test "Hash256 array operations" {
     const allocator = testing.allocator;
     
@@ -92,14 +83,14 @@ test "Hash256 array operations" {
     try testing.expectEqual(@as(usize, 32), little_endian_array.len);
     
     // Little-endian should be reverse of big-endian
-    var expected_little_endian = try allocator.dupe(u8, hash_array);
+    const expected_little_endian = try allocator.dupe(u8, hash_array);
     defer allocator.free(expected_little_endian);
     std.mem.reverse(u8, expected_little_endian);
     
     try testing.expectEqualSlices(u8, expected_little_endian, &little_endian_array);
 }
 
-/// Test Hash256 serialization
+// Test Hash256 serialization
 test "Hash256 serialization" {
     const allocator = testing.allocator;
     
@@ -108,27 +99,25 @@ test "Hash256 serialization" {
     const hash256 = try Hash256.initWithString(hash_string);
     
     // Create binary writer
-    var writer = @import("../../src/serialization/binary_writer_complete.zig").CompleteBinaryWriter.init(allocator);
+    var writer = neo.serialization.BinaryWriter.init(allocator);
     defer writer.deinit();
     
     // Serialize hash
     try hash256.serialize(&writer);
     
-    const serialized_data = writer.toArray();
+    const serialized_data = writer.toSlice();
     try testing.expectEqual(@as(usize, 32), serialized_data.len);
     
     // Test deserialization
-    var reader = @import("../../src/serialization/binary_reader_complete.zig").CompleteBinaryReader.init(serialized_data);
+    var reader = neo.serialization.BinaryReader.init(serialized_data);
     const deserialized_hash = try Hash256.deserialize(&reader);
     
     // Should match original
     try testing.expect(hash256.eql(deserialized_hash));
 }
 
-/// Test Hash256 hashing operations
+// Test Hash256 hashing operations
 test "Hash256 hashing operations" {
-    const allocator = testing.allocator;
-    
     // Test SHA256 hashing
     const test_data = "Hello, Neo blockchain!";
     const test_bytes = @as([]const u8, test_data);
@@ -146,7 +135,7 @@ test "Hash256 hashing operations" {
     try testing.expect(hash_result.eql(hash_again)); // Same input should give same result
 }
 
-/// Test Hash256 utility methods
+// Test Hash256 utility methods
 test "Hash256 utility methods" {
     const allocator = testing.allocator;
     

@@ -35,15 +35,19 @@ pub const Signature = struct {
     
     pub fn create(hash: Hash256, private_key: anytype) !Self {
         const secp256r1 = @import("secp256r1.zig");
+        const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
         
         var hash_bytes: [32]u8 = undefined;
         @memcpy(&hash_bytes, hash.toSlice());
         
         var key_bytes: [32]u8 = undefined;
         @memcpy(&key_bytes, private_key.toSlice());
+        defer std.crypto.secureZero(u8, &key_bytes);
         
         const signature_bytes = try secp256r1.sign(hash_bytes, key_bytes);
-        return Self.init(signature_bytes);
+
+        const canonical = ECDSASignature.fromBytes(signature_bytes).toCanonical();
+        return Self.init(canonical.toBytes());
     }
     
     pub fn verify(self: Self, hash: Hash256, public_key: anytype) !bool {
@@ -72,8 +76,8 @@ pub const Signature = struct {
         return try allocator.dupe(u8, &hex);
     }
     
-    pub fn toSlice(self: Self) []const u8 {
-        return &self.bytes;
+    pub fn toSlice(self: *const Self) []const u8 {
+        return self.bytes[0..];
     }
     
     pub fn eql(self: Self, other: Self) bool {

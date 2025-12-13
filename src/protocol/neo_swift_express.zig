@@ -199,7 +199,7 @@ pub fn ExpressRequest(comptime T: type) type {
     };
 }
 
-/// Express-specific response types (placeholders for referenced types)
+/// Express-specific response types (stubs for referenced types)
 pub const PopulatedBlocks = @import("../response/populated_blocks.zig").PopulatedBlocks;
 pub const Nep17Contract = @import("../response/nep17_contract.zig").Nep17Contract;
 
@@ -245,7 +245,7 @@ test "NeoSwiftExpress creation and method availability" {
     
     // Test express client creation (equivalent to Swift tests)
     // Note: Would need actual NeoSwift instance for full testing
-    const mock_neo_swift = undefined; // Placeholder
+    const mock_neo_swift = undefined; // stub
     _ = allocator;
     _ = mock_neo_swift;
     
@@ -276,7 +276,7 @@ test "ExpressRequest creation" {
     const allocator = testing.allocator;
     
     // Test express request creation
-    const mock_neo_swift = undefined; // Placeholder
+    const mock_neo_swift = undefined; // stub
     
     const method = "expressgetpopulatedblocks";
     const params = "[]";

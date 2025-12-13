@@ -156,10 +156,7 @@ test "NEP-2 roundtrip encryption and decryption" {
     defer decrypted_result.deinit(allocator);
     
     // Verify roundtrip success
-    const original_private_key = original_key_pair.getPrivateKey().toSlice();
-    const decrypted_private_key = decrypted_result.private_key.toSlice();
-    
-    try testing.expectEqualSlices(u8, original_private_key, decrypted_private_key);
+    try testing.expect(original_key_pair.getPrivateKey().eql(decrypted_result.private_key));
 }
 
 /// Test NEP-2 error conditions
@@ -224,10 +221,7 @@ test "NEP-2 with different scrypt parameters" {
     defer decrypted_fast.deinit(allocator);
     
     // Should match original
-    const original_private_key = key_pair.getPrivateKey().toSlice();
-    const decrypted_private_key = decrypted_fast.private_key.toSlice();
-    
-    try testing.expectEqualSlices(u8, original_private_key, decrypted_private_key);
+    try testing.expect(key_pair.getPrivateKey().eql(decrypted_fast.private_key));
     
     // Test with strong parameters
     const strong_params = ScryptParams.strongParams();
@@ -290,8 +284,5 @@ test "NEP-2 performance with different parameters" {
     const decrypted_fast = try NEP2.decrypt(password, encrypted_fast, fast_params, allocator);
     defer decrypted_fast.deinit(allocator);
     
-    const original_key = key_pair.getPrivateKey().toSlice();
-    const decrypted_key = decrypted_fast.private_key.toSlice();
-    
-    try testing.expectEqualSlices(u8, original_key, decrypted_key);
+    try testing.expect(key_pair.getPrivateKey().eql(decrypted_fast.private_key));
 }

@@ -146,13 +146,8 @@ test "complete transaction system test conversion" {
     const serialized = try neo_transaction.serialize(allocator);
     defer allocator.free(serialized);
     
-    const deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
-    defer {
-        allocator.free(deserialized.signers);
-        allocator.free(deserialized.attributes);
-        allocator.free(deserialized.script);
-        allocator.free(deserialized.witnesses);
-    }
+    var deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
+    defer deserialized.deinit(allocator);
     
     try testing.expectEqual(neo_transaction.version, deserialized.version);
     try testing.expectEqual(neo_transaction.nonce, deserialized.nonce);
@@ -572,8 +567,9 @@ test "complete protocol system test conversion" {
     
     // NeoSwiftTests.swift conversion
     const config = neo.rpc.NeoSwiftConfig.init();
-    const rpc_service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, rpc_service, config);
+    var rpc_service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &rpc_service, config);
+    defer client.deinit();
     
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
     try testing.expectEqual(@as(u32, 5760), client.getMaxValidUntilBlockIncrement());

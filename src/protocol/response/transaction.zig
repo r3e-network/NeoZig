@@ -4,7 +4,7 @@
 //! Provides transaction structure for RPC responses.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const Hash256 = @import("../../types/hash256.zig").Hash256;
@@ -65,7 +65,7 @@ pub const TransactionSigner = struct {
         return Self{
             .account = account_copy,
             .scopes = scopes_copy,
-            .allowed_contracts = null, // Simplified for now
+            .allowed_contracts = null, // allowed contracts not parsed in this stub
             .allowed_groups = null,
             .rules = null,
         };

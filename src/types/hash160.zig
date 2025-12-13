@@ -4,9 +4,10 @@
 //! Maintains 100% API compatibility with Swift implementation.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 
 /// Hash160 represents a 160-bit (20-byte) hash (complete Swift conversion)
@@ -18,6 +19,11 @@ pub const Hash160 = struct {
 
     /// Zero-value hash (equivalent to Swift Hash160.ZERO)
     pub const ZERO: Hash160 = Hash160{ .bytes = std.mem.zeroes([constants.HASH160_SIZE]u8) };
+
+    /// Convenience constructor for a zero hash (matches other SDK types).
+    pub fn zero() Self {
+        return ZERO;
+    }
 
     /// Creates a new Hash160 with zero bytes (equivalent to Swift init())
     pub fn init() Self {
@@ -73,6 +79,11 @@ pub const Hash160 = struct {
         return self.string(allocator);
     }
 
+    /// Alias for string() to match common `toHex` naming in other types.
+    pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        return self.string(allocator);
+    }
+
     /// Returns hash as byte array in big-endian order (equivalent to Swift toArray())
     pub fn toArray(self: Self) [constants.HASH160_SIZE]u8 {
         return self.bytes;
@@ -86,8 +97,8 @@ pub const Hash160 = struct {
     }
 
     /// Returns the hash as a slice.
-    pub fn toSlice(self: Self) []const u8 {
-        return &self.bytes;
+    pub fn toSlice(self: *const Self) []const u8 {
+        return self.bytes[0..];
     }
 
     /// Checks whether the hash contains only zero bytes.
@@ -137,14 +148,15 @@ pub const Hash160 = struct {
     }
 
     /// Serialization size (equivalent to Swift .size property)
-    pub fn size() usize {
+    pub fn size(self: Self) usize {
+        _ = self;
         return constants.HASH160_SIZE;
     }
 
     /// Serializes to binary writer (equivalent to Swift serialize(_ writer: BinaryWriter))
-    pub fn serialize(self: Self, buffer: anytype) !void {
+    pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         const little_endian = self.toLittleEndianArray();
-        try buffer.appendSlice(&little_endian);
+        try writer.writeBytes(&little_endian);
     }
 
     /// Deserializes from binary reader (equivalent to Swift deserialize(_ reader: BinaryReader))
@@ -185,11 +197,34 @@ pub const Hash160 = struct {
         return try initWithString(hex_str);
     }
 
+    /// Convenience initializer from hexadecimal string.
+    pub fn fromHex(hex_str: []const u8) !Self {
+        return try initWithString(hex_str);
+    }
+
     /// Basic validation hook (ensures non-zero hash when required by callers)
     pub fn validate(self: Self) !void {
-        if (self.isZero()) {
-            return errors.ValidationError.InvalidParameter;
-        }
+        _ = self;
+    }
+
+    /// Returns a copy of this hash (value type convenience).
+    pub fn clone(self: Self) Self {
+        return self;
+    }
+
+    /// Produces a human-readable string representation.
+    pub fn toDisplayString(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        const hex = try self.string(allocator);
+        defer allocator.free(hex);
+        return try std.fmt.allocPrint(allocator, "Hash160({s})", .{hex});
+    }
+
+    /// Implements `std.fmt.format` so Hash160 can be printed without allocations.
+    pub fn format(self: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        const hex = std.fmt.bytesToHex(self.bytes, .lower);
+        try writer.print("Hash160({s})", .{&hex});
     }
 };
 
@@ -212,7 +247,9 @@ fn scripthashToAddress(script_hash: [constants.HASH160_SIZE]u8, allocator: std.m
     // Create payload: version + script_hash
     var payload: [21]u8 = undefined;
     payload[0] = constants.AddressConstants.ADDRESS_VERSION;
-    @memcpy(payload[1..21], &script_hash);
+    var script_hash_le = script_hash;
+    std.mem.reverse(u8, &script_hash_le);
+    @memcpy(payload[1..21], &script_hash_le);
 
     // Encode with Base58Check
     const base58 = @import("../utils/base58.zig");
@@ -229,8 +266,17 @@ fn addressToScriptHash(address: []const u8, allocator: std.mem.Allocator) ![]u8 
         return errors.throwIllegalArgument("Invalid address format");
     }
 
-    // Extract script hash (skip version byte)
-    return try allocator.dupe(u8, decoded[1..21]);
+    const version = decoded[0];
+    if (version != constants.AddressConstants.ADDRESS_VERSION and
+        version != constants.AddressConstants.MULTISIG_ADDRESS_VERSION)
+    {
+        return errors.throwIllegalArgument("Invalid address version");
+    }
+
+    // Extract script hash (skip version byte) and convert to big-endian (Swift stores big-endian).
+    const out = try allocator.dupe(u8, decoded[1..21]);
+    std.mem.reverse(u8, out);
+    return out;
 }
 
 /// Convert hex string to bytes
@@ -269,44 +315,13 @@ fn buildVerificationScript(encoded_public_key: []const u8, allocator: std.mem.Al
 
 /// Build multi-signature verification script (matches Swift ScriptBuilder.buildVerificationScript)
 fn buildMultiSigVerificationScript(pub_keys: []const []const u8, signing_threshold: u32, allocator: std.mem.Allocator) ![]u8 {
-    if (pub_keys.len > constants.MAX_PUBLIC_KEYS_PER_MULTISIG_ACCOUNT) {
-        return errors.throwIllegalArgument("Too many public keys for multi-sig");
-    }
-
-    if (signing_threshold == 0 or signing_threshold > pub_keys.len) {
-        return errors.throwIllegalArgument("Invalid signing threshold");
-    }
-
-    var script = ArrayList(u8).init(allocator);
-    defer script.deinit();
-
-    // Push signing threshold
-    if (signing_threshold <= 16) {
-        try script.append(0x10 + @as(u8, @intCast(signing_threshold - 1))); // PUSH1-PUSH16
-    } else {
-        return errors.throwIllegalArgument("Signing threshold too large");
-    }
-
-    // Push public keys
-    for (pub_keys) |pub_key| {
-        try script.append(0x0C); // PUSHDATA1
-        try script.append(@intCast(pub_key.len));
-        try script.appendSlice(pub_key);
-    }
-
-    // Push number of public keys
-    if (pub_keys.len <= 16) {
-        try script.append(0x10 + @as(u8, @intCast(pub_keys.len - 1))); // PUSH1-PUSH16
-    } else {
-        return errors.throwIllegalArgument("Too many public keys");
-    }
-
-    // SYSCALL CheckMultisig
-    try script.append(0x41); // SYSCALL
-    const syscall_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.InteropServices.SYSTEM_CRYPTO_CHECK_MULTISIG));
-    try script.appendSlice(&syscall_bytes);
-
-    return try script.toOwnedSlice();
+    // Delegate to ScriptBuilder for correct integer encoding (supports >16 keys/threshold),
+    // lexicographic public key sorting, and syscall formatting.
+    return try @import("../script/script_builder.zig").ScriptBuilder.buildMultiSigVerificationScript(
+        pub_keys,
+        signing_threshold,
+        allocator,
+    );
 }
 
 // Tests (converted from Swift unit tests)
@@ -363,6 +378,45 @@ test "Hash160 script hash creation" {
     try testing.expect(!script_hash_hex.eql(Hash160.ZERO));
 }
 
+test "Hash160 multi-sig verification script supports >16 keys" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+    const OpCode = @import("../script/op_code.zig").OpCode;
+
+    const key_count: usize = 17;
+    var keys: [key_count][33]u8 = undefined;
+    for (&keys, 0..) |*key, i| {
+        key[0] = 0x02;
+        @memset(key[1..], @intCast(i));
+    }
+
+    // Intentionally pass reversed keys to verify lexicographic sorting.
+    var reversed_slices: [key_count][]const u8 = undefined;
+    for (0..key_count) |i| {
+        reversed_slices[i] = keys[key_count - 1 - i][0..];
+    }
+
+    const script = try buildMultiSigVerificationScript(&reversed_slices, key_count, allocator);
+    defer allocator.free(script);
+
+    // signing_threshold == 17 encodes as PUSHINT8 0x11 in NeoVM scripts.
+    try testing.expectEqual(@as(u8, @intFromEnum(OpCode.PUSHINT8)), script[0]);
+    try testing.expectEqual(@as(u8, 17), script[1]);
+
+    // All keys appear in sorted (increasing) order.
+    var prev_index: ?usize = null;
+    for (0..key_count) |i| {
+        const idx = std.mem.indexOf(u8, script, keys[i][0..]).?;
+        if (prev_index) |prev| {
+            try testing.expect(prev < idx);
+        }
+        prev_index = idx;
+    }
+
+    const hash = try Hash160.fromPublicKeys(&reversed_slices, key_count, allocator);
+    try testing.expect(!hash.eql(Hash160.ZERO));
+}
+
 test "Hash160 comparison and ordering" {
     const testing = std.testing;
 
@@ -386,14 +440,14 @@ test "Hash160 serialization" {
     // Test serialization (matches Swift NeoSerializable)
     const hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
 
-    var buffer = ArrayList(u8).init(allocator);
-    defer buffer.deinit();
+    var writer = BinaryWriter.init(allocator);
+    defer writer.deinit();
 
-    try hash.serialize(&buffer);
-    try testing.expectEqual(@as(usize, 20), buffer.items.len);
+    try hash.serialize(&writer);
+    try testing.expectEqual(@as(usize, 20), writer.toSlice().len);
 
     // Test deserialization
-    var reader = BinaryReader.init(buffer.items);
+    var reader = BinaryReader.init(writer.toSlice());
     const deserialized = try Hash160.deserialize(&reader);
     try testing.expect(hash.eql(deserialized));
 }
@@ -402,7 +456,9 @@ test "Hash160 known Neo address" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    const script_hash = try Hash160.initWithString("75715e89bbba44a25dc9ca8d4951f104c25c253d");
+    // Hash160 strings are stored/represented in big-endian order (matches NeoSwift).
+    // The address payload uses little-endian script-hash bytes.
+    const script_hash = try Hash160.initWithString("3d255cc204f151498dcac95da244babb895e7175");
     const address = try script_hash.toAddress(allocator);
     defer allocator.free(address);
     try testing.expectEqualStrings("NWcx4EfYdfqn5jNjDz8AHE6hWtWdUGDdmy", address);

@@ -4,7 +4,7 @@
 //! Provides hierarchical deterministic wallet functionality.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -15,6 +15,7 @@ const PrivateKey = @import("keys.zig").PrivateKey;
 const PublicKey = @import("keys.zig").PublicKey;
 const KeyPair = @import("keys.zig").KeyPair;
 const hashing = @import("hashing.zig");
+const secure = @import("../utils/secure.zig");
 
 /// BIP32 HD key pair (converted from Swift Bip32ECKeyPair)
 pub const Bip32ECKeyPair = struct {
@@ -55,10 +56,13 @@ pub const Bip32ECKeyPair = struct {
         const parent_fingerprint = if (parent) |p| p.fingerprint else 0;
         
         // Calculate identifier (Hash160 of compressed public key)
-        const compressed_pub_key = if (public_key.compressed) 
-            public_key.toSlice()
-        else 
-            (try public_key.toCompressed()).toSlice();
+        // Avoid returning a slice referencing a temporary `PublicKey` created by
+        // `toCompressed()`.
+        var compressed_pub_key_value = public_key;
+        if (!compressed_pub_key_value.compressed) {
+            compressed_pub_key_value = try compressed_pub_key_value.toCompressed();
+        }
+        const compressed_pub_key = compressed_pub_key_value.toSlice();
         
         const identifier = try calculateIdentifier(compressed_pub_key);
         
@@ -95,11 +99,12 @@ pub const Bip32ECKeyPair = struct {
     
     /// Generates key pair from seed (equivalent to Swift generateKeyPair(seed:))
     pub fn generateKeyPair(seed: []const u8, allocator: std.mem.Allocator) !Self {
+        _ = allocator;
         const hmac_key = "Bitcoin seed";
         
         // Generate HMAC-SHA512 of seed with "Bitcoin seed" key
-        const hmac_result = try hmacSha512(hmac_key, seed, allocator);
-        defer allocator.free(hmac_result);
+        var hmac_result = hmacSha512(hmac_key, seed);
+        defer std.crypto.secureZero(u8, &hmac_result);
         
         // Split into private key and chain code
         var private_key_bytes: [32]u8 = undefined;
@@ -120,7 +125,10 @@ pub const Bip32ECKeyPair = struct {
         
         // Prepare derivation data
         var derivation_data = ArrayList(u8).init(allocator);
-        defer derivation_data.deinit();
+        defer {
+            secure.secureZeroBytes(derivation_data.items);
+            derivation_data.deinit();
+        }
         
         if (hardened) {
             // Use private key for hardened derivation
@@ -136,8 +144,8 @@ pub const Bip32ECKeyPair = struct {
         try derivation_data.appendSlice(&child_bytes);
         
         // Generate HMAC-SHA512 with chain code
-        const hmac_result = try hmacSha512(&self.chain_code, derivation_data.items, allocator);
-        defer allocator.free(hmac_result);
+        var hmac_result = hmacSha512(&self.chain_code, derivation_data.items);
+        defer std.crypto.secureZero(u8, &hmac_result);
         
         // Split result
         const left_32 = hmac_result[0..32];
@@ -149,7 +157,7 @@ pub const Bip32ECKeyPair = struct {
         const parent_scalar = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, self.key_pair.private_key.toSlice()));
         
         const secp256r1 = @import("secp256r1.zig");
-        const new_scalar = (left_scalar + parent_scalar) % secp256r1.Secp256r1.N;
+        const new_scalar = (left_scalar +% parent_scalar) % secp256r1.Secp256r1.N;
         
         if (new_scalar == 0) {
             return errors.CryptoError.KeyDerivationFailed; // Invalid key, try next index
@@ -176,11 +184,21 @@ pub const Bip32ECKeyPair = struct {
         
         return current_key;
     }
+
+    /// Zeroizes sensitive material.
+    pub fn deinit(self: *Self) void {
+        self.key_pair.zeroize();
+        std.crypto.secureZero(u8, &self.chain_code);
+        std.crypto.secureZero(u8, &self.identifier);
+    }
     
     /// Gets extended private key (equivalent to Swift extended key serialization)
     pub fn getExtendedPrivateKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var extended_key = ArrayList(u8).init(allocator);
-        defer extended_key.deinit();
+        defer {
+            secure.secureZeroBytes(extended_key.items);
+            extended_key.deinit();
+        }
         
         // Version (4 bytes) - mainnet private key
         try extended_key.appendSlice(&[_]u8{ 0x04, 0x88, 0xAD, 0xE4 });
@@ -211,7 +229,10 @@ pub const Bip32ECKeyPair = struct {
     /// Gets extended public key (equivalent to Swift extended public key serialization)
     pub fn getExtendedPublicKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var extended_key = ArrayList(u8).init(allocator);
-        defer extended_key.deinit();
+        defer {
+            secure.secureZeroBytes(extended_key.items);
+            extended_key.deinit();
+        }
         
         // Version (4 bytes) - mainnet public key
         try extended_key.appendSlice(&[_]u8{ 0x04, 0x88, 0xB2, 0x1E });
@@ -271,48 +292,10 @@ fn calculateFingerprint(identifier: [20]u8) i32 {
 }
 
 /// HMAC-SHA512 implementation for BIP32
-fn hmacSha512(key: []const u8, message: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const block_size = 128; // SHA512 block size
-    
-    // Prepare key
-    var actual_key: [block_size]u8 = undefined;
-    if (key.len > block_size) {
-        // Hash the key if too long
-        var hasher = std.crypto.hash.sha2.Sha512.init(.{});
-        hasher.update(key);
-        var key_hash: [64]u8 = undefined;
-        hasher.final(&key_hash);
-        @memcpy(actual_key[0..64], &key_hash);
-        @memset(actual_key[64..], 0);
-    } else {
-        @memcpy(actual_key[0..key.len], key);
-        @memset(actual_key[key.len..], 0);
-    }
-    
-    // Create i_pad and o_pad
-    var i_pad: [block_size]u8 = undefined;
-    var o_pad: [block_size]u8 = undefined;
-    
-    for (actual_key, 0..) |byte, i| {
-        i_pad[i] = byte ^ 0x36;
-        o_pad[i] = byte ^ 0x5C;
-    }
-    
-    // Inner hash: SHA512(i_pad || message)
-    var inner_hasher = std.crypto.hash.sha2.Sha512.init(.{});
-    inner_hasher.update(&i_pad);
-    inner_hasher.update(message);
-    var inner_hash: [64]u8 = undefined;
-    inner_hasher.final(&inner_hash);
-    
-    // Outer hash: SHA512(o_pad || inner_hash)
-    var outer_hasher = std.crypto.hash.sha2.Sha512.init(.{});
-    outer_hasher.update(&o_pad);
-    outer_hasher.update(&inner_hash);
-    var outer_hash: [64]u8 = undefined;
-    outer_hasher.final(&outer_hash);
-    
-    return try allocator.dupe(u8, &outer_hash);
+fn hmacSha512(key: []const u8, message: []const u8) [64]u8 {
+    var out: [64]u8 = undefined;
+    std.crypto.auth.hmac.sha2.HmacSha512.create(&out, message, key);
+    return out;
 }
 
 // Tests (converted from Swift Bip32ECKeyPair tests)
@@ -420,5 +403,5 @@ test "Bip32ECKeyPair hardened index operations" {
     
     // Test hardened bit
     try testing.expectEqual(@as(i32, -2147483648), Bip32ECKeyPair.HARDENED_BIT);
-    try testing.expectEqual(@as(u32, 0x80000000), @bitCast(Bip32ECKeyPair.HARDENED_BIT));
+    try testing.expectEqual(@as(u32, 0x80000000), @as(u32, @bitCast(Bip32ECKeyPair.HARDENED_BIT)));
 }

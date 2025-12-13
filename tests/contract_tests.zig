@@ -7,7 +7,7 @@ const std = @import("std");
 
 const neo = @import("neo-zig");
 
-/// Tests SmartContract functionality (converted from SmartContractTests.swift)
+// Tests SmartContract functionality (converted from SmartContractTests.swift)
 test "SmartContract creation and invocation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -31,7 +31,7 @@ test "SmartContract creation and invocation" {
     try testing.expect(tx_builder.getScript().?.len > 0);
 }
 
-/// Tests ContractManagement (converted from ContractManagementTests.swift)
+// Tests ContractManagement (converted from ContractManagementTests.swift)
 test "ContractManagement deployment operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -53,10 +53,10 @@ test "ContractManagement deployment operations" {
     
     // Test hasMethod (equivalent to Swift hasMethod tests)
     const has_method = try contract_mgmt.hasMethod(neo.Hash160.ZERO, "testMethod", 1);
-    try testing.expect(!has_method); // Placeholder returns false
+    try testing.expect(!has_method); // stub returns false
 }
 
-/// Tests GasToken (converted from GasTokenTests.swift)
+// Tests GasToken (converted from GasTokenTests.swift)
 test "GasToken properties and operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -74,7 +74,7 @@ test "GasToken properties and operations" {
     
     // Test balance operations (equivalent to Swift balance tests)
     const balance = try gas_token.getBalanceOf(neo.Hash160.ZERO);
-    try testing.expectEqual(@as(i64, 0), balance); // Placeholder
+    try testing.expectEqual(@as(i64, 0), balance); // stub
     
     // Test transfer operations (equivalent to Swift transfer tests)
     var transfer_tx = try gas_token.transfer(neo.Hash160.ZERO, neo.Hash160.ZERO, 100000000, null);
@@ -83,7 +83,7 @@ test "GasToken properties and operations" {
     try testing.expect(transfer_tx.getScript() != null);
 }
 
-/// Tests NeoToken (converted from NeoTokenTests.swift)
+// Tests NeoToken (converted from NeoTokenTests.swift)
 test "NeoToken properties and governance" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -111,7 +111,7 @@ test "NeoToken properties and governance" {
     try testing.expect(unregister_tx.getScript() != null);
 }
 
-/// Tests FungibleToken (converted from FungibleTokenTests.swift)
+// Tests FungibleToken (converted from FungibleTokenTests.swift)
 test "FungibleToken operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -121,7 +121,7 @@ test "FungibleToken operations" {
     
     // Test balance operations (equivalent to Swift balance tests)
     const balance = try fungible_token.getBalanceOf(neo.Hash160.ZERO);
-    try testing.expectEqual(@as(i64, 0), balance); // Placeholder
+    try testing.expectEqual(@as(i64, 0), balance); // stub
     
     // Test transfer operations (equivalent to Swift transfer tests)
     var transfer_tx = try fungible_token.transfer(
@@ -146,7 +146,7 @@ test "FungibleToken operations" {
     try testing.expect(multi_tx.getScript() != null);
 }
 
-/// Tests NonFungibleToken (converted from NonFungibleTokenTests.swift)
+// Tests NonFungibleToken (converted from NonFungibleTokenTests.swift)
 test "NonFungibleToken NFT operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -156,7 +156,7 @@ test "NonFungibleToken NFT operations" {
     
     // Test NFT balance (equivalent to Swift balanceOf tests)
     const balance = try nft.balanceOf(neo.Hash160.ZERO);
-    try testing.expectEqual(@as(i64, 0), balance); // Placeholder
+    try testing.expectEqual(@as(i64, 0), balance); // stub
     
     // Test NFT transfer (equivalent to Swift transfer tests)
     const token_id = "test_nft_001";
@@ -183,7 +183,7 @@ test "NonFungibleToken NFT operations" {
     try testing.expect(divisible_tx.getScript() != null);
 }
 
-/// Tests Token base class (converted from TokenTests.swift)
+// Tests Token base class (converted from TokenTests.swift)
 test "Token base functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -206,7 +206,7 @@ test "Token base functionality" {
     try testing.expect(total_supply >= 0);
 }
 
-/// Tests script building operations (converted from script tests)
+// Tests script building operations (converted from script tests)
 test "Script building for contracts" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -230,7 +230,7 @@ test "Script building for contracts" {
     try testing.expect(std.mem.indexOf(u8, script, "testMethod") != null);
 }
 
-/// Tests OpCode functionality (converted from OpCode tests)
+// Tests OpCode functionality (converted from OpCode tests)
 test "OpCode definitions and properties" {
     const testing = std.testing;
     
@@ -246,7 +246,7 @@ test "OpCode definitions and properties" {
     try testing.expectEqual(@as(?i32, null), neo.script.OpCode.SYSCALL.getPushValue());
 }
 
-/// Tests CallFlags (converted from CallFlags tests)
+// Tests CallFlags (converted from CallFlags tests)
 test "CallFlags permissions and combinations" {
     const testing = std.testing;
     

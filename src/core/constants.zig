@@ -65,6 +65,7 @@ pub const NativeContracts = struct {
     pub const GAS_TOKEN: [20]u8 = [_]u8{ 0xd2, 0xa4, 0xcf, 0xf3, 0x1a, 0x0a, 0xa7, 0x93, 0x3e, 0x4d, 0xa7, 0x8b, 0x46, 0x97, 0x7c, 0xa0, 0xd8, 0x13, 0x68, 0xa7 };
     pub const POLICY_CONTRACT: [20]u8 = [_]u8{ 0xcc, 0x5e, 0x4e, 0xdd, 0x86, 0xf3, 0x40, 0x45, 0x8c, 0x96, 0x5a, 0x2e, 0x1f, 0x08, 0x95, 0x24, 0xbc, 0x6d, 0x2e, 0x8c };
     pub const CONTRACT_MANAGEMENT: [20]u8 = [_]u8{ 0xff, 0xfd, 0xc9, 0x37, 0x64, 0xdb, 0xad, 0xdd, 0x97, 0xc4, 0x8f, 0x25, 0x2a, 0x53, 0xea, 0x46, 0x43, 0xfa, 0xa3, 0xfd };
+    pub const ROLE_MANAGEMENT: [20]u8 = [_]u8{ 0x74, 0x2d, 0x9e, 0xbe, 0x1d, 0xc8, 0x89, 0x91, 0x8f, 0xa6, 0x5b, 0x64, 0xbd, 0x35, 0x48, 0x6c, 0x7e, 0x65, 0xb4, 0xc0 };
 };
 
 /// Fee constants
@@ -77,11 +78,17 @@ pub const FeeConstants = struct {
 
 /// Interop service IDs
 pub const InteropServices = struct {
-    pub const SYSTEM_CONTRACT_CALL: u32 = 0x627d5b52;
-    pub const SYSTEM_CRYPTO_CHECK_SIG: u32 = 0x41766430;
-    pub const SYSTEM_CRYPTO_CHECK_MULTISIG: u32 = 0x0f1c2d00;
-    pub const NEO_CRYPTO_RIPEMD160: u32 = 0x0aa1c5a8;
-    pub const NEO_CRYPTO_SHA256: u32 = 0xbf28e7e2;
+    // Interop service hashes are defined as the little-endian u32 value of the
+    // first 4 bytes of SHA256(<ascii method name>), matching Neo N3.
+    pub const SYSTEM_CONTRACT_CALL: u32 = 0x525b7d62; // sha256("System.Contract.Call")[0..4] == 62 7d 5b 52
+    pub const SYSTEM_CRYPTO_CHECK_SIG: u32 = 0x27b3e756; // sha256("System.Crypto.CheckSig")[0..4] == 56 e7 b3 27
+    pub const SYSTEM_CRYPTO_CHECK_MULTISIG: u32 = 0x3adcd09e; // sha256("System.Crypto.CheckMultisig")[0..4] == 9e d0 dc 3a
+    pub const SYSTEM_CRYPTO_RIPEMD160: u32 = 0x99b42d80; // sha256("System.Crypto.Ripemd160")[0..4] == 80 2d b4 99
+    pub const SYSTEM_CRYPTO_SHA256: u32 = 0x0e594654; // sha256("System.Crypto.Sha256")[0..4] == 54 46 59 0e
+
+    // Legacy aliases (kept for compatibility with earlier SDK versions).
+    pub const NEO_CRYPTO_RIPEMD160: u32 = SYSTEM_CRYPTO_RIPEMD160;
+    pub const NEO_CRYPTO_SHA256: u32 = SYSTEM_CRYPTO_SHA256;
 };
 
 test "constants validation" {
@@ -98,4 +105,28 @@ test "constants validation" {
     try testing.expectEqual(@as(u8, 0), CURRENT_TX_VERSION);
     try testing.expectEqual(@as(u32, 102400), MAX_TRANSACTION_SIZE);
     try testing.expectEqual(@as(u8, 16), MAX_TRANSACTION_ATTRIBUTES);
+
+    // Validate selected interop service hashes (SHA256 prefix bytes)
+    var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+
+    std.crypto.hash.sha2.Sha256.hash("System.Contract.Call", &digest, .{});
+    var syscall_bytes: [4]u8 = undefined;
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CONTRACT_CALL, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Crypto.CheckSig", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CRYPTO_CHECK_SIG, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Crypto.CheckMultisig", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CRYPTO_CHECK_MULTISIG, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Crypto.Ripemd160", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CRYPTO_RIPEMD160, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Crypto.Sha256", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CRYPTO_SHA256, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
 }

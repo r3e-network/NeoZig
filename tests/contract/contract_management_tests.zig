@@ -8,13 +8,13 @@ const std = @import("std");
 
 const testing = std.testing;
 const ContractManagement = @import("../../src/contract/contract_management.zig").ContractManagement;
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "Contract management creation" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const contract_mgmt = ContractManagement.init(neo_swift);
     

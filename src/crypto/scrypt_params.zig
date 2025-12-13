@@ -4,7 +4,6 @@
 //! Provides scrypt algorithm parameters for NEP-2 encryption.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
 const json_utils = @import("../utils/json_utils.zig");
 
 

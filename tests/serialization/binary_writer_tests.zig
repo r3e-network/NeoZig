@@ -5,9 +5,9 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const BinaryWriter = @import("../../src/serialization/binary_writer_complete.zig").CompleteBinaryWriter;
+const neo = @import("neo-zig");
+const BinaryWriter = neo.serialization.CompleteBinaryWriter;
 
 /// Helper function to test and reset writer (equivalent to Swift testAndReset)
 fn testAndReset(writer: *BinaryWriter, expected: []const u8) !void {
@@ -16,7 +16,7 @@ fn testAndReset(writer: *BinaryWriter, expected: []const u8) !void {
     writer.reset();
 }
 
-/// Test writing UInt32 values (converted from Swift testWriteUInt32)
+// Test writing UInt32 values (converted from Swift testWriteUInt32)
 test "Write UInt32 values" {
     const allocator = testing.allocator;
     
@@ -37,7 +37,7 @@ test "Write UInt32 values" {
     try testAndReset(&writer, &[_]u8{ 0x39, 0x30, 0, 0 });
 }
 
-/// Test writing Int64 values (converted from Swift testWriteInt64)
+// Test writing Int64 values (converted from Swift testWriteInt64)
 test "Write Int64 values" {
     const allocator = testing.allocator;
     
@@ -61,7 +61,7 @@ test "Write Int64 values" {
     try testAndReset(&writer, &[_]u8{ 0xd2, 0x02, 0x96, 0x49, 0x00, 0x00, 0x00, 0x00 });
 }
 
-/// Test writing UInt16 values (converted from Swift testWriteUInt16)
+// Test writing UInt16 values (converted from Swift testWriteUInt16)
 test "Write UInt16 values" {
     const allocator = testing.allocator;
     
@@ -82,7 +82,7 @@ test "Write UInt16 values" {
     try testAndReset(&writer, &[_]u8{ 0x39, 0x30 }); // Little-endian
 }
 
-/// Test writing byte values
+// Test writing byte values
 test "Write byte values" {
     const allocator = testing.allocator;
     
@@ -98,7 +98,7 @@ test "Write byte values" {
     }
 }
 
-/// Test writing byte arrays
+// Test writing byte arrays
 test "Write byte arrays" {
     const allocator = testing.allocator;
     
@@ -119,7 +119,7 @@ test "Write byte arrays" {
     }
 }
 
-/// Test writing variable-length data
+// Test writing variable-length data
 test "Write variable-length data" {
     const allocator = testing.allocator;
     
@@ -137,7 +137,30 @@ test "Write variable-length data" {
     try testing.expectEqualSlices(u8, &test_data, written_data[1..]); // Rest should be data
 }
 
-/// Test writer position and size
+test "Write VarInt boundary values" {
+    const allocator = testing.allocator;
+
+    var writer = BinaryWriter.init(allocator);
+    defer writer.deinit();
+
+    // 252 (0xFC) is still encoded in a single byte.
+    try writer.writeVarInt(252);
+    try testAndReset(&writer, &[_]u8{0xFC});
+
+    // 253 (0xFD) switches to the 0xFD marker + little-endian UInt16.
+    try writer.writeVarInt(253);
+    try testAndReset(&writer, &[_]u8{ 0xFD, 0xFD, 0x00 });
+
+    // 65535 (0xFFFF) still uses the 0xFD marker.
+    try writer.writeVarInt(65535);
+    try testAndReset(&writer, &[_]u8{ 0xFD, 0xFF, 0xFF });
+
+    // 65536 (0x0001_0000) switches to 0xFE + little-endian UInt32.
+    try writer.writeVarInt(65536);
+    try testAndReset(&writer, &[_]u8{ 0xFE, 0x00, 0x00, 0x01, 0x00 });
+}
+
+// Test writer position and size
 test "Writer position and size tracking" {
     const allocator = testing.allocator;
     
@@ -162,7 +185,7 @@ test "Writer position and size tracking" {
     try testing.expectEqual(@as(usize, 7), total_data.len);
 }
 
-/// Test writer reset functionality
+// Test writer reset functionality
 test "Writer reset functionality" {
     const allocator = testing.allocator;
     

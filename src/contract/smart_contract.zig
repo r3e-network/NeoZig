@@ -4,7 +4,7 @@
 //! Essential for contract interaction and deployment.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -24,7 +24,7 @@ pub const SmartContract = struct {
     /// Contract script hash
     script_hash: Hash160,
     /// Neo client reference
-    neo_swift: ?*anyopaque, // Placeholder for NeoSwift reference
+    neo_swift: ?*anyopaque, // stub for NeoSwift reference
     allocator: std.mem.Allocator,
     
     const Self = @This();
@@ -86,7 +86,8 @@ pub const SmartContract = struct {
         const neo_swift = try self.getNeoSwift();
         var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        defer invocation.deinit(neo_swift.allocator);
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
             return errors.ContractError.ContractExecutionFailed;
@@ -108,7 +109,8 @@ pub const SmartContract = struct {
         const neo_swift = try self.getNeoSwift();
         var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        defer invocation.deinit(neo_swift.allocator);
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
             return errors.ContractError.ContractExecutionFailed;
@@ -130,7 +132,8 @@ pub const SmartContract = struct {
         const neo_swift = try self.getNeoSwift();
         var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        defer invocation.deinit(neo_swift.allocator);
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
             return errors.ContractError.ContractExecutionFailed;
@@ -138,6 +141,45 @@ pub const SmartContract = struct {
 
         const stack_item = try invocation.getFirstStackItem();
         return try stack_item.getBoolean();
+    }
+
+    /// Calls function returning Hash160 (used by native contracts).
+    /// If no RPC client is attached, returns `Hash160.ZERO`.
+    pub fn callFunctionReturningHash160(
+        self: Self,
+        function_name: []const u8,
+        params: []const ContractParameter,
+    ) !Hash160 {
+        if (self.neo_swift == null) {
+            return Hash160.ZERO;
+        }
+        const neo_swift = try self.getNeoSwift();
+        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        const service_allocator = neo_swift.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const stack_item = try invocation.getFirstStackItem();
+
+        // Neo nodes return script hashes as ByteString in little-endian order.
+        const bytes = try stack_item.getByteArray(self.allocator);
+        defer self.allocator.free(bytes);
+
+        if (bytes.len == constants.HASH160_SIZE) {
+            var buf: [constants.HASH160_SIZE]u8 = undefined;
+            @memcpy(&buf, bytes);
+            std.mem.reverse(u8, &buf);
+            return Hash160.fromArray(buf);
+        }
+
+        // Fall back to interpreting the value as a hex string.
+        const hex = try stack_item.getString(self.allocator);
+        defer self.allocator.free(hex);
+        return try Hash160.initWithString(hex);
     }
     
     /// Gets contract manifest (equivalent to Swift getManifest)
@@ -229,7 +271,7 @@ pub const ContractNef = struct {
     }
 };
 
-/// Supporting types (placeholders for full implementation)
+/// Supporting types (stubs for full implementation)
 pub const ContractGroup = struct {
     public_key: [33]u8,
     signature: [64]u8,

@@ -5,14 +5,14 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const ScriptReader = @import("../../src/script/script_reader.zig").ScriptReader;
+const neo = @import("neo-zig");
+const ScriptReader = neo.script.ScriptReader;
 
 test "Script reader opcode conversion" {
     const allocator = testing.allocator;
     
-    const simple_script = [_]u8{ 0x10, 0x11, 0x9C, 0x40 }; // PUSH0, PUSH1, ADD, RET
+    const simple_script = [_]u8{ 0x10, 0x11, 0x9E, 0x40 }; // PUSH0, PUSH1, ADD, RET
     
     const opcode_string = try ScriptReader.convertToOpCodeStringFromBytes(&simple_script, allocator);
     defer allocator.free(opcode_string);
@@ -26,7 +26,7 @@ test "Script reader opcode conversion" {
 test "Script analysis" {
     const allocator = testing.allocator;
     
-    const test_script = [_]u8{ 0x10, 0x11, 0x9C, 0x0C, 0x02, 0xAB, 0xCD };
+    const test_script = [_]u8{ 0x10, 0x11, 0x9E, 0x0C, 0x02, 0xAB, 0xCD };
     
     var analysis = try ScriptReader.analyzeScript(&test_script, allocator);
     defer analysis.deinit();

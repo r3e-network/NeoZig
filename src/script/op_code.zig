@@ -224,19 +224,12 @@ pub const OpCode = enum(u8) {
     
     /// Gets opcode name (equivalent to Swift description)
     pub fn getName(self: OpCode) []const u8 {
-        return switch (self) {
-            .PUSH0 => "PUSH0",
-            .PUSH1 => "PUSH1",
-            .SYSCALL => "SYSCALL",
-            .ADD => "ADD",
-            .SUB => "SUB",
-            .MUL => "MUL",
-            .DIV => "DIV",
-            .RET => "RET",
-            .NEWARRAY0 => "NEWARRAY0",
-            .PACK => "PACK",
-            else => "UNKNOWN",
-        };
+        return @tagName(self);
+    }
+
+    /// Attempts to convert a raw opcode byte into an `OpCode`.
+    pub fn fromByte(value: u8) ?OpCode {
+        return std.meta.intToEnum(OpCode, value) catch null;
     }
     
     /// Checks if opcode is a push operation

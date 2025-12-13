@@ -174,7 +174,7 @@ test "Account encryption and locking" {
     try testing.expect(!account.isLocked());
     try testing.expect(account.getEncryptedPrivateKey() == null);
     
-    // Test encrypting account (simplified - would need NEP-2 implementation)
+    // Test encrypting account (basic - would need NEP-2 implementation)
     const password = "testpassword";
     try account.encrypt(password, allocator);
     

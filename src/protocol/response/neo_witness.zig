@@ -63,7 +63,7 @@ pub const NeoWitness = struct {
         const verification_bytes = try base64Decode(self.verification, allocator);
         defer allocator.free(verification_bytes);
         
-        return try Witness.init(invocation_bytes, verification_bytes, allocator);
+        return try Witness.initWithBytes(invocation_bytes, verification_bytes, allocator);
     }
     
     /// Gets invocation script as bytes

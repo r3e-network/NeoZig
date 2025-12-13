@@ -7,7 +7,7 @@ const std = @import("std");
 
 const neo = @import("neo-zig");
 
-/// Tests wallet creation (converted from Swift WalletTests)
+// Tests wallet creation (converted from Swift WalletTests)
 test "wallet creation and default properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -26,7 +26,7 @@ test "wallet creation and default properties" {
     try testing.expectEqual(@as(u32, 8), scrypt_params.p);
 }
 
-/// Tests wallet configuration (converted from Swift wallet configuration tests)
+// Tests wallet configuration (converted from Swift wallet configuration tests)
 test "wallet name and version configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -52,7 +52,7 @@ test "wallet name and version configuration" {
     try testing.expectEqual(@as(u32, 4), updated_params.p);
 }
 
-/// Tests account management (converted from Swift account management tests)
+// Tests account management (converted from Swift account management tests)
 test "wallet account management" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -75,7 +75,7 @@ test "wallet account management" {
     try testing.expect(default_account.?.getScriptHash().eql(account.getScriptHash()));
 }
 
-/// Tests account lookup (converted from Swift account lookup tests)
+// Tests account lookup (converted from Swift account lookup tests)
 test "wallet account lookup and retrieval" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -102,7 +102,7 @@ test "wallet account lookup and retrieval" {
     }
 }
 
-/// Tests account removal (converted from Swift account removal tests)
+// Tests account removal (converted from Swift account removal tests)
 test "wallet account removal" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -129,7 +129,7 @@ test "wallet account removal" {
     }
 }
 
-/// Tests default account management (converted from Swift default account tests)
+// Tests default account management (converted from Swift default account tests)
 test "wallet default account management" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -155,7 +155,7 @@ test "wallet default account management" {
     try testing.expect(default_account.?.getScriptHash().eql(account2.getScriptHash()));
 }
 
-/// Tests account import (converted from Swift import tests)
+// Tests account import (converted from Swift import tests)
 test "wallet account import from private key" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -176,7 +176,7 @@ test "wallet account import from private key" {
     try testing.expect(imported_account.hasPrivateKey());
 }
 
-/// Tests WIF import (converted from Swift WIF import tests)
+// Tests WIF import (converted from Swift WIF import tests)
 test "wallet account import from WIF" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -200,7 +200,7 @@ test "wallet account import from WIF" {
     try testing.expect(imported_private_key.eql(private_key));
 }
 
-/// Tests error conditions (converted from Swift error tests)
+// Tests error conditions (converted from Swift error tests)
 test "wallet error handling" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -217,7 +217,7 @@ test "wallet error handling" {
     
     // Test removing non-existent account
     try testing.expectError(
-        neo.errors.NeoError.IllegalArgument,
+        neo.errors.WalletError.AccountNotFound,
         wallet.removeAccountByHash(non_existent_hash)
     );
     

@@ -147,7 +147,7 @@ pub const NeoSwiftRx = struct {
     pub fn getActiveSubscriptionCount(self: Self) u32 {
         // Would track active subscriptions
         _ = self;
-        return 0; // Placeholder
+        return 0; // stub
     }
 
     /// Stops all subscriptions (utility method)

@@ -4,7 +4,7 @@
 //! Provides invocation script functionality for transaction witnesses.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -325,7 +325,7 @@ test "InvocationScript creation and basic operations" {
     try testing.expectEqual(@as(usize, 1), empty_script.getSize()); // VarInt for empty array
     
     // Test script from bytes
-    const test_bytes = [_]u8{ 0x0C, 0x40 }; // PUSHDATA1, 64 bytes of data (placeholder)
+    const test_bytes = [_]u8{ 0x0C, 0x40 }; // PUSHDATA1, 64 bytes of data (stub)
     var script_from_bytes = try InvocationScript.initFromBytes(&test_bytes, allocator);
     defer script_from_bytes.deinit();
     

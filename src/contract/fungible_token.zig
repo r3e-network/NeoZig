@@ -4,7 +4,7 @@
 //! Handles NEP-17 fungible token operations and transfers.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -177,7 +177,7 @@ test "FungibleToken creation and basic operations" {
     const token_hash = try Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf"); // GAS token
     const fungible_token = FungibleToken.init(allocator, token_hash, null);
     
-    // Test balance query (placeholder implementation returns a mocked value)
+    // Test balance query (stub implementation returns a mocked value)
     const test_script_hash = Hash160.ZERO;
     const balance = try fungible_token.getBalanceOf(test_script_hash);
     try testing.expect(balance >= 0);

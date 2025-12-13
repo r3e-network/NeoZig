@@ -3,7 +3,7 @@
 //! Production utilities for contract parameter conversion and JSON handling.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");

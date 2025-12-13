@@ -4,7 +4,7 @@
 //! Provides complete NeoNameService contract interaction and domain management.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -315,7 +315,7 @@ fn stringMapper(stack_item: StackItem, allocator: std.mem.Allocator) ![]const u8
 fn recordMapper(stack_item: StackItem, allocator: std.mem.Allocator) !DomainRecord {
     // Parse record from stack item (would parse actual structure)
     const data = try stack_item.getString(allocator);
-    return DomainRecord.init(RecordType.TXT, data); // Simplified
+    return DomainRecord.init(RecordType.TXT, data); // basic
 }
 
 /// NNS utilities

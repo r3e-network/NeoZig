@@ -4,7 +4,7 @@
 //! Provides service interface for Neo RPC operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -19,12 +19,44 @@ pub const NeoSwiftService = struct {
     service_impl: ServiceImplementation,
     
     const Self = @This();
-    
-    /// Creates Neo Swift service
-    pub fn init(service_impl: ServiceImplementation) Self {
-        return Self{
-            .service_impl = service_impl,
-        };
+
+    fn initFromUrl(url: []const u8) Self {
+        const allocator = std.heap.page_allocator;
+        const http_service = allocator.create(@import("http_service.zig").HttpService) catch unreachable;
+        http_service.* = @import("http_service.zig").HttpService.init(allocator, url, false);
+        const impl = ServiceImplementation.init(http_service, allocator, true);
+        return Self{ .service_impl = impl };
+    }
+
+    /// Creates Neo Swift service.
+    /// Accepts either a `ServiceImplementation` or an endpoint URL string.
+    /// When passed a URL, the service is created with `std.heap.page_allocator`
+    /// as a convenience for tests and quick-start usage.
+    pub fn init(arg: anytype) Self {
+        const Arg = @TypeOf(arg);
+        if (Arg == ServiceImplementation) return Self{ .service_impl = arg };
+        if (Arg == *ServiceImplementation) return Self{ .service_impl = arg.* };
+        if (Arg == []const u8) return initFromUrl(arg);
+        if (Arg == []u8) return initFromUrl(arg);
+
+        switch (@typeInfo(Arg)) {
+            .pointer => |ptr_info| switch (ptr_info.size) {
+                .one => switch (@typeInfo(ptr_info.child)) {
+                    .array => |array_info| {
+                        if (array_info.child == u8) return initFromUrl(arg[0..]);
+                    },
+                    else => {},
+                },
+                .slice => if (ptr_info.child == u8) return initFromUrl(arg[0..]),
+                else => {},
+            },
+            .array => |array_info| {
+                if (array_info.child == u8) return initFromUrl(arg[0..]);
+            },
+            else => {},
+        }
+
+        @compileError("Unsupported NeoSwiftService.init argument");
     }
 
     /// Releases owned resources
@@ -129,26 +161,15 @@ pub const ServiceImplementation = struct {
         
         // Serialize request to JSON
         const request_json = try request.toJson();
-        var json_buffer = ArrayList(u8).init(self.http_service.allocator);
-        defer json_buffer.deinit();
-        defer json_utils.freeValue(request_json, self.http_service.allocator);
-        
-        var writer = json_buffer.writer();
-        var adapter = writer.adaptToNewApi(&.{ });
-        var stringify = std.json.Stringify{ .writer = &adapter.new_interface, .options = .{} };
-        stringify.write(request_json) catch |err| switch (err) {
-            error.WriteFailed => return adapter.err.?,
-            else => return err,
-        };
-        adapter.new_interface.flush() catch |err| switch (err) {
-            error.WriteFailed => return adapter.err.?,
-            else => return err,
-        };
+        defer json_utils.freeValue(request_json, request.allocator);
+
+        const request_bytes = try std.json.stringifyAlloc(self.http_service.allocator, request_json, .{});
+        defer self.http_service.allocator.free(request_bytes);
         
         // Perform HTTP request
         const start_time = std.time.nanoTimestamp();
         
-        const response_body = self.http_service.performIO(json_buffer.items) catch |err| {
+        const response_body = self.http_service.performIO(request_bytes) catch |err| {
             self.statistics.failed_requests += 1;
             return err;
         };

@@ -4,7 +4,7 @@
 //! Handles Neo Name Service domain name validation and operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -66,7 +66,7 @@ pub const NNSName = struct {
         if (fragment_count > 2 and !allow_multiple_fragments) return false;
         
         // Validate each fragment
-        var fragment_iterator = std.mem.split(u8, name, ".");
+        var fragment_iterator = std.mem.splitScalar(u8, name, '.');
         var fragment_index: usize = 0;
         var fragments_array = [_][]const u8{""} ** 8;
         
@@ -135,7 +135,7 @@ pub const NNSName = struct {
         var subdomains = ArrayList([]u8).init(allocator);
         defer subdomains.deinit();
         
-        var fragment_iterator = std.mem.split(u8, self.name, ".");
+        var fragment_iterator = std.mem.splitScalar(u8, self.name, '.');
         while (fragment_iterator.next()) |fragment| {
             try subdomains.append(try allocator.dupe(u8, fragment));
         }

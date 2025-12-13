@@ -56,12 +56,14 @@ pub const CompleteVerificationScript = struct {
     
     /// Creates verification script for public key (equivalent to Swift init(_ publicKey: ECPublicKey))
     pub fn initFromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
-        const compressed_key = if (public_key.compressed) 
-            public_key.toSlice()
-        else 
-            (try public_key.toCompressed()).toSlice();
+        // Avoid returning a slice referencing a temporary `PublicKey` created by
+        // `toCompressed()`.
+        var compressed_pub_key = public_key;
+        if (!compressed_pub_key.compressed) {
+            compressed_pub_key = try compressed_pub_key.toCompressed();
+        }
         
-        const script = try ScriptBuilder.buildVerificationScript(compressed_key, allocator);
+        const script = try ScriptBuilder.buildVerificationScript(compressed_pub_key.toSlice(), allocator);
         const hash = try Hash160.fromScript(script);
         
         const public_keys = try allocator.dupe(PublicKey, &[_]PublicKey{public_key});
@@ -90,16 +92,28 @@ pub const CompleteVerificationScript = struct {
             return errors.throwIllegalArgument("Too many public keys for multi-sig account");
         }
         
-        // Convert public keys to bytes for script building
+        // Convert public keys to compressed bytes for script building.
+        // NOTE: We must ensure any slices passed to `buildMultiSigVerificationScript`
+        // remain valid for the duration of the call. In particular, avoid slices
+        // referencing a temporary `PublicKey` returned from `toCompressed()`.
+        var compressed_keys = try allocator.alloc([constants.PUBLIC_KEY_SIZE_COMPRESSED]u8, public_keys.len);
+        defer allocator.free(compressed_keys);
+
         var key_bytes = try allocator.alloc([]const u8, public_keys.len);
         defer allocator.free(key_bytes);
-        
+
         for (public_keys, 0..) |pub_key, i| {
-            const compressed = if (pub_key.compressed) 
-                pub_key.toSlice()
-            else 
-                (try pub_key.toCompressed()).toSlice();
-            key_bytes[i] = compressed;
+            if (pub_key.compressed) {
+                const slice = pub_key.toSlice();
+                if (slice.len != constants.PUBLIC_KEY_SIZE_COMPRESSED) {
+                    return errors.CryptoError.InvalidKey;
+                }
+                @memcpy(compressed_keys[i][0..], slice);
+            } else {
+                var compressed = try pub_key.toCompressed();
+                @memcpy(compressed_keys[i][0..], compressed.toSlice());
+            }
+            key_bytes[i] = compressed_keys[i][0..];
         }
         
         const script = try ScriptBuilder.buildMultiSigVerificationScript(key_bytes, signing_threshold, allocator);

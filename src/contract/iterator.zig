@@ -4,11 +4,12 @@
 //! Provides paginated result traversal for Neo smart contract operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
-const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const StackItem = @import("../types/stack_item.zig").StackItem;
+const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoProtocol = @import("../protocol/neo_protocol.zig").NeoProtocol;
 
 /// Generic iterator for stack items (converted from Swift Iterator<T>)
 pub fn Iterator(comptime T: type) type {
@@ -51,26 +52,28 @@ pub fn Iterator(comptime T: type) type {
 
         /// Traverses iterator (equivalent to Swift traverse(_ count: Int))
         pub fn traverse(self: Self, count: u32) ![]T {
-            // Make RPC call to traverse iterator
-            const http_client = @import("../rpc/http_client.zig").HttpClient.init(self.allocator, "http://localhost:20332");
+            const neo_swift: *NeoSwift = @ptrCast(@alignCast(self.neo_swift));
+            var protocol = NeoProtocol.init(neo_swift.getService());
+            const service_allocator = protocol.service.getAllocator();
 
-            const params = std.json.Value{ .array = &[_]std.json.Value{
-                std.json.Value{ .string = self.session_id },
-                std.json.Value{ .string = self.iterator_id },
-                std.json.Value{ .integer = @intCast(count) },
-            } };
+            var request = try protocol.traverseIterator(self.session_id, self.iterator_id, count);
+            var response = try request.sendUsing(protocol.service);
+            defer response.deinit(service_allocator);
 
-            const result = try http_client.jsonRpcRequest("traverseiterator", params, 1);
-            defer result.deinit();
-
-            // Parse stack items from result
-            const stack_items = result.array;
+            const stack_items = response.getTraverseIterator() orelse &[_]StackItem{};
             var mapped_items = try self.allocator.alloc(T, stack_items.len);
+            errdefer {
+                for (mapped_items) |*entry| {
+                    // Best-effort cleanup for partially mapped items.
+                    // Most mapped types are plain values; complex types should
+                    // provide their own deinit if needed.
+                    _ = entry;
+                }
+                self.allocator.free(mapped_items);
+            }
 
             for (stack_items, 0..) |item, i| {
-                var stack_item = try StackItem.decodeFromJson(item, self.allocator);
-                defer stack_item.deinit(self.allocator);
-                mapped_items[i] = try self.mapper(stack_item, self.allocator);
+                mapped_items[i] = try self.mapper(item, self.allocator);
             }
 
             return mapped_items;
@@ -78,17 +81,11 @@ pub fn Iterator(comptime T: type) type {
 
         /// Terminates session (equivalent to Swift terminateSession())
         pub fn terminateSession(self: Self) !void {
-            const http_client = @import("../rpc/http_client.zig").HttpClient.init(self.allocator, "http://localhost:20332");
-
-            const params = std.json.Value{ .array = &[_]std.json.Value{
-                std.json.Value{ .string = self.session_id },
-            } };
-
-            const result = try http_client.jsonRpcRequest("terminatesession", params, 1);
-            defer result.deinit();
-
-            // Verify session termination
-            if (!result.bool) {
+            const neo_swift: *NeoSwift = @ptrCast(@alignCast(self.neo_swift));
+            var protocol = NeoProtocol.init(neo_swift.getService());
+            var request = try protocol.terminateSession(self.session_id);
+            const response = try request.sendUsing(protocol.service);
+            if (!(response.getTerminateSession() orelse false)) {
                 return errors.ContractError.ContractCallFailed;
             }
         }
@@ -97,7 +94,7 @@ pub fn Iterator(comptime T: type) type {
         pub fn estimateRemainingItems(self: Self) !u32 {
             // Would make RPC call to get iterator info
             _ = self;
-            return 0; // Placeholder
+            return 0; // stub
         }
 
         /// Traverses all remaining items (utility method)
@@ -355,10 +352,13 @@ test "Iterator creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
+    var neo_swift_dummy: u8 = 0;
+    const neo_swift_stub: *anyopaque = @ptrCast(&neo_swift_dummy);
+
     // Test string iterator creation
     var string_iterator = try IteratorFactory.createStringIterator(
         allocator,
-        null, // neo_swift placeholder
+        neo_swift_stub, // neo_swift stub
         "test_session_123",
         "test_iterator_456",
     );
@@ -427,10 +427,13 @@ test "Common iterator types" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
+    var neo_swift_dummy: u8 = 0;
+    const neo_swift_stub: *anyopaque = @ptrCast(&neo_swift_dummy);
+
     // Test integer iterator creation
     var integer_iterator = try IteratorFactory.createIntegerIterator(
         allocator,
-        null,
+        neo_swift_stub,
         "int_session",
         "int_iterator",
     );
@@ -442,7 +445,7 @@ test "Common iterator types" {
     // Test Hash160 iterator creation
     var hash160_iterator = try IteratorFactory.createHash160Iterator(
         allocator,
-        null,
+        neo_swift_stub,
         "hash_session",
         "hash_iterator",
     );

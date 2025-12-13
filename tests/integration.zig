@@ -4,8 +4,6 @@
 //! between different SDK components.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
-
 
 const neo = @import("neo-zig");
 
@@ -127,15 +125,13 @@ test "contract parameter workflow" {
     };
     
     // Validate all parameters
-    try neo.types.ParameterUtils.validateArray(&params);
-    
-    // Test size estimation
-    const total_size = neo.types.ParameterUtils.estimateArraySize(&params);
-    try testing.expect(total_size > 0);
-    
-    // Test parameter conversion to strings
     for (params) |param| {
-        const param_str = try param.toString(allocator);
+        try param.validate();
+
+        const param_json = try param.toJsonValue(allocator);
+        defer neo.utils.json_utils.freeValue(param_json, allocator);
+
+        const param_str = try std.json.stringifyAlloc(allocator, param_json, .{});
         defer allocator.free(param_str);
         try testing.expect(param_str.len > 0);
     }
@@ -145,11 +141,8 @@ test "serialization round-trip" {
     const testing = std.testing;
     const allocator = testing.allocator;
     
-    // Create test data
-    var buffer = ArrayList(u8).init(allocator);
-    defer buffer.deinit();
-    
-    var writer = neo.BinaryWriter.init(&buffer);
+    var writer = neo.BinaryWriter.init(allocator);
+    defer writer.deinit();
     
     // Write various data types
     try writer.writeByte(0x42);
@@ -164,8 +157,7 @@ test "serialization round-trip" {
     try writer.writeHash256(test_hash256);
     
     // Read back the data
-    var stream = std.io.fixedBufferStream(buffer.items);
-    var reader = neo.BinaryReader.init(stream.reader().any());
+    var reader = neo.BinaryReader.init(writer.toSlice());
     
     const read_byte = try reader.readByte();
     try testing.expectEqual(@as(u8, 0x42), read_byte);
@@ -183,10 +175,10 @@ test "serialization round-trip" {
     defer allocator.free(read_string);
     try testing.expectEqualStrings("Integration test string", read_string);
     
-    const read_hash160 = try reader.readHash160();
+    const read_hash160 = try neo.Hash160.deserialize(&reader);
     try testing.expect(test_hash160.eql(read_hash160));
     
-    const read_hash256 = try reader.readHash256();
+    const read_hash256 = try neo.Hash256.deserialize(&reader);
     try testing.expect(test_hash256.eql(read_hash256));
 }
 
@@ -199,7 +191,7 @@ test "WIF encoding integration" {
     try testing.expect(private_key.isValid());
     
     // Encode to WIF (compressed, mainnet)
-    const wif_str = try neo.crypto.encodeWIF(private_key, true, .mainnet);
+    const wif_str = try neo.crypto.encodeWIF(private_key, true, .mainnet, allocator);
     defer allocator.free(wif_str);
     try testing.expect(wif_str.len > 0);
     
@@ -220,8 +212,8 @@ test "error handling integration" {
     // Test various error conditions across modules
     
     // Invalid hash hex
-    try testing.expectError(neo.errors.ValidationError.InvalidHash, neo.Hash160.fromHex("invalid"));
-    try testing.expectError(neo.errors.ValidationError.InvalidHash, neo.Hash256.fromHex("too_short"));
+    try testing.expectError(neo.errors.NeoError.IllegalArgument, neo.Hash160.fromHex("invalid"));
+    try testing.expectError(neo.errors.NeoError.IllegalArgument, neo.Hash256.fromHex("too_short"));
     
     // Invalid address
     try testing.expectError(neo.errors.ValidationError.InvalidAddress, neo.Address.fromString("invalid_address", allocator));
@@ -239,7 +231,7 @@ test "error handling integration" {
     for (invalid_key[1..]) |*byte| {
         byte.* = 0xFF;
     }
-    const invalid_param = neo.ContractParameter.publicKey(invalid_key);
+    const invalid_param = neo.ContractParameter.publicKey(&invalid_key);
     try testing.expectError(neo.errors.ValidationError.InvalidParameter, invalid_param.validate());
 }
 
@@ -273,15 +265,14 @@ test "performance characteristics" {
     timer.reset();
     i = 0;
     while (i < iterations) : (i += 1) {
-        var buffer = ArrayList(u8).init(allocator);
-        defer buffer.deinit();
-        
-        var writer = neo.BinaryWriter.init(&buffer);
+        var writer = neo.BinaryWriter.init(allocator);
+        defer writer.deinit();
+
         try writer.writeU32(0x12345678);
         try writer.writeVarString("Test string");
         try writer.writeHash256(neo.Hash256.zero());
         
-        try testing.expect(buffer.items.len > 0);
+        try testing.expect(writer.toSlice().len > 0);
     }
     const serialization_time = timer.read();
     
@@ -319,10 +310,9 @@ test "memory safety validation" {
     
     // Test serialization
     {
-        var buffer = ArrayList(u8).init(allocator);
-        defer buffer.deinit();
-        
-        var writer = neo.BinaryWriter.init(&buffer);
+        var writer = neo.BinaryWriter.init(allocator);
+        defer writer.deinit();
+
         try writer.writeVarString("Memory safety test");
         leak_count += 1;
     }

@@ -4,7 +4,7 @@
 //! Provides JSON-RPC 2.0 request structure and handling.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const json_utils = @import("../utils/json_utils.zig");
@@ -281,13 +281,7 @@ pub const RequestUtils = struct {
         }
 
         const batch_json = std.json.Value{ .array = batch_array };
-        var writer_state = std.Io.Writer.Allocating.init(allocator);
-        defer writer_state.deinit();
-
-        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{} };
-        try stringify.write(batch_json);
-
-        const result = try writer_state.toOwnedSlice();
+        const result = try std.json.stringifyAlloc(allocator, batch_json, .{});
 
         for (batch_array.items) |entry| {
             json_utils.freeValue(entry, allocator);

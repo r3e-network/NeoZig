@@ -1,11 +1,15 @@
-//! Base58 and Base58Check encoding implementation
+//! Base58 and Base58Check encoding implementation.
 //!
-//! Production-ready Base58 implementation for Neo addresses and WIF encoding.
+//! This is the single production codec used across the SDK (addresses, WIF, NEP-2).
+//! It performs no allocation beyond caller-provided allocator and returns
+//! `ValidationError.InvalidParameter` for bad characters and `ValidationError.InvalidChecksum`
+//! for Base58Check failures.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
+const secure = @import("secure.zig");
 const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const DECODE_MAP = blk: {
     var map = [_]u8{0xFF} ** 256;
@@ -110,7 +114,10 @@ pub fn encodeCheck(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
     hasher2.final(&hash2);
 
     var payload = try allocator.alloc(u8, data.len + 4);
-    defer allocator.free(payload);
+    defer {
+        secure.secureZeroBytes(payload);
+        allocator.free(payload);
+    }
     @memcpy(payload[0..data.len], data);
     @memcpy(payload[data.len..], hash2[0..4]);
 
@@ -119,7 +126,10 @@ pub fn encodeCheck(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
 
 pub fn decodeCheck(encoded: []const u8, allocator: std.mem.Allocator) ![]u8 {
     const decoded = try decode(encoded, allocator);
-    defer allocator.free(decoded);
+    defer {
+        secure.secureZeroBytes(decoded);
+        allocator.free(decoded);
+    }
 
     if (decoded.len < 4) return errors.ValidationError.InvalidChecksum;
 

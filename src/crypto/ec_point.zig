@@ -184,12 +184,17 @@ pub const ECPoint = struct {
 
 // Modular arithmetic helpers (use secp256r1 implementations)
 fn modAdd(a: u256, b: u256, modulus: u256) u256 {
-    const sum = a +% b;
-    return if (sum >= modulus) sum - modulus else sum;
+    // Use a wider intermediate to avoid incorrect reduction when `a + b`
+    // overflows `u256` (modulus is not a power of two).
+    const sum = @as(u512, a) + @as(u512, b);
+    return @intCast(sum % @as(u512, modulus));
 }
 
 fn modSub(a: u256, b: u256, modulus: u256) u256 {
-    return if (a >= b) a - b else a + modulus - b;
+    if (a >= b) return a - b;
+    // Avoid `a + modulus - b` which can overflow `u256` for large values.
+    const diff = b - a;
+    return modulus - diff;
 }
 
 fn modMul(a: u256, b: u256, modulus: u256) u256 {

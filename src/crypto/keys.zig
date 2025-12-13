@@ -1,7 +1,6 @@
 //! Cryptographic key management for Neo blockchain (Production Implementation)
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
 
 
 const constants = @import("../core/constants.zig");
@@ -70,28 +69,28 @@ pub const PrivateKey = struct {
         return try allocator.dupe(u8, &hex);
     }
     
-    pub fn toSlice(self: Self) []const u8 {
-        return &self.bytes;
+    pub fn toSlice(self: *const Self) []const u8 {
+        return self.bytes[0..];
     }
     
     pub fn eql(self: Self, other: Self) bool {
-        return std.mem.eql(u8, &self.bytes, &other.bytes);
+        return std.crypto.timing_safe.eql(@TypeOf(self.bytes), self.bytes, other.bytes);
     }
     
     pub fn zeroize(self: *Self) void {
-        @memset(&self.bytes, 0);
-        std.crypto.utils.secureZero(u8, &self.bytes);
+        std.crypto.secureZero(u8, &self.bytes);
     }
     
     pub fn format(self: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = self; _ = fmt; _ = options;
-        try writer.print("PrivateKey(***REDACTED***)");
+        try writer.print("PrivateKey(***REDACTED***)", .{});
     }
 };
 
 /// Public key for ECDSA operations on secp256r1 curve
 pub const PublicKey = struct {
-    bytes: []const u8,
+    data: [65]u8,
+    len: u8,
     compressed: bool,
     
     const Self = @This();
@@ -105,24 +104,44 @@ pub const PublicKey = struct {
         } else {
             if (bytes[0] != 0x04) return errors.CryptoError.InvalidKey;
         }
-        
-        return Self{ .bytes = bytes, .compressed = compressed };
+
+        var result: Self = .{
+            .data = std.mem.zeroes([65]u8),
+            .len = @intCast(bytes.len),
+            .compressed = compressed,
+        };
+        @memcpy(result.data[0..bytes.len], bytes);
+        return result;
+    }
+
+    /// Initializes a public key from its encoded bytes, inferring compression from the size.
+    pub fn initFromBytes(bytes: []const u8) !Self {
+        const compressed = switch (bytes.len) {
+            constants.PUBLIC_KEY_SIZE_COMPRESSED => true,
+            65 => false,
+            else => return errors.CryptoError.InvalidKey,
+        };
+        return try Self.init(bytes, compressed);
     }
     
     pub fn fromPrivateKey(private_key: PrivateKey, compressed: bool) !Self {
         var key_bytes: [constants.PRIVATE_KEY_SIZE]u8 = undefined;
         @memcpy(&key_bytes, private_key.toSlice());
-        
-        const public_key_bytes = try secp256r1.derivePublicKey(key_bytes, compressed, std.heap.page_allocator);
+        defer std.crypto.secureZero(u8, &key_bytes);
+
+        // Avoid using a global allocator for a small, fixed-size key derivation.
+        var scratch: [65]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&scratch);
+        const public_key_bytes = try secp256r1.derivePublicKey(key_bytes, compressed, fba.allocator());
         return try Self.init(public_key_bytes, compressed);
     }
     
     pub fn isValid(self: Self) bool {
         if (self.compressed) {
-            return self.bytes.len == constants.PUBLIC_KEY_SIZE_COMPRESSED and
-                   (self.bytes[0] == 0x02 or self.bytes[0] == 0x03);
+            return self.len == constants.PUBLIC_KEY_SIZE_COMPRESSED and
+                   (self.data[0] == 0x02 or self.data[0] == 0x03);
         } else {
-            return self.bytes.len == 65 and self.bytes[0] == 0x04;
+            return self.len == 65 and self.data[0] == 0x04;
         }
     }
     
@@ -132,27 +151,74 @@ pub const PublicKey = struct {
     }
     
     pub fn toHash160(self: Self) !@import("../types/hash160.zig").Hash160 {
-        var script = ArrayList(u8).init(std.heap.page_allocator);
-        defer script.deinit();
-        
-        try script.append(0x0C);
-        try script.append(@intCast(self.bytes.len));
-        try script.appendSlice(self.bytes);
-        try script.append(0x41);
+        // Build the verification script without heap allocation.
+        var script_buf: [72]u8 = undefined;
+        var offset: usize = 0;
+
+        script_buf[offset] = 0x0C;
+        offset += 1;
+        script_buf[offset] = @intCast(self.len);
+        offset += 1;
+
+        const pk_len: usize = @intCast(self.len);
+        @memcpy(script_buf[offset .. offset + pk_len], self.toSlice());
+        offset += pk_len;
+
+        script_buf[offset] = 0x41;
+        offset += 1;
+
         const syscall_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, constants.InteropServices.SYSTEM_CRYPTO_CHECK_SIG));
-        try script.appendSlice(&syscall_bytes);
-        
-        const ripemd160_impl = @import("ripemd160.zig");
-        const hash_result = ripemd160_impl.ripemd160(script.items);
-        return @import("../types/hash160.zig").Hash160.fromArray(hash_result);
+        @memcpy(script_buf[offset .. offset + syscall_bytes.len], &syscall_bytes);
+        offset += syscall_bytes.len;
+
+        // Neo N3 script hash = RIPEMD160(SHA256(script)), returned as a Hash160.
+        return try @import("../types/hash160.zig").Hash160.fromScript(script_buf[0..offset]);
     }
     
-    pub fn toSlice(self: Self) []const u8 {
-        return self.bytes;
+    pub fn toSlice(self: *const Self) []const u8 {
+        const slice_len: usize = @intCast(self.len);
+        return self.data[0..slice_len];
+    }
+    
+    pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
+        return try std.fmt.allocPrint(allocator, "{x}", .{std.fmt.fmtSliceHexLower(self.toSlice())});
+    }
+    
+    pub fn toCompressed(self: Self) !Self {
+        if (self.compressed) return self;
+        const point = try secp256r1.pointFromUncompressed(self.toSlice());
+        var compressed_buf: [constants.PUBLIC_KEY_SIZE_COMPRESSED]u8 = undefined;
+        compressed_buf[0] = if ((point.y & 1) == 0) 0x02 else 0x03;
+        const x_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, point.x));
+        @memcpy(compressed_buf[1..], &x_bytes);
+        return try Self.init(&compressed_buf, true);
+    }
+    
+    pub fn toUncompressed(self: Self) !Self {
+        if (!self.compressed) return self;
+        const point = try secp256r1.pointFromCompressed(self.toSlice());
+        var uncompressed_buf: [65]u8 = undefined;
+        uncompressed_buf[0] = 0x04;
+        const x_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, point.x));
+        const y_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, point.y));
+        @memcpy(uncompressed_buf[1..33], &x_bytes);
+        @memcpy(uncompressed_buf[33..], &y_bytes);
+        return try Self.init(&uncompressed_buf, false);
+    }
+
+    pub fn fromHex(hex_str: []const u8) !Self {
+        const clean = if (std.mem.startsWith(u8, hex_str, "0x")) hex_str[2..] else hex_str;
+        if (clean.len != constants.PUBLIC_KEY_SIZE_COMPRESSED * 2 and clean.len != 65 * 2) {
+            return errors.CryptoError.InvalidKey;
+        }
+        var buf: [65]u8 = undefined;
+        const bytes = std.fmt.hexToBytes(&buf, clean) catch return errors.CryptoError.InvalidKey;
+        const is_compressed = bytes.len == constants.PUBLIC_KEY_SIZE_COMPRESSED;
+        return try Self.init(bytes, is_compressed);
     }
     
     pub fn eql(self: Self, other: Self) bool {
-        return std.mem.eql(u8, self.bytes, other.bytes);
+        return self.compressed == other.compressed and std.mem.eql(u8, self.toSlice(), other.toSlice());
     }
 };
 
@@ -172,6 +238,11 @@ pub const KeyPair = struct {
         const public_key = try private_key.getPublicKey(compressed);
         return Self.init(private_key, public_key);
     }
+
+    pub fn fromPrivateKey(private_key: PrivateKey, compressed: bool) !Self {
+        const public_key = try private_key.getPublicKey(compressed);
+        return Self.init(private_key, public_key);
+    }
     
     pub fn isValid(self: Self) bool {
         const derived_public_key = self.private_key.getPublicKey(self.public_key.compressed) catch return false;
@@ -180,6 +251,12 @@ pub const KeyPair = struct {
     
     pub fn zeroize(self: *Self) void {
         self.private_key.zeroize();
+        // Public key bytes are not sensitive; no-op beyond this point.
+    }
+
+    /// Convenience to match patterns that expect a deinit hook.
+    pub fn deinit(self: *Self) void {
+        self.zeroize();
     }
 };
 

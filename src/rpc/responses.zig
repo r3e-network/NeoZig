@@ -4,7 +4,7 @@
 //! Handles all Neo RPC response parsing and serialization.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const json_utils = @import("../utils/json_utils.zig");
 
 const constants = @import("../core/constants.zig");
@@ -14,25 +14,10 @@ const errors = @import("../core/errors.zig");
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const NeoVMStateType = @import("../types/neo_vm_state_type.zig").NeoVMStateType;
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
-const StackItem = @import("../types/stack_item.zig").StackItem;
+pub const StackItem = @import("../types/stack_item.zig").StackItem;
 
 fn stringifyJsonValue(value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-    var buffer = ArrayList(u8).init(allocator);
-    errdefer buffer.deinit();
-
-    var writer = buffer.writer();
-    var adapter = writer.adaptToNewApi(&.{ });
-    var stringify = std.json.Stringify{ .writer = &adapter.new_interface, .options = .{} };
-    stringify.write(value) catch |err| switch (err) {
-        error.WriteFailed => return adapter.err.?,
-        else => return err,
-    };
-    adapter.new_interface.flush() catch |err| switch (err) {
-        error.WriteFailed => return adapter.err.?,
-        else => return err,
-    };
-
-    return try buffer.toOwnedSlice();
+    return try std.json.stringifyAlloc(allocator, value, .{});
 }
 
 fn jsonValueToOwnedString(value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {

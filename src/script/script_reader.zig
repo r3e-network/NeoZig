@@ -4,7 +4,7 @@
 //! Provides script analysis and human-readable conversion capabilities.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -12,34 +12,25 @@ const errors = @import("../core/errors.zig");
 const OpCode = @import("op_code.zig").OpCode;
 const InteropService = @import("script_builder.zig").InteropService;
 const BinaryReader = @import("../serialization/binary_reader_complete.zig").CompleteBinaryReader;
+const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
 /// Script reader for NeoVM script analysis (converted from Swift ScriptReader)
 pub const ScriptReader = struct {
     /// Gets interop service by hash (equivalent to Swift getInteropServiceCode)
     pub fn getInteropServiceCode(hash_string: []const u8) ?InteropService {
-        // Parse hash string to integer
-        const hash_value = std.fmt.parseInt(u32, hash_string, 16) catch return null;
-        
-        // Find matching interop service
-        const all_services = [_]InteropService{
-            .SystemContractCall,
-            .SystemCryptoCheckSig,
-            .SystemCryptoCheckMultiSig,
-            .SystemRuntimeCheckWitness,
-            .SystemRuntimeGetRandom,
-            .SystemRuntimeGetTime,
-            .SystemRuntimeGetScriptContainer,
-            .SystemRuntimeGetExecutingScriptHash,
-            .SystemRuntimeGetCallingScriptHash,
-            .SystemRuntimeGetEntryScriptHash,
-        };
-        
-        for (all_services) |service| {
-            if (@intFromEnum(service) == hash_value) {
+        if (hash_string.len != 8) return null;
+
+        var target: [4]u8 = undefined;
+        _ = std.fmt.hexToBytes(&target, hash_string) catch return null;
+
+        for (InteropService.getAllServices()) |service| {
+            var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+            std.crypto.hash.sha2.Sha256.hash(service.toString(), &digest, .{});
+            if (std.mem.eql(u8, digest[0..4], &target)) {
                 return service;
             }
         }
-        
+
         return null;
     }
     
@@ -53,7 +44,7 @@ pub const ScriptReader = struct {
     
     /// Converts script bytes to OpCode string (equivalent to Swift convertToOpCodeString(_ script: Bytes))
     pub fn convertToOpCodeStringFromBytes(script: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        var reader = CompleteBinaryReader.init(script);
+        var reader = BinaryReader.init(script);
         var result = ArrayList(u8).init(allocator);
         defer result.deinit();
         
@@ -113,7 +104,7 @@ pub const ScriptReader = struct {
             .arithmetic_operations = 0,
         };
         
-        var reader = CompleteBinaryReader.init(script);
+        var reader = BinaryReader.init(script);
         
         while (reader.hasMore()) {
             const opcode_byte = reader.readByte() catch break;
@@ -153,16 +144,16 @@ pub const ScriptReader = struct {
     
     /// Validates script structure (utility method)
     pub fn validateScriptStructure(script: []const u8, allocator: std.mem.Allocator) !void {
-        const analysis = try analyzeScript(script, allocator);
+        var analysis = try analyzeScript(script, allocator);
         defer analysis.deinit();
         
         // Basic validation rules
         if (analysis.total_bytes > constants.MAX_TRANSACTION_SIZE) {
-            return errors.TransactionError.InvalidScript;
+            return errors.ValidationError.InvalidScript;
         }
         
         if (analysis.opcodes.items.len == 0 and script.len > 0) {
-            return errors.TransactionError.InvalidScript;
+            return errors.ValidationError.InvalidScript;
         }
     }
     
@@ -171,7 +162,7 @@ pub const ScriptReader = struct {
         var public_keys = ArrayList(PublicKey).init(allocator);
         defer public_keys.deinit();
         
-        var reader = CompleteBinaryReader.init(script);
+        var reader = BinaryReader.init(script);
         
         while (reader.hasMore()) {
             const opcode_byte = reader.readByte() catch break;
@@ -260,11 +251,11 @@ fn getOperandInfo(opcode: OpCode) OperandInfo {
 }
 
 /// Gets prefix size for variable-length operands
-fn getPrefixSize(reader: *CompleteBinaryReader, operand_info: OperandInfo) !usize {
+fn getPrefixSize(reader: *BinaryReader, operand_info: OperandInfo) !usize {
     return switch (operand_info.prefix_size) {
-        1 => try reader.readByte(),
-        2 => try reader.readUInt16(),
-        4 => try reader.readUInt32(),
+        1 => @intCast(try reader.readByte()),
+        2 => @intCast(try reader.readUInt16()),
+        4 => @intCast(try reader.readUInt32()),
         else => 0,
     };
 }
@@ -308,7 +299,7 @@ test "ScriptReader interop service detection" {
     try testing.expect(service != null);
     try testing.expectEqual(InteropService.SystemContractCall, service.?);
     
-    const check_sig_hash = "41766430"; // SYSTEM_CRYPTO_CHECK_SIG
+    const check_sig_hash = "56e7b327"; // SYSTEM_CRYPTO_CHECK_SIG
     const check_sig_service = ScriptReader.getInteropServiceCode(check_sig_hash);
     try testing.expect(check_sig_service != null);
     try testing.expectEqual(InteropService.SystemCryptoCheckSig, check_sig_service.?);
@@ -363,7 +354,8 @@ test "ScriptReader public key extraction" {
     var builder = @import("script_builder.zig").ScriptBuilder.init(allocator);
     defer builder.deinit();
     
-    _ = try builder.pushData(key_pair.getPublicKey().toSlice());
+    const public_key = key_pair.getPublicKey();
+    _ = try builder.pushData(public_key.toSlice());
     _ = try builder.sysCall(.SystemCryptoCheckSig);
     
     const script = builder.toScript();
@@ -373,7 +365,7 @@ test "ScriptReader public key extraction" {
     defer allocator.free(extracted_keys);
     
     try testing.expectEqual(@as(usize, 1), extracted_keys.len);
-    try testing.expect(extracted_keys[0].eql(key_pair.getPublicKey()));
+    try testing.expect(extracted_keys[0].eql(public_key));
 }
 
 test "ScriptReader validation" {
@@ -387,7 +379,7 @@ test "ScriptReader validation" {
     // Test invalid script (too large)
     const large_script = [_]u8{0x40} ** (constants.MAX_TRANSACTION_SIZE + 1);
     try testing.expectError(
-        errors.TransactionError.InvalidScript,
+        errors.ValidationError.InvalidScript,
         ScriptReader.validateScriptStructure(&large_script, allocator)
     );
     

@@ -72,8 +72,8 @@ pub const RecordType = enum(u8) {
     pub fn getDescription(self: Self) []const u8 {
         return switch (self) {
             .A => "IPv4 address record",
-            .CNAME => "Canonical name record",
-            .TXT => "Text record",
+            .CNAME => "canonical name record",
+            .TXT => "text record",
             .AAAA => "IPv6 address record",
         };
     }
@@ -95,7 +95,7 @@ pub const RecordType = enum(u8) {
     pub fn validateRecordData(self: Self, data: []const u8) !void {
         switch (self) {
             .A => {
-                // IPv4 address validation (simplified)
+                // IPv4 address validation (basic)
                 if (data.len == 0 or data.len > 15) { // "255.255.255.255" max
                     return errors.ValidationError.InvalidParameter;
                 }
@@ -115,7 +115,7 @@ pub const RecordType = enum(u8) {
                 }
             },
             .AAAA => {
-                // IPv6 address validation (simplified)
+                // IPv6 address validation (basic)
                 if (data.len == 0 or data.len > 39) { // IPv6 max length
                     return errors.ValidationError.InvalidParameter;
                 }
@@ -159,8 +159,8 @@ pub const RecordType = enum(u8) {
     
     /// Encodes to JSON (equivalent to Swift Codable)
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
-        _ = allocator;
-        return std.json.Value{ .string = self.getJsonValue() };
+        const value = try allocator.dupe(u8, self.getJsonValue());
+        return std.json.Value{ .string = value };
     }
 };
 
@@ -378,7 +378,7 @@ test "RecordType JSON operations" {
     const record_type = RecordType.A;
     
     const encoded_json = try record_type.encodeToJson(allocator);
-    defer encoded_json.deinit();
+    defer allocator.free(encoded_json.string);
     
     try testing.expectEqualStrings("A", encoded_json.string);
     

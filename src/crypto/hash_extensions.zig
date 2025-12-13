@@ -8,6 +8,7 @@ const std = @import("std");
 
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const Hash160 = @import("../types/hash160.zig").Hash160;
+const errors = @import("../core/errors.zig");
 
 /// Hash utilities for bytes (converted from Swift Bytes extensions)
 pub const BytesHashUtils = struct {
@@ -35,12 +36,14 @@ pub const BytesHashUtils = struct {
         
         // Prepare key
         var actual_key: [block_size]u8 = undefined;
+        defer std.crypto.secureZero(u8, &actual_key);
         if (key.len > block_size) {
             // Hash the key if too long
             var hasher = std.crypto.hash.sha2.Sha512.init(.{});
             hasher.update(key);
             var key_hash: [64]u8 = undefined;
             hasher.final(&key_hash);
+            defer std.crypto.secureZero(u8, &key_hash);
             @memcpy(actual_key[0..64], &key_hash);
             @memset(actual_key[64..], 0);
         } else {
@@ -51,6 +54,8 @@ pub const BytesHashUtils = struct {
         // Create i_pad and o_pad
         var i_pad: [block_size]u8 = undefined;
         var o_pad: [block_size]u8 = undefined;
+        defer std.crypto.secureZero(u8, &i_pad);
+        defer std.crypto.secureZero(u8, &o_pad);
         
         for (actual_key, 0..) |byte, i| {
             i_pad[i] = byte ^ 0x36;
@@ -63,6 +68,7 @@ pub const BytesHashUtils = struct {
         inner_hasher.update(bytes);
         var inner_hash: [64]u8 = undefined;
         inner_hasher.final(&inner_hash);
+        defer std.crypto.secureZero(u8, &inner_hash);
         
         // Outer hash: SHA512(o_pad || inner_hash)
         var outer_hasher = std.crypto.hash.sha2.Sha512.init(.{});
@@ -70,6 +76,7 @@ pub const BytesHashUtils = struct {
         outer_hasher.update(&inner_hash);
         var outer_hash: [64]u8 = undefined;
         outer_hasher.final(&outer_hash);
+        defer std.crypto.secureZero(u8, &outer_hash);
         
         return try allocator.dupe(u8, &outer_hash);
     }
@@ -132,7 +139,8 @@ pub const StringHashUtils = struct {
     /// Creates address from string (utility method)
     pub fn stringToAddress(string: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const script_hash = sha256ThenRipemd160(string);
-        return try BytesHashUtils.toHash160(&script_hash).?.toAddress(allocator);
+        const hash160 = try BytesHashUtils.toHash160(script_hash[0..]);
+        return try hash160.toAddress(allocator);
     }
     
     /// Validates hash string format
@@ -155,6 +163,7 @@ pub const StringHashUtils = struct {
 pub const HashComputeUtils = struct {
     /// Computes all common hashes for data
     pub fn computeAllHashes(data: []const u8, allocator: std.mem.Allocator) !HashSet {
+        _ = allocator;
         const sha256_hash = BytesHashUtils.sha256(data);
         const double_sha256 = BytesHashUtils.hash256(data);
         const ripemd160_hash = BytesHashUtils.ripemd160(data);

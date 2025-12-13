@@ -29,14 +29,26 @@ pub const Address = struct {
     
     pub fn fromString(address_str: []const u8, allocator: std.mem.Allocator) !Self {
         const base58 = @import("../utils/base58.zig");
-        var decoded = try base58.decodeCheck(address_str, allocator);
+        var decoded = base58.decodeCheck(address_str, allocator) catch |err| switch (err) {
+            errors.ValidationError.InvalidParameter,
+            errors.ValidationError.InvalidChecksum,
+            => return errors.ValidationError.InvalidAddress,
+            else => return err,
+        };
         defer allocator.free(decoded);
         
         if (decoded.len != 21) return errors.ValidationError.InvalidAddress;
         
         const version = decoded[0];
-        const hash_bytes = decoded[1..21];
-        const script_hash = try Hash160.initWithBytes(hash_bytes);
+        if (version != constants.AddressConstants.ADDRESS_VERSION and
+            version != constants.AddressConstants.MULTISIG_ADDRESS_VERSION)
+        {
+            return errors.ValidationError.InvalidAddress;
+        }
+        var hash_bytes: [constants.HASH160_SIZE]u8 = undefined;
+        @memcpy(&hash_bytes, decoded[1..21]);
+        std.mem.reverse(u8, &hash_bytes);
+        const script_hash = try Hash160.initWithBytes(&hash_bytes);
         
         return Self{ .script_hash = script_hash, .version = version };
     }
@@ -48,7 +60,8 @@ pub const Address = struct {
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var payload: [21]u8 = undefined;
         payload[0] = self.version;
-        @memcpy(payload[1..21], &self.script_hash.toArray());
+        const script_hash_le = self.script_hash.toLittleEndianArray();
+        @memcpy(payload[1..21], &script_hash_le);
         
         const base58 = @import("../utils/base58.zig");
         return try base58.encodeCheck(&payload, allocator);
@@ -64,7 +77,8 @@ pub const Address = struct {
     }
     
     pub fn isMultiSig(self: Self) bool {
-        return self.version == constants.AddressConstants.MULTISIG_ADDRESS_VERSION;
+        return constants.AddressConstants.MULTISIG_ADDRESS_VERSION != constants.AddressConstants.ADDRESS_VERSION and
+            self.version == constants.AddressConstants.MULTISIG_ADDRESS_VERSION;
     }
     
     pub fn eql(self: Self, other: Self) bool {

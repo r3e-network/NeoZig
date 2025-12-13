@@ -4,7 +4,7 @@
 //! Provides populated blocks response representation.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 

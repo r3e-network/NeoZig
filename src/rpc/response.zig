@@ -83,8 +83,7 @@ pub fn Response(comptime T: type) type {
         
         /// Gets result or throws error (equivalent to Swift getResult())
         pub fn getResult(self: Self) !T {
-            if (self.response_error) |err| {
-                std.log.err("RPC Error {d}: {s}", .{ err.code, err.message });
+            if (self.response_error != null) {
                 return errors.NetworkError.ServerError;
             }
             
@@ -319,12 +318,12 @@ test "Response JSON operations" {
     
     const StringResponse = Response([]const u8);
     
-    var response = StringResponse.init(allocator, try allocator.dupe(u8, "test_result"));
+    var response = StringResponse.init(allocator, "test_result");
     defer response.deinit();
     
     // Test JSON serialization
     const json_value = try response.toJson();
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const response_obj = json_value.object;
     try testing.expectEqualStrings("2.0", response_obj.get("jsonrpc").?.string);

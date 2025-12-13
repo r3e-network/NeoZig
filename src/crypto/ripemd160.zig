@@ -99,15 +99,21 @@ pub const Ripemd160 = struct {
         
         // RIPEMD-160 rounds implementation
         inline for (0..80) |i| {
-            const t = al +% f(i, bl, cl, dl) +% x[r[i]] +% k(i);
-            const rotated = std.math.rotl(u32, t, s[i]);
-            al = el; el = dl; dl = std.math.rotl(u32, cl, 10); cl = bl; bl = rotated +% el;
+            const t = std.math.rotl(u32, al +% f(i, bl, cl, dl) +% x[r[i]] +% k(i), s[i]) +% el;
+            al = el;
+            el = dl;
+            dl = std.math.rotl(u32, cl, 10);
+            cl = bl;
+            bl = t;
         }
         
         inline for (0..80) |i| {
-            const t = ar +% f(79 - i, br, cr, dr) +% x[rh[i]] +% kh(i);
-            const rotated = std.math.rotl(u32, t, sh[i]);
-            ar = er; er = dr; dr = std.math.rotl(u32, cr, 10); cr = br; br = rotated +% er;
+            const t = std.math.rotl(u32, ar +% f(79 - i, br, cr, dr) +% x[rh[i]] +% kh(i), sh[i]) +% er;
+            ar = er;
+            er = dr;
+            dr = std.math.rotl(u32, cr, 10);
+            cr = br;
+            br = t;
         }
         
         const t = self.state[1] +% cl +% dr;
@@ -156,4 +162,27 @@ pub fn ripemd160(data: []const u8) [20]u8 {
     var result: [20]u8 = undefined;
     hasher.final(&result);
     return result;
+}
+
+test "RIPEMD-160 standard test vectors" {
+    const testing = std.testing;
+
+    const Vector = struct { input: []const u8, expected_hex: []const u8 };
+    const vectors = [_]Vector{
+        .{ .input = "", .expected_hex = "9c1185a5c5e9fc54612808977ee8f548b2258d31" },
+        .{ .input = "a", .expected_hex = "0bdc9d2d256b3ee9daae347be6f4dc835a467ffe" },
+        .{ .input = "abc", .expected_hex = "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc" },
+        .{ .input = "message digest", .expected_hex = "5d0689ef49d2fae572b881b123a85ffa21595f36" },
+        .{ .input = "abcdefghijklmnopqrstuvwxyz", .expected_hex = "f71c27109c692c1b56bbdceb5b9d2865b3708dbc" },
+        .{ .input = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", .expected_hex = "12a053384a9c0c88e405a06c27dcf49ada62eb2b" },
+        .{ .input = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", .expected_hex = "b0e20b6e3116640286ed3a87a5713079b21f5189" },
+        .{ .input = "12345678901234567890123456789012345678901234567890123456789012345678901234567890", .expected_hex = "9b752e45573d4b39f4dbd3323cab82bf63326bfb" },
+    };
+
+    for (vectors) |vector| {
+        const digest = ripemd160(vector.input);
+        var expected: [20]u8 = undefined;
+        _ = try std.fmt.hexToBytes(&expected, vector.expected_hex);
+        try testing.expectEqualSlices(u8, &expected, &digest);
+    }
 }

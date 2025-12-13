@@ -1,11 +1,14 @@
 //! Error types for Neo Zig SDK
-//! 
-//! Complete conversion from NeoSwift error handling system
+//!
+//! Complete conversion from NeoSwift error handling system.
 //! All error types match the original Swift implementation.
+//!
+//! Design principles:
+//! - Each error set has domain-specific, non-overlapping error names
+//! - Error names are prefixed with domain context for clarity
+//! - Use throwIllegalArgument/throwIllegalState for Swift API compatibility
 
 const std = @import("std");
-
-
 
 /// General Neo SDK errors (converted from NeoSwiftError)
 pub const NeoError = error{
@@ -29,6 +32,7 @@ pub const CryptoError = error{
     CryptoOperationFailed,
     InvalidCurvePoint,
     KeyGenerationFailed,
+    KeyDerivationFailed,
     InvalidHash,
     RandomGenerationFailed,
     InvalidWIF,
@@ -129,14 +133,24 @@ pub const ContractError = error{
     InvalidContractState,
 };
 
-/// Utility function to convert Swift error messages
+/// Utility function to convert Swift error messages.
+/// Logs the error message for debugging before returning the error.
+/// This provides context that Zig's error system cannot carry.
 pub fn throwIllegalArgument(message: []const u8) NeoError {
-    _ = message;
+    // Log error context for debugging (only in debug builds to avoid overhead)
+    if (@import("builtin").mode == .Debug) {
+        std.debug.print("[ERROR] IllegalArgument: {s}\n", .{message});
+    }
     return NeoError.IllegalArgument;
 }
 
+/// Utility function to convert Swift error messages.
+/// Logs the error message for debugging before returning the error.
 pub fn throwIllegalState(message: []const u8) NeoError {
-    _ = message;
+    // Log error context for debugging (only in debug builds to avoid overhead)
+    if (@import("builtin").mode == .Debug) {
+        std.debug.print("[ERROR] IllegalState: {s}\n", .{message});
+    }
     return NeoError.IllegalState;
 }
 

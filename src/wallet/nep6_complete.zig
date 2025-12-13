@@ -4,7 +4,7 @@
 //! Handles complete wallet lifecycle and standard compliance.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -16,6 +16,8 @@ const PrivateKey = @import("../crypto/keys.zig").PrivateKey;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 const KeyPair = @import("../crypto/keys.zig").KeyPair;
 const NEP2 = @import("../crypto/nep2.zig").NEP2;
+const json_utils = @import("../utils/json_utils.zig");
+const secure = @import("../utils/secure.zig");
 
 /// Complete NEP-6 wallet implementation
 pub const CompleteNEP6Wallet = struct {
@@ -124,7 +126,7 @@ pub const CompleteNEP6Wallet = struct {
         for (self.accounts.items) |account| {
             try accounts_array.append(try account.exportToJson());
         }
-        try wallet_obj.put("accounts", std.json.Value{ .array = try accounts_array.toOwnedSlice() });
+        try wallet_obj.put("accounts", std.json.Value{ .array = accounts_array });
         
         if (self.extra) |extra| {
             try wallet_obj.put("extra", extra);
@@ -164,18 +166,15 @@ pub const CompleteNEP6Wallet = struct {
     /// Saves wallet to file
     pub fn saveToFile(self: Self, file_path: []const u8) !void {
         const json_value = try self.exportToJson();
-        defer json_value.deinit();
-        
-        var writer_state = std.Io.Writer.Allocating.init(self.allocator);
-        defer writer_state.deinit();
-        
-        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{ .whitespace = .indent_2 } };
-        try stringify.write(json_value);
+        defer json_utils.freeValue(json_value, self.allocator);
+
+        const encoded = try std.json.stringifyAlloc(self.allocator, json_value, .{ .whitespace = .indent_2 });
+        defer self.allocator.free(encoded);
         
         const file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
-        
-        try file.writeAll(writer_state.writer.buffered());
+
+        try file.writeAll(encoded);
     }
     
     /// Loads wallet from file
@@ -228,7 +227,7 @@ pub const CompleteNEP6Account = struct {
         
         if (self.encrypted_private_key) |key| {
             // Securely clear before freeing
-            @memset(@constCast(key), 0);
+            secure.secureZeroConstBytes(key);
             self.allocator.free(key);
         }
         
@@ -243,7 +242,7 @@ pub const CompleteNEP6Account = struct {
         const encrypted_key = try NEP2.encrypt(password, key_pair, scrypt, self.allocator);
         
         if (self.encrypted_private_key) |old_key| {
-            @memset(@constCast(old_key), 0); // Secure clear
+            secure.secureZeroConstBytes(old_key); // Secure clear
             self.allocator.free(old_key);
         }
         
@@ -366,7 +365,7 @@ pub const NEP6Contract = struct {
         for (self.parameters) |param| {
             try params_array.append(try param.exportToJson(allocator));
         }
-        try contract_obj.put("parameters", std.json.Value{ .array = try params_array.toOwnedSlice() });
+        try contract_obj.put("parameters", std.json.Value{ .array = params_array });
         
         return std.json.Value{ .object = contract_obj };
     }
@@ -509,7 +508,7 @@ test "NEP-6 JSON import/export" {
     
     // Test JSON export
     const json_value = try wallet.exportToJson();
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     // Test JSON import
     const imported_wallet = try CompleteNEP6Wallet.importFromJson(json_value, allocator);

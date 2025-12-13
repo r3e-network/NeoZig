@@ -4,7 +4,7 @@
 //! Provides NEP-17 token balance information for accounts.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const Hash160 = @import("../../types/hash160.zig").Hash160;

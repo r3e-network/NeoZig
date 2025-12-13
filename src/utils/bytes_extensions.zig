@@ -4,7 +4,7 @@
 //! Provides all Swift bytes utility methods and conversions.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");

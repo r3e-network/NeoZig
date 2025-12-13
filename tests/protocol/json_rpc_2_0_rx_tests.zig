@@ -6,7 +6,8 @@
 const std = @import("std");
 
 const testing = std.testing;
-const JsonRpc2_0Rx = @import("../../src/protocol/json_rpc_2_0_rx.zig").JsonRpc2_0Rx;
+const neo = @import("neo-zig");
+const JsonRpc2_0Rx = neo.protocol.JsonRpc2_0Rx;
 
 test "JSON-RPC reactive client creation" {
     const allocator = testing.allocator;
@@ -17,8 +18,6 @@ test "JSON-RPC reactive client creation" {
 }
 
 test "Block polling configuration" {
-    const testing = std.testing;
-
     const polling_intervals = [_]u32{ 1000, 5000, 15000, 30000 };
 
     for (polling_intervals) |interval| {

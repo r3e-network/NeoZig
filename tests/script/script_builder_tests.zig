@@ -5,17 +5,17 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const ScriptBuilder = @import("../../src/script/script_builder.zig").ScriptBuilder;
-const OpCode = @import("../../src/script/op_code.zig").OpCode;
-const ContractParameter = @import("../../src/types/contract_parameter.zig").ContractParameter;
-const Hash160 = @import("../../src/types/hash160.zig").Hash160;
-const InteropService = @import("../../src/script/interop_service.zig").InteropService;
+const neo = @import("neo-zig");
+const ScriptBuilder = neo.script.ScriptBuilder;
+const OpCode = neo.script.OpCode;
+const ContractParameter = neo.types.ContractParameter;
+const Hash160 = neo.Hash160;
+const InteropService = neo.script.InteropService;
 
 /// Helper function to create byte arrays (equivalent to Swift byteArray helper)
 fn createByteArray(size: usize, allocator: std.mem.Allocator) ![]u8 {
-    var result = try allocator.alloc(u8, size);
+    const result = try allocator.alloc(u8, size);
     for (result, 0..) |*byte, i| {
         byte.* = @intCast(i % 256);
     }
@@ -41,7 +41,7 @@ fn assertBuilderLastBytes(builder: *ScriptBuilder, expected: []const u8, total_l
     try testing.expectEqualSlices(u8, expected, script[start_idx..]);
 }
 
-/// Test pushing empty array (converted from Swift testPushArrayEmpty)
+// Test pushing empty array (converted from Swift testPushArrayEmpty)
 test "Push empty array" {
     const allocator = testing.allocator;
     
@@ -57,7 +57,7 @@ test "Push empty array" {
     try assertBuilderBytes(&builder, &expected);
 }
 
-/// Test pushing empty array parameter (converted from Swift testPushParamEmptyArray)
+// Test pushing empty array parameter (converted from Swift testPushParamEmptyArray)
 test "Push empty array parameter" {
     const allocator = testing.allocator;
     
@@ -65,8 +65,7 @@ test "Push empty array parameter" {
     defer builder.deinit();
     
     // Create empty array parameter (equivalent to Swift ContractParameter(type: .array, value: []))
-    var empty_array_param = try ContractParameter.createArray(&[_]ContractParameter{}, allocator);
-    defer empty_array_param.deinit(allocator);
+    const empty_array_param = ContractParameter.array(&[_]ContractParameter{});
     
     _ = try builder.pushParam(empty_array_param);
     
@@ -75,7 +74,7 @@ test "Push empty array parameter" {
     try assertBuilderBytes(&builder, &expected);
 }
 
-/// Test pushing byte arrays (converted from Swift testPushByteArray)
+// Test pushing byte arrays (converted from Swift testPushByteArray)
 test "Push byte arrays" {
     const allocator = testing.allocator;
     
@@ -85,7 +84,7 @@ test "Push byte arrays" {
         expected_prefix: []const u8,
     }{
         .{ .size = 1, .expected_prefix = &[_]u8{ 0x0C, 0x01 } },     // PUSHDATA1, length 1
-        .{ .size = 75, .expected_prefix = &[_]u8{ 0x0C, 0x4B } },    // PUSHDATA1, length 75  
+        .{ .size = 75, .expected_prefix = &[_]u8{ 0x0C, 0x4B } },    // PUSHDATA1, length 75
         .{ .size = 256, .expected_prefix = &[_]u8{ 0x0D, 0x00, 0x01 } }, // PUSHDATA2, length 256
         .{ .size = 65536, .expected_prefix = &[_]u8{ 0x0E, 0x00, 0x00, 0x01, 0x00 } }, // PUSHDATA4, length 65536
     };
@@ -108,7 +107,7 @@ test "Push byte arrays" {
     }
 }
 
-/// Test pushing strings (converted from Swift testPushString)
+// Test pushing strings (converted from Swift testPushString)
 test "Push strings" {
     const allocator = testing.allocator;
     
@@ -141,7 +140,7 @@ test "Push strings" {
     try assertBuilderBytes(&builder3, &expected_large_prefix);
 }
 
-/// Test pushing integers (converted from Swift testPushInteger)
+// Test pushing integers (converted from Swift testPushInteger)
 test "Push integers" {
     const allocator = testing.allocator;
     
@@ -150,10 +149,14 @@ test "Push integers" {
         value: i64,
         expected: []const u8,
     }{
+        .{ .value = -1, .expected = &[_]u8{@intFromEnum(OpCode.PUSHM1)} },
         .{ .value = 0, .expected = &[_]u8{@intFromEnum(OpCode.PUSH0)} },
         .{ .value = 1, .expected = &[_]u8{@intFromEnum(OpCode.PUSH1)} },
         .{ .value = 16, .expected = &[_]u8{@intFromEnum(OpCode.PUSH16)} },
-        .{ .value = 17, .expected = &[_]u8{ 0x00, 0x11 } }, // PUSHINT8, value 17
+        .{ .value = 17, .expected = &[_]u8{ @intFromEnum(OpCode.PUSHINT8), 0x11 } },
+        .{ .value = -800000, .expected = &[_]u8{ @intFromEnum(OpCode.PUSHINT32), 0x00, 0xCB, 0xF3, 0xFF } },
+        .{ .value = -100000000000, .expected = &[_]u8{ @intFromEnum(OpCode.PUSHINT64), 0x00, 0x18, 0x89, 0xB7, 0xE8, 0xFF, 0xFF, 0xFF } },
+        .{ .value = 100000000000, .expected = &[_]u8{ @intFromEnum(OpCode.PUSHINT64), 0x00, 0xE8, 0x76, 0x48, 0x17, 0x00, 0x00, 0x00 } },
     };
     
     for (integer_test_cases) |case| {
@@ -161,28 +164,12 @@ test "Push integers" {
         defer builder.deinit();
         
         _ = try builder.pushInteger(case.value);
-        
-        // For special opcodes, check exact match
-        if (case.value >= 0 and case.value <= 16) {
-            try assertBuilderBytes(&builder, case.expected);
-        } else {
-            // For other integers, just verify we have output
-            const script = builder.toScript();
-            try testing.expect(script.len > 0);
-        }
+
+        try assertBuilderBytes(&builder, case.expected);
     }
-    
-    // Test negative integer (equivalent to Swift pushInteger(-800000))
-    var builder_negative = ScriptBuilder.init(allocator);
-    defer builder_negative.deinit();
-    
-    _ = try builder_negative.pushInteger(-800000);
-    const negative_script = builder_negative.toScript();
-    try testing.expect(negative_script.len > 0);
-    try testing.expect(negative_script.len >= 5); // Should have opcode + 4-byte value
 }
 
-/// Test pushing boolean values
+// Test pushing boolean values
 test "Push boolean values" {
     const allocator = testing.allocator;
     
@@ -203,7 +190,7 @@ test "Push boolean values" {
     try assertBuilderBytes(&builder_false, &expected_false);
 }
 
-/// Test contract calls
+// Test contract calls
 test "Contract call script generation" {
     const allocator = testing.allocator;
     
@@ -215,24 +202,19 @@ test "Contract call script generation" {
     const method_name = "testMethod";
     
     // Create test parameters
-    var params = [_]ContractParameter{
-        try ContractParameter.createInteger(42, allocator),
-        try ContractParameter.createString("test", allocator),
+    const params = [_]ContractParameter{
+        ContractParameter.integer(42),
+        ContractParameter.string("test"),
     };
-    defer {
-        for (params) |*param| {
-            param.deinit(allocator);
-        }
-    }
-    
-    _ = try builder.contractCall(contract_hash, method_name, &params);
+
+    _ = try builder.contractCall(contract_hash, method_name, &params, null);
     
     const contract_script = builder.toScript();
     try testing.expect(contract_script.len > 0);
     try testing.expect(contract_script.len > 30); // Should be substantial with parameters + contract call
 }
 
-/// Test syscall generation
+// Test syscall generation
 test "Syscall generation" {
     const allocator = testing.allocator;
     
@@ -250,7 +232,40 @@ test "Syscall generation" {
     try testing.expectEqual(@as(u8, @intFromEnum(OpCode.SYSCALL)), syscall_script[0]);
 }
 
-/// Test opcode sequences
+test "Multi-sig verification script sorts public keys" {
+    const allocator = testing.allocator;
+
+    // Matches NeoSwift ScriptBuilderTests.testVerificationScriptFromPublicKeys
+    const key1_hex = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
+    const key2_hex = "03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d";
+    const key3_hex = "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e";
+
+    var key1: [33]u8 = undefined;
+    var key2: [33]u8 = undefined;
+    var key3: [33]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&key1, key1_hex);
+    _ = try std.fmt.hexToBytes(&key2, key2_hex);
+    _ = try std.fmt.hexToBytes(&key3, key3_hex);
+
+    const pub_keys = [_][]const u8{ &key1, &key2, &key3 };
+    const script = try ScriptBuilder.buildMultiSigVerificationScript(&pub_keys, 2, allocator);
+    defer allocator.free(script);
+
+    // Expected order after sorting: key1, key3, key2.
+    const expected_hex = "12" ++
+        "0c21" ++ key1_hex ++
+        "0c21" ++ key3_hex ++
+        "0c21" ++ key2_hex ++
+        "13" ++
+        "41" ++
+        "9ed0dc3a";
+
+    var expected: [112]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&expected, expected_hex);
+    try testing.expectEqualSlices(u8, &expected, script);
+}
+
+// Test opcode sequences
 test "OpCode sequence generation" {
     const allocator = testing.allocator;
     
@@ -271,7 +286,7 @@ test "OpCode sequence generation" {
     try testing.expectEqual(@as(u8, @intFromEnum(OpCode.RET)), opcode_script[3]);
 }
 
-/// Test script builder chaining
+// Test script builder chaining
 test "Script builder method chaining" {
     const allocator = testing.allocator;
     
@@ -294,7 +309,7 @@ test "Script builder method chaining" {
     try testing.expectEqual(@as(u8, @intFromEnum(OpCode.RET)), chained_script[chained_script.len - 1]);
 }
 
-/// Test parameter pushing with different types
+// Test parameter pushing with different types
 test "Parameter pushing with different types" {
     const allocator = testing.allocator;
     
@@ -303,32 +318,24 @@ test "Parameter pushing with different types" {
     defer builder.deinit();
     
     // Integer parameter
-    var int_param = try ContractParameter.createInteger(123, allocator);
-    defer int_param.deinit(allocator);
-    _ = try builder.pushParam(int_param);
+    _ = try builder.pushParam(ContractParameter.integer(123));
     
     // String parameter
-    var string_param = try ContractParameter.createString("hello", allocator);
-    defer string_param.deinit(allocator);
-    _ = try builder.pushParam(string_param);
+    _ = try builder.pushParam(ContractParameter.string("hello"));
     
     // Boolean parameter
-    var bool_param = try ContractParameter.createBoolean(true, allocator);
-    defer bool_param.deinit(allocator);
-    _ = try builder.pushParam(bool_param);
+    _ = try builder.pushParam(ContractParameter.boolean(true));
     
     // Hash160 parameter
     const test_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
-    var hash_param = try ContractParameter.createHash160(test_hash, allocator);
-    defer hash_param.deinit(allocator);
-    _ = try builder.pushParam(hash_param);
+    _ = try builder.pushParam(ContractParameter.hash160(test_hash));
     
     const param_script = builder.toScript();
     try testing.expect(param_script.len > 0);
-    try testing.expect(param_script.len > 50); // Should be substantial with multiple parameters
+    try testing.expect(param_script.len > 30); // Integer + string + bool + hash160
 }
 
-/// Test script size calculations
+// Test script size calculations
 test "Script size calculations and limits" {
     const allocator = testing.allocator;
     
@@ -343,7 +350,7 @@ test "Script size calculations and limits" {
     _ = try builder.opCode(&[_]OpCode{OpCode.ADD}); // 1 byte
     
     const sized_script = builder.toScript();
-    try testing.expect(sized_script.len >= 9); // At least 9 bytes expected
+    try testing.expectEqual(@as(usize, 9), sized_script.len);
     
     // Test empty script
     var empty_builder = ScriptBuilder.init(allocator);
@@ -353,7 +360,7 @@ test "Script size calculations and limits" {
     try testing.expectEqual(@as(usize, 0), empty_script.len);
 }
 
-/// Test complex script building scenarios
+// Test complex script building scenarios
 test "Complex script building scenarios" {
     const allocator = testing.allocator;
     
@@ -366,29 +373,24 @@ test "Complex script building scenarios" {
     const recipient_hash = try Hash160.initWithString("0x969a77db482f74ce27105f760efa139223431394");
     
     // Create transfer parameters
-    var transfer_params = [_]ContractParameter{
-        try ContractParameter.createHash160(sender_hash, allocator),
-        try ContractParameter.createHash160(recipient_hash, allocator),
-        try ContractParameter.createInteger(1000000, allocator),
-        try ContractParameter.createAny(null, allocator),
+    const transfer_params = [_]ContractParameter{
+        ContractParameter.hash160(sender_hash),
+        ContractParameter.hash160(recipient_hash),
+        ContractParameter.integer(1000000),
+        ContractParameter{ .Any = {} },
     };
-    defer {
-        for (transfer_params) |*param| {
-            param.deinit(allocator);
-        }
-    }
-    
-    _ = try builder.contractCall(contract_hash, "transfer", &transfer_params);
+
+    _ = try builder.contractCall(contract_hash, "transfer", &transfer_params, null);
     
     const complex_script = builder.toScript();
     try testing.expect(complex_script.len > 0);
-    try testing.expect(complex_script.len > 100); // Complex script should be substantial
+    try testing.expect(complex_script.len > 80); // Parameters + contract call should be substantial
     
     // Verify script ends with expected elements (syscall)
     try testing.expect(complex_script.len >= 5); // At minimum should have syscall at end
 }
 
-/// Test script builder error conditions
+// Test script builder error conditions
 test "Script builder error conditions" {
     const allocator = testing.allocator;
     
@@ -400,18 +402,18 @@ test "Script builder error conditions" {
     const empty_params = [_]ContractParameter{};
     
     try testing.expectError(
-        @import("../../src/core/errors.zig").NeoError.IllegalArgument,
-        builder.contractCall(contract_hash, "", &empty_params)
+        neo.NeoError.IllegalArgument,
+        builder.contractCall(contract_hash, "", &empty_params, null)
     );
     
     // Test valid contract call works
-    _ = try builder.contractCall(contract_hash, "validMethod", &empty_params);
+    _ = try builder.contractCall(contract_hash, "validMethod", &empty_params, null);
     
     const valid_script = builder.toScript();
     try testing.expect(valid_script.len > 0);
 }
 
-/// Test script builder reset and reuse
+// Test script builder reset and reuse
 test "Script builder reset and reuse" {
     const allocator = testing.allocator;
     

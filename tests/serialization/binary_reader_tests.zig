@@ -5,10 +5,10 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const BinaryReader = @import("../../src/serialization/binary_reader_complete.zig").CompleteBinaryReader;
-const BinaryWriter = @import("../../src/serialization/binary_writer_complete.zig").CompleteBinaryWriter;
+const neo = @import("neo-zig");
+const BinaryReader = neo.serialization.CompleteBinaryReader;
+const BinaryWriter = neo.serialization.CompleteBinaryWriter;
 
 test "Read UInt32 values" {
     const allocator = testing.allocator;
@@ -78,7 +78,7 @@ test "Read variable-length data" {
     const written_data = writer.toArray();
     var reader = BinaryReader.init(written_data);
     
-    const read_data = try reader.readVarBytes(1000, allocator);
+    const read_data = try reader.readVarBytes(allocator);
     defer allocator.free(read_data);
     
     try testing.expectEqualSlices(u8, &test_data, read_data);

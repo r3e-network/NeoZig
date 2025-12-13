@@ -4,7 +4,7 @@
 //! Provides Swift-compatible array operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 
@@ -120,7 +120,7 @@ pub const ArrayUtils = struct {
         lessThan: *const fn (void, T, T) bool,
         allocator: std.mem.Allocator,
     ) ![]T {
-        var result = try allocator.dupe(T, array);
+        const result = try allocator.dupe(T, array);
         sort(T, result, lessThan);
         return result;
     }
@@ -132,7 +132,7 @@ pub const ArrayUtils = struct {
     
     /// Returns reversed copy (equivalent to Swift .reversed)
     pub fn reversed(comptime T: type, array: []const T, allocator: std.mem.Allocator) ![]T {
-        var result = try allocator.dupe(T, array);
+        const result = try allocator.dupe(T, array);
         reverse(T, result);
         return result;
     }
@@ -223,11 +223,11 @@ test "Array search and filtering" {
     try testing.expectEqual(@as(?usize, null), ArrayUtils.firstIndex(i32, &test_array, 10));
     
     // Test filter (equivalent to Swift .filter tests)
-    const is_even = struct {
-        fn predicate(x: i32) bool {
-            return x % 2 == 0;
-        }
-    }.predicate;
+        const is_even = struct {
+            fn predicate(x: i32) bool {
+            return @mod(x, 2) == 0;
+            }
+        }.predicate;
     
     const even_numbers = try ArrayUtils.filter(i32, &test_array, is_even, allocator);
     defer allocator.free(even_numbers);
@@ -268,14 +268,14 @@ test "Array transformation operations" {
 
 test "Array conditional operations" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     const test_array = [_]i32{ 2, 4, 6, 8 };
     const mixed_array = [_]i32{ 1, 2, 3, 4 };
     
     const is_even = struct {
         fn predicate(x: i32) bool {
-            return x % 2 == 0;
+            return @mod(x, 2) == 0;
         }
     }.predicate;
     

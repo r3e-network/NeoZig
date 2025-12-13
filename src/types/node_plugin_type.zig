@@ -7,6 +7,7 @@ const std = @import("std");
 
 
 const errors = @import("../core/errors.zig");
+const json_utils = @import("../utils/json_utils.zig");
 
 /// Neo node plugin type (converted from Swift NodePluginType)
 pub const NodePluginType = enum {
@@ -135,8 +136,8 @@ pub const NodePluginType = enum {
     
     /// Encodes to JSON string
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
-        _ = allocator;
-        return std.json.Value{ .string = self.getRawValue() };
+        const value = try allocator.dupe(u8, self.getRawValue());
+        return std.json.Value{ .string = value };
     }
 };
 
@@ -210,7 +211,7 @@ test "NodePluginType JSON operations" {
     const original_plugin = NodePluginType.RpcNep17Tracker;
     
     const encoded_json = try original_plugin.encodeToJson(allocator);
-    defer encoded_json.deinit();
+    defer json_utils.freeValue(encoded_json, allocator);
     
     const decoded_plugin = try NodePluginType.decodeFromJson(encoded_json);
     try testing.expectEqual(original_plugin, decoded_plugin);

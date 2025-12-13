@@ -3,11 +3,59 @@
 //! Production ECDSA implementation for Neo blockchain using P-256 curve.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Ecdsa = std.crypto.sign.ecdsa.EcdsaP256Sha256;
+const Curve = std.crypto.ecc.P256;
+const Hash = std.crypto.hash.sha2.Sha256;
+const Prf = std.crypto.auth.hmac.Hmac(Hash);
+const noise_length = Curve.scalar.encoded_length;
+
+fn reduceToScalar(comptime unreduced_len: usize, s: [unreduced_len]u8) Curve.scalar.Scalar {
+    if (unreduced_len >= 48) {
+        var xs = [_]u8{0} ** 64;
+        @memcpy(xs[xs.len - s.len ..], s[0..]);
+        return Curve.scalar.Scalar.fromBytes64(xs, .big);
+    }
+    var xs = [_]u8{0} ** 48;
+    @memcpy(xs[xs.len - s.len ..], s[0..]);
+    return Curve.scalar.Scalar.fromBytes48(xs, .big);
+}
+
+fn deterministicScalar(h: [Hash.digest_length]u8, secret_key: Curve.scalar.CompressedScalar, noise: ?[noise_length]u8) Curve.scalar.Scalar {
+    var k = [_]u8{0x00} ** h.len;
+    var m = [_]u8{0x00} ** (h.len + 1 + noise_length + secret_key.len + h.len);
+    var t = [_]u8{0x00} ** Curve.scalar.encoded_length;
+    const m_v = m[0..h.len];
+    const m_i = &m[m_v.len];
+    const m_z = m[m_v.len + 1 ..][0..noise_length];
+    const m_x = m[m_v.len + 1 + noise_length ..][0..secret_key.len];
+    const m_h = m[m.len - h.len ..];
+
+    @memset(m_v, 0x01);
+    m_i.* = 0x00;
+    if (noise) |n| @memcpy(m_z, &n);
+    @memcpy(m_x, &secret_key);
+    @memcpy(m_h, &h);
+    Prf.create(&k, &m, &k);
+    Prf.create(m_v, m_v, &k);
+    m_i.* = 0x01;
+    Prf.create(&k, &m, &k);
+    Prf.create(m_v, m_v, &k);
+    while (true) {
+        var t_off: usize = 0;
+        while (t_off < t.len) : (t_off += m_v.len) {
+            const t_end = @min(t_off + m_v.len, t.len);
+            Prf.create(m_v, m_v, &k);
+            @memcpy(t[t_off..t_end], m_v[0 .. t_end - t_off]);
+        }
+        if (Curve.scalar.Scalar.fromBytes(t, .big)) |s| return s else |_| {}
+        m_i.* = 0x00;
+        Prf.create(&k, m[0 .. m_v.len + 1], &k);
+        Prf.create(m_v, m_v, &k);
+    }
+}
 
 pub const Secp256r1 = struct {
     pub const P: u256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF;
@@ -99,10 +147,21 @@ pub fn derivePublicKey(private_key: [32]u8, compressed: bool, allocator: std.mem
 
 pub fn sign(hash: [32]u8, private_key: [32]u8) ![64]u8 {
     const key_pair = try loadKeyPair(private_key);
-    const signature = key_pair.signPrehashed(hash, null) catch |err| switch (err) {
-        error.IdentityElement => return errors.CryptoError.InvalidKey,
-        error.NonCanonical => return errors.CryptoError.ECDSAOperationFailed,
-    };
+    const z = reduceToScalar(Curve.scalar.encoded_length, hash);
+
+    const k = deterministicScalar(hash, key_pair.secret_key.bytes, null);
+    const p = Curve.basePoint.mul(k.toBytes(.big), .big) catch return errors.CryptoError.ECDSAOperationFailed;
+    const xs = p.affineCoordinates().x.toBytes(.big);
+    const r = reduceToScalar(Curve.Fe.encoded_length, xs);
+    if (r.isZero()) return errors.CryptoError.ECDSAOperationFailed;
+
+    const k_inv = k.invert();
+    const d = Curve.scalar.Scalar.fromBytes(key_pair.secret_key.bytes, .big) catch return errors.CryptoError.InvalidKey;
+    const zrs = z.add(r.mul(d));
+    const s = k_inv.mul(zrs);
+    if (s.isZero()) return errors.CryptoError.ECDSAOperationFailed;
+
+    const signature = Ecdsa.Signature{ .r = r.toBytes(.big), .s = s.toBytes(.big) };
     return signature.toBytes();
 }
 
@@ -111,12 +170,24 @@ pub fn verify(hash: [32]u8, signature: [64]u8, public_key: []const u8) !bool {
         return errors.CryptoError.InvalidKey;
     };
     const sig = Ecdsa.Signature.fromBytes(signature);
-    sig.verifyPrehashed(hash, pk) catch |err| switch (err) {
-        error.SignatureVerificationFailed => return false,
-        error.IdentityElement => return errors.CryptoError.InvalidKey,
-        error.NonCanonical => return errors.CryptoError.InvalidSignature,
-    };
-    return true;
+    const r = Curve.scalar.Scalar.fromBytes(sig.r, .big) catch return false;
+    const s = Curve.scalar.Scalar.fromBytes(sig.s, .big) catch return false;
+    if (r.isZero() or s.isZero()) return false;
+
+    const z = reduceToScalar(Curve.scalar.encoded_length, hash);
+    if (z.isZero()) return false;
+
+    const s_inv = s.invert();
+    const v1 = z.mul(s_inv).toBytes(.little);
+    const v2 = r.mul(s_inv).toBytes(.little);
+
+    const v1g = Curve.basePoint.mulPublic(v1, .little) catch return false;
+    const v2pk = pk.p.mulPublic(v2, .little) catch return false;
+    const v = v1g.add(v2pk);
+    const x_bytes = v.affineCoordinates().x.toBytes(.big);
+    const vr = reduceToScalar(Curve.Fe.encoded_length, x_bytes);
+
+    return vr.equivalent(r);
 }
 
 pub fn recoverPoint(recovery_id: u8, r: u256, s: u256, message_hash: []const u8) ?Point {
@@ -127,7 +198,10 @@ pub fn recoverPoint(recovery_id: u8, r: u256, s: u256, message_hash: []const u8)
 
     const j = recovery_id >> 1;
     const is_odd = recovery_id & 1;
-    const x = r + j * n;
+    const x_term = @as(u256, j) * n;
+    const x_sum = @addWithOverflow(r, x_term);
+    if (x_sum[1] != 0) return null;
+    const x = x_sum[0];
     if (x >= p) return null;
 
     var compressed: [33]u8 = undefined;
@@ -155,7 +229,7 @@ pub fn recoverPoint(recovery_id: u8, r: u256, s: u256, message_hash: []const u8)
     return public_point;
 }
 
-fn pointFromCompressed(compressed: []const u8) !Point {
+pub fn pointFromCompressed(compressed: []const u8) !Point {
     if (compressed.len != 33 or (compressed[0] != 0x02 and compressed[0] != 0x03)) {
         return errors.CryptoError.InvalidKey;
     }
@@ -170,7 +244,7 @@ fn pointFromCompressed(compressed: []const u8) !Point {
     return Point.init(x, final_y);
 }
 
-fn pointFromUncompressed(uncompressed: []const u8) !Point {
+pub fn pointFromUncompressed(uncompressed: []const u8) !Point {
     if (uncompressed.len != 65 or uncompressed[0] != 0x04) return errors.CryptoError.InvalidKey;
     
     const x = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, uncompressed[1..33]));
@@ -179,81 +253,11 @@ fn pointFromUncompressed(uncompressed: []const u8) !Point {
     return Point.init(x, y);
 }
 
-fn generateDeterministicK(hash: [32]u8, private_key: [32]u8) u256 {
-    var v = [_]u8{0x01} ** 32;
-    var k_hmac = [_]u8{0x00} ** 32;
-    
-    var hmac_input = ArrayList(u8).init(std.heap.page_allocator);
-    defer hmac_input.deinit();
-    
-    hmac_input.appendSlice(&v) catch return 0;
-    hmac_input.append(0x00) catch return 0;
-    hmac_input.appendSlice(&private_key) catch return 0;
-    hmac_input.appendSlice(&hash) catch return 0;
-    
-    hmacSha256(&k_hmac, hmac_input.items, &k_hmac);
-    hmacSha256(&k_hmac, &v, &v);
-    
-    hmac_input.clearRetainingCapacity();
-    hmac_input.appendSlice(&v) catch return 0;
-    hmac_input.append(0x01) catch return 0;
-    hmac_input.appendSlice(&private_key) catch return 0;
-    hmac_input.appendSlice(&hash) catch return 0;
-    
-    hmacSha256(&k_hmac, hmac_input.items, &k_hmac);
-    hmacSha256(&k_hmac, &v, &v);
-    
-    while (true) {
-        hmacSha256(&k_hmac, &v, &v);
-        const candidate_k = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &v));
-        if (candidate_k >= 1 and candidate_k < Secp256r1.N) return candidate_k;
-        
-        hmac_input.clearRetainingCapacity();
-        hmac_input.appendSlice(&v) catch return 0;
-        hmac_input.append(0x00) catch return 0;
-        
-        hmacSha256(&k_hmac, hmac_input.items, &k_hmac);
-        hmacSha256(&k_hmac, &v, &v);
-    }
-}
-
-fn hmacSha256(key: []const u8, message: []const u8, output: []u8) void {
-    const block_size = 64;
-    var actual_key: [block_size]u8 = undefined;
-    
-    if (key.len > block_size) {
-        var hasher = std.crypto.hash.sha2.Sha256.init(.{});
-        hasher.update(key);
-        hasher.final(actual_key[0..32]);
-        @memset(actual_key[32..], 0);
-    } else {
-        @memcpy(actual_key[0..key.len], key);
-        @memset(actual_key[key.len..], 0);
-    }
-    
-    var i_pad: [block_size]u8 = undefined;
-    var o_pad: [block_size]u8 = undefined;
-    
-    for (actual_key, 0..) |byte, i| {
-        i_pad[i] = byte ^ 0x36;
-        o_pad[i] = byte ^ 0x5C;
-    }
-    
-    var inner_hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    inner_hasher.update(&i_pad);
-    inner_hasher.update(message);
-    var inner_hash: [32]u8 = undefined;
-    inner_hasher.final(&inner_hash);
-    
-    var outer_hasher = std.crypto.hash.sha2.Sha256.init(.{});
-    outer_hasher.update(&o_pad);
-    outer_hasher.update(&inner_hash);
-    outer_hasher.final(output[0..32]);
-}
-
 fn modAdd(a: u256, b: u256, modulus: u256) u256 {
-    const sum = a +% b;
-    return if (sum >= modulus) sum - modulus else sum;
+    // Use a wider intermediate to avoid incorrect reduction when `a + b`
+    // overflows `u256` (modulus is not a power of two).
+    const sum = @as(u512, a) + @as(u512, b);
+    return @intCast(sum % @as(u512, modulus));
 }
 
 fn modSub(a: u256, b: u256, modulus: u256) u256 {

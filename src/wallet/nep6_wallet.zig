@@ -4,12 +4,13 @@
 //! Standard wallet format for Neo blockchain.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
+const json_utils = @import("../utils/json_utils.zig");
 
 /// NEP-6 wallet structure (converted from Swift NEP6Wallet)
 pub const NEP6Wallet = struct {
@@ -50,19 +51,19 @@ pub const NEP6Wallet = struct {
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var wallet_obj = std.json.ObjectMap.init(allocator);
         
-        try wallet_obj.put("name", std.json.Value{ .string = self.name });
-        try wallet_obj.put("version", std.json.Value{ .string = self.version });
-        try wallet_obj.put("scrypt", try self.scrypt.toJson(allocator));
+        try json_utils.putOwnedKey(&wallet_obj, allocator, "name", std.json.Value{ .string = try allocator.dupe(u8, self.name) });
+        try json_utils.putOwnedKey(&wallet_obj, allocator, "version", std.json.Value{ .string = try allocator.dupe(u8, self.version) });
+        try json_utils.putOwnedKey(&wallet_obj, allocator, "scrypt", try self.scrypt.toJson(allocator));
         
         // Convert accounts array
         var accounts_array = ArrayList(std.json.Value).init(allocator);
         for (self.accounts) |account| {
             try accounts_array.append(try account.toJson(allocator));
         }
-        try wallet_obj.put("accounts", std.json.Value{ .array = try accounts_array.toOwnedSlice() });
+        try json_utils.putOwnedKey(&wallet_obj, allocator, "accounts", std.json.Value{ .array = accounts_array });
         
         if (self.extra) |extra| {
-            try wallet_obj.put("extra", extra);
+            try json_utils.putOwnedKey(&wallet_obj, allocator, "extra", try json_utils.cloneValue(extra, allocator));
         }
         
         return std.json.Value{ .object = wallet_obj };
@@ -92,18 +93,15 @@ pub const NEP6Wallet = struct {
     /// Saves to file (equivalent to Swift file operations)
     pub fn saveToFile(self: Self, file_path: []const u8, allocator: std.mem.Allocator) !void {
         const json_value = try self.toJson(allocator);
-        defer json_value.deinit();
-        
-        var writer_state = std.Io.Writer.Allocating.init(allocator);
-        defer writer_state.deinit();
-        
-        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{ .whitespace = .indent_2 } };
-        try stringify.write(json_value);
+        defer json_utils.freeValue(json_value, allocator);
+
+        const encoded = try std.json.stringifyAlloc(allocator, json_value, .{ .whitespace = .indent_2 });
+        defer allocator.free(encoded);
         
         const file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
-        
-        try file.writeAll(writer_state.writer.buffered());
+
+        try file.writeAll(encoded);
     }
     
     /// Loads from file (equivalent to Swift file operations)
@@ -167,25 +165,25 @@ pub const NEP6Account = struct {
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var account_obj = std.json.ObjectMap.init(allocator);
         
-        try account_obj.put("address", std.json.Value{ .string = self.address });
+        try json_utils.putOwnedKey(&account_obj, allocator, "address", std.json.Value{ .string = try allocator.dupe(u8, self.address) });
         
         if (self.label) |label| {
-            try account_obj.put("label", std.json.Value{ .string = label });
+            try json_utils.putOwnedKey(&account_obj, allocator, "label", std.json.Value{ .string = try allocator.dupe(u8, label) });
         }
         
-        try account_obj.put("isDefault", std.json.Value{ .bool = self.is_default });
-        try account_obj.put("lock", std.json.Value{ .bool = self.lock });
+        try json_utils.putOwnedKey(&account_obj, allocator, "isDefault", std.json.Value{ .bool = self.is_default });
+        try json_utils.putOwnedKey(&account_obj, allocator, "lock", std.json.Value{ .bool = self.lock });
         
         if (self.key) |key| {
-            try account_obj.put("key", std.json.Value{ .string = key });
+            try json_utils.putOwnedKey(&account_obj, allocator, "key", std.json.Value{ .string = try allocator.dupe(u8, key) });
         }
         
         if (self.contract) |contract| {
-            try account_obj.put("contract", try contract.toJson(allocator));
+            try json_utils.putOwnedKey(&account_obj, allocator, "contract", try contract.toJson(allocator));
         }
         
         if (self.extra) |extra| {
-            try account_obj.put("extra", extra);
+            try json_utils.putOwnedKey(&account_obj, allocator, "extra", try json_utils.cloneValue(extra, allocator));
         }
         
         return std.json.Value{ .object = account_obj };
@@ -227,17 +225,16 @@ pub const NEP6Contract = struct {
         var contract_obj = std.json.ObjectMap.init(allocator);
         
         const script_hex = try @import("../utils/bytes.zig").toHex(self.script, allocator);
-        defer allocator.free(script_hex);
         
-        try contract_obj.put("script", std.json.Value{ .string = script_hex });
-        try contract_obj.put("deployed", std.json.Value{ .bool = self.deployed });
+        try json_utils.putOwnedKey(&contract_obj, allocator, "script", std.json.Value{ .string = script_hex });
+        try json_utils.putOwnedKey(&contract_obj, allocator, "deployed", std.json.Value{ .bool = self.deployed });
         
         // Convert parameters
         var params_array = ArrayList(std.json.Value).init(allocator);
         for (self.parameters) |param| {
             try params_array.append(try param.toJson(allocator));
         }
-        try contract_obj.put("parameters", std.json.Value{ .array = try params_array.toOwnedSlice() });
+        try json_utils.putOwnedKey(&contract_obj, allocator, "parameters", std.json.Value{ .array = params_array });
         
         return std.json.Value{ .object = contract_obj };
     }
@@ -275,8 +272,8 @@ pub const ContractParameterInfo = struct {
     
     pub fn toJson(self: ContractParameterInfo, allocator: std.mem.Allocator) !std.json.Value {
         var param_obj = std.json.ObjectMap.init(allocator);
-        try param_obj.put("name", std.json.Value{ .string = self.name });
-        try param_obj.put("type", std.json.Value{ .string = self.parameter_type });
+        try json_utils.putOwnedKey(&param_obj, allocator, "name", std.json.Value{ .string = try allocator.dupe(u8, self.name) });
+        try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, self.parameter_type) });
         return std.json.Value{ .object = param_obj };
     }
     
@@ -309,9 +306,9 @@ pub const ScryptParams = struct {
     
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var scrypt_obj = std.json.ObjectMap.init(allocator);
-        try scrypt_obj.put("n", std.json.Value{ .integer = @intCast(self.n) });
-        try scrypt_obj.put("r", std.json.Value{ .integer = @intCast(self.r) });
-        try scrypt_obj.put("p", std.json.Value{ .integer = @intCast(self.p) });
+        try json_utils.putOwnedKey(&scrypt_obj, allocator, "n", std.json.Value{ .integer = @intCast(self.n) });
+        try json_utils.putOwnedKey(&scrypt_obj, allocator, "r", std.json.Value{ .integer = @intCast(self.r) });
+        try json_utils.putOwnedKey(&scrypt_obj, allocator, "p", std.json.Value{ .integer = @intCast(self.p) });
         return std.json.Value{ .object = scrypt_obj };
     }
     
@@ -363,7 +360,7 @@ test "NEP6Wallet JSON serialization" {
     
     // Test JSON conversion (equivalent to Swift Codable tests)
     const json_value = try wallet.toJson(allocator);
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const wallet_obj = json_value.object;
     try testing.expectEqualStrings("JSON Test Wallet", wallet_obj.get("name").?.string);
@@ -414,7 +411,7 @@ test "ScryptParams operations" {
     
     // Test JSON conversion
     const json_value = try custom_params.toJson(allocator);
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const parsed_params = try ScryptParams.fromJson(json_value, allocator);
     try testing.expect(custom_params.eql(parsed_params));

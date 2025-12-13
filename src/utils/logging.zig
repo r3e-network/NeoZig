@@ -4,7 +4,7 @@
 //! Provides structured logging with security and performance monitoring.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const builtin = @import("builtin");

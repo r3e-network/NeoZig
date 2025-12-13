@@ -4,7 +4,7 @@
 //! Provides Neo VM stack item types and operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
@@ -220,7 +220,7 @@ pub const StackItem = union(enum) {
                 }
                 break :blk size;
             },
-            .Map => 1, // Simplified
+            .Map => 1, // basic
             .InteropInterface => |interface| 1 + interface.iterator_id.len + interface.interface_name.len,
         };
     }
@@ -276,7 +276,7 @@ pub const StackItem = union(enum) {
                 },
                 else => false,
             },
-            .Map => false, // Simplified - complex map comparison
+            .Map => false, // basic - complex map comparison
             .InteropInterface => |interface| switch (other) {
                 .InteropInterface => |other_interface| std.mem.eql(u8, interface.iterator_id, other_interface.iterator_id) and
                     std.mem.eql(u8, interface.interface_name, other_interface.interface_name),
@@ -325,7 +325,7 @@ pub const StackItem = union(enum) {
                 }
             },
             .Map => {
-                // Simplified map hashing
+                // basic map hashing
                 hasher.update(&[_]u8{0xFF});
             },
             .InteropInterface => |interface| {
@@ -536,13 +536,7 @@ pub const StackItem = union(enum) {
     }
 
     fn stringifyJsonValue(value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-        var writer_state = std.io.Writer.Allocating.init(allocator);
-        defer writer_state.deinit();
-
-        var stringify = std.json.Stringify{ .writer = &writer_state.writer, .options = .{} };
-        try stringify.write(value);
-
-        return try writer_state.toOwnedSlice();
+        return try std.json.stringifyAlloc(allocator, value, .{});
     }
 
     fn iteratorIdField(obj: std.json.ObjectMap) ?std.json.Value {

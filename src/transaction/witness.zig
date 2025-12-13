@@ -13,32 +13,38 @@ const SignatureData = @import("../crypto/sign.zig").SignatureData;
 /// Invocation script wrapper
 pub const InvocationScript = struct {
     script: []const u8,
+    owns_script: bool = false,
     
     const Self = @This();
     
     /// Creates empty invocation script
     pub fn init() Self {
-        return Self{ .script = "" };
+        return Self{ .script = &[_]u8{}, .owns_script = false };
     }
     
     /// Creates invocation script from bytes
     pub fn initWithBytes(bytes: []const u8) Self {
-        return Self{ .script = bytes };
+        return Self{ .script = bytes, .owns_script = false };
+    }
+
+    /// Creates invocation script from bytes by copying and taking ownership.
+    pub fn initFromBytes(bytes: []const u8, allocator: std.mem.Allocator) !Self {
+        return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
     
     /// Creates invocation script from message and key pair (equivalent to Swift fromMessageAndKeyPair)
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
-        const signature = try key_pair.signMessage(message, allocator);
-        defer signature.deinit(allocator);
+        const signature = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
         
         // Create invocation script with signature
         var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
         defer script_builder.deinit();
         
-        _ = try script_builder.pushData(signature.toBytes());
+        const signature_bytes = signature.getSignatureBytes();
+        _ = try script_builder.pushData(&signature_bytes);
         
         const script = script_builder.toScript();
-        return Self{ .script = try allocator.dupe(u8, script) };
+        return Self{ .script = try allocator.dupe(u8, script), .owns_script = true };
     }
     
     /// Creates multi-sig invocation script from signatures
@@ -46,17 +52,14 @@ pub const InvocationScript = struct {
         var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
         defer script_builder.deinit();
         
-        // Push null first for multi-sig
-        _ = try script_builder.pushData(&[_]u8{});
-        
         // Push signatures in order
         for (signatures) |signature| {
-            const sig_bytes = signature.toBytes();
-            _ = try script_builder.pushData(sig_bytes);
+            const sig_bytes = signature.getSignatureBytes();
+            _ = try script_builder.pushData(&sig_bytes);
         }
         
         const script = script_builder.toScript();
-        return Self{ .script = try allocator.dupe(u8, script) };
+        return Self{ .script = try allocator.dupe(u8, script), .owns_script = true };
     }
     
     /// Gets script bytes
@@ -71,62 +74,59 @@ pub const InvocationScript = struct {
     
     /// Cleanup allocated resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-        allocator.free(self.script);
+        if (self.owns_script) {
+            allocator.free(self.script);
+        }
+        self.* = Self.init();
     }
 };
 
 /// Verification script wrapper
 pub const VerificationScript = struct {
     script: []const u8,
+    owns_script: bool = false,
     
     const Self = @This();
     
     /// Creates empty verification script
     pub fn init() Self {
-        return Self{ .script = "" };
+        return Self{ .script = &[_]u8{}, .owns_script = false };
     }
     
     /// Creates verification script from bytes
     pub fn initWithBytes(bytes: []const u8) Self {
-        return Self{ .script = bytes };
+        return Self{ .script = bytes, .owns_script = false };
+    }
+
+    /// Creates verification script from bytes by copying and taking ownership.
+    pub fn initFromBytes(bytes: []const u8, allocator: std.mem.Allocator) !Self {
+        return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
     
     /// Creates verification script from public key (equivalent to Swift init(_ publicKey:))
     pub fn fromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
-        defer script_builder.deinit();
-        
-        // Push public key
-        _ = try script_builder.pushData(public_key.toSlice());
-        
-        // Add CHECKSIG opcode
-        _ = try script_builder.sysCall(.SystemCryptoCheckSig);
-        
-        const script = script_builder.toScript();
-        return Self{ .script = try allocator.dupe(u8, script) };
+        const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
+            public_key.toSlice(),
+            allocator,
+        );
+        return Self{ .script = script, .owns_script = true };
     }
     
     /// Creates multi-sig verification script (equivalent to Swift init(_ publicKeys:, _ signingThreshold:))
     pub fn fromMultiSig(public_keys: []const PublicKey, signing_threshold: u32, allocator: std.mem.Allocator) !Self {
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
-        defer script_builder.deinit();
-        
-        // Push signing threshold
-        _ = try script_builder.pushInteger(@intCast(signing_threshold));
-        
-        // Push public keys (should be sorted)
-        for (public_keys) |pub_key| {
-            _ = try script_builder.pushData(pub_key.toSlice());
+        var key_slices = try allocator.alloc([]const u8, public_keys.len);
+        defer allocator.free(key_slices);
+
+        for (public_keys, 0..) |*pub_key, i| {
+            key_slices[i] = pub_key.toSlice();
         }
-        
-        // Push number of public keys
-        _ = try script_builder.pushInteger(@intCast(public_keys.len));
-        
-        // Add CHECKMULTISIG opcode
-        _ = try script_builder.sysCall(.SystemCryptoCheckMultisig);
-        
-        const script = script_builder.toScript();
-        return Self{ .script = try allocator.dupe(u8, script) };
+
+        const script = try @import("../script/script_builder.zig").ScriptBuilder.buildMultiSigVerificationScript(
+            key_slices,
+            signing_threshold,
+            allocator,
+        );
+        return Self{ .script = script, .owns_script = true };
     }
     
     /// Gets script bytes
@@ -141,7 +141,10 @@ pub const VerificationScript = struct {
     
     /// Cleanup allocated resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-        allocator.free(self.script);
+        if (self.owns_script) {
+            allocator.free(self.script);
+        }
+        self.* = Self.init();
     }
 };
 
@@ -163,8 +166,8 @@ pub const Witness = struct {
     /// Creates witness from bytes (equivalent to Swift init(_ invocationScript: Bytes, _ verificationScript: Bytes))
     pub fn initWithBytes(invocation_bytes: []const u8, verification_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
-            .invocation_script = InvocationScript{ .script = try allocator.dupe(u8, invocation_bytes) },
-            .verification_script = VerificationScript{ .script = try allocator.dupe(u8, verification_bytes) },
+            .invocation_script = try InvocationScript.initFromBytes(invocation_bytes, allocator),
+            .verification_script = try VerificationScript.initFromBytes(verification_bytes, allocator),
         };
     }
     
@@ -234,7 +237,8 @@ pub const Witness = struct {
     
     /// Gets witness size in bytes
     pub fn getSize(self: Self) usize {
-        return self.invocation_script.script.len + self.verification_script.script.len + 2; // +2 for length prefixes
+        const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
+        return BytesUtils.varSize(self.invocation_script.script) + BytesUtils.varSize(self.verification_script.script);
     }
     
     /// Validates witness format
@@ -278,12 +282,12 @@ pub const Witness = struct {
     /// Deserializes witness from bytes
     pub fn deserialize(reader: *@import("../serialization/binary_reader_complete.zig").CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
         // Read invocation script
-        const invocation_bytes = try reader.readVarBytes(1024, allocator); // Max reasonable size
-        const invocation_script = InvocationScript{ .script = invocation_bytes };
+        const invocation_bytes = try reader.readVarBytes(allocator);
+        const invocation_script = InvocationScript{ .script = invocation_bytes, .owns_script = true };
         
         // Read verification script
-        const verification_bytes = try reader.readVarBytes(1024, allocator); // Max reasonable size
-        const verification_script = VerificationScript{ .script = verification_bytes };
+        const verification_bytes = try reader.readVarBytes(allocator);
+        const verification_script = VerificationScript{ .script = verification_bytes, .owns_script = true };
         
         return Self{
             .invocation_script = invocation_script,
@@ -300,8 +304,8 @@ pub const Witness = struct {
     /// Clone with owned memory
     pub fn clone(self: Self, allocator: std.mem.Allocator) !Self {
         return Self{
-            .invocation_script = InvocationScript{ .script = try allocator.dupe(u8, self.invocation_script.script) },
-            .verification_script = VerificationScript{ .script = try allocator.dupe(u8, self.verification_script.script) },
+            .invocation_script = InvocationScript{ .script = try allocator.dupe(u8, self.invocation_script.script), .owns_script = true },
+            .verification_script = VerificationScript{ .script = try allocator.dupe(u8, self.verification_script.script), .owns_script = true },
         };
     }
     
@@ -321,7 +325,8 @@ test "Witness creation and basic operations" {
     const allocator = testing.allocator;
     
     // Test empty witness creation (equivalent to Swift init() tests)
-    const empty_witness = Witness.init();
+    var empty_witness = Witness.init();
+    defer empty_witness.deinit(allocator);
     try testing.expect(empty_witness.isEmpty());
     try empty_witness.validate();
     
@@ -337,7 +342,7 @@ test "Witness creation and basic operations" {
     try testing.expectEqualSlices(u8, &verification_bytes, witness_from_bytes.getVerificationScript());
     
     // Test size calculation
-    const expected_size = invocation_bytes.len + verification_bytes.len + 2; // +2 for length prefixes
+    const expected_size = invocation_bytes.len + verification_bytes.len + 2; // VarBytes prefixes are 1 byte each here.
     try testing.expectEqual(expected_size, witness_from_bytes.getSize());
 }
 
@@ -368,7 +373,7 @@ test "Witness equality and hashing" {
     const hash3 = witness3.hash();
     
     try testing.expectEqual(hash1, hash2); // Same witnesses should have same hash
-    try testing.expectNotEqual(hash1, hash3); // Different witnesses should have different hash
+    try testing.expect(hash1 != hash3); // Different witnesses should have different hash
 }
 
 test "Witness validation" {
@@ -414,4 +419,99 @@ test "Witness utility methods" {
     try testing.expect(witness.eql(cloned_witness));
     try testing.expectEqualSlices(u8, witness.getInvocationScript(), cloned_witness.getInvocationScript());
     try testing.expectEqualSlices(u8, witness.getVerificationScript(), cloned_witness.getVerificationScript());
+}
+
+test "Witness size uses varint prefixes at boundaries" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const len: usize = 253; // 0xFD boundary (VarInt grows from 1 to 3 bytes)
+    const invocation = try allocator.alloc(u8, len);
+    defer allocator.free(invocation);
+    const verification = try allocator.alloc(u8, len);
+    defer allocator.free(verification);
+
+    @memset(invocation, 0xAA);
+    @memset(verification, 0xBB);
+
+    var witness = try Witness.initWithBytes(invocation, verification, allocator);
+    defer witness.deinit(allocator);
+
+    // Each VarBytes is VarInt(len) + len = 3 + 253 = 256 bytes.
+    try testing.expectEqual(@as(usize, 512), witness.getSize());
+}
+
+test "Multi-sig scripts match NeoSwift expectations" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const OpCode = @import("../script/op_code.zig").OpCode;
+    const Sign = @import("../crypto/sign.zig").Sign;
+
+    const message = [_]u8{10} ** 10;
+
+    // Build two signatures for the multi-sig invocation script.
+    var sigs: [2]SignatureData = undefined;
+    inline for (0..2) |i| {
+        const key_pair = try ECKeyPair.createRandom();
+        defer {
+            var mutable_kp = key_pair;
+            mutable_kp.zeroize();
+        }
+        sigs[i] = try Sign.signMessage(&message, key_pair, allocator);
+    }
+
+    var invocation = try InvocationScript.fromSignatures(&sigs, allocator);
+    defer invocation.deinit(allocator);
+
+    try testing.expect(invocation.getScript().len > 0);
+    try testing.expectEqual(@as(u8, @intFromEnum(OpCode.PUSHDATA1)), invocation.getScript()[0]);
+
+    // Verification scripts must sort public keys lexicographically.
+    const key_pair_a = try ECKeyPair.createRandom();
+    defer {
+        var mutable_kp = key_pair_a;
+        mutable_kp.zeroize();
+    }
+    const key_pair_b = try ECKeyPair.createRandom();
+    defer {
+        var mutable_kp = key_pair_b;
+        mutable_kp.zeroize();
+    }
+
+    const pub_a = key_pair_a.getPublicKey();
+    const pub_b = key_pair_b.getPublicKey();
+
+    // Intentionally pass keys in reverse order and confirm they appear sorted in the script.
+    const public_keys = [_]PublicKey{ pub_b, pub_a };
+    var verification = try VerificationScript.fromMultiSig(&public_keys, 1, allocator);
+    defer verification.deinit(allocator);
+
+    const script = verification.getScript();
+    const idx_a = std.mem.indexOf(u8, script, pub_a.toSlice()).?;
+    const idx_b = std.mem.indexOf(u8, script, pub_b.toSlice()).?;
+
+    if (std.mem.order(u8, pub_a.toSlice(), pub_b.toSlice()) == .lt) {
+        try testing.expect(idx_a < idx_b);
+    } else {
+        try testing.expect(idx_b < idx_a);
+    }
+}
+
+test "Script deinit is safe for borrowed bytes" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var empty_inv = InvocationScript.init();
+    empty_inv.deinit(allocator);
+
+    const bytes = [_]u8{ 0x01, 0x02, 0x03 };
+    var borrowed_inv = InvocationScript.initWithBytes(&bytes);
+    borrowed_inv.deinit(allocator);
+
+    var empty_ver = VerificationScript.init();
+    empty_ver.deinit(allocator);
+
+    var borrowed_ver = VerificationScript.initWithBytes(&bytes);
+    borrowed_ver.deinit(allocator);
 }

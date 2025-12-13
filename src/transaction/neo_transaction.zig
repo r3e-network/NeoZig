@@ -4,7 +4,7 @@
 //! Provides full transaction functionality with Swift API compatibility.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -13,6 +13,8 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
+const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const bytes_utils = @import("../utils/bytes.zig");
 
 /// Neo transaction (converted from Swift NeoTransaction)
 pub const NeoTransaction = struct {
@@ -30,9 +32,9 @@ pub const NeoTransaction = struct {
     /// Transaction signers
     signers: []const Signer,
     /// System fee in GAS fractions
-    system_fee: i64,
+    system_fee: u64,
     /// Network fee in GAS fractions
-    network_fee: i64,
+    network_fee: u64,
     /// Transaction attributes
     attributes: []const TransactionAttribute,
     /// Transaction script
@@ -41,6 +43,8 @@ pub const NeoTransaction = struct {
     witnesses: []Witness,
     /// Block count when sent
     block_count_when_sent: ?u32,
+    /// Whether this transaction owns allocated slices (used by `deserialize`).
+    owns_memory: bool = false,
     
     const Self = @This();
     
@@ -51,8 +55,8 @@ pub const NeoTransaction = struct {
         nonce: u32,
         valid_until_block: u32,
         signers: []const Signer,
-        system_fee: i64,
-        network_fee: i64,
+        system_fee: u64,
+        network_fee: u64,
         attributes: []const TransactionAttribute,
         script: []const u8,
         witnesses: []Witness,
@@ -70,6 +74,7 @@ pub const NeoTransaction = struct {
             .script = script,
             .witnesses = witnesses,
             .block_count_when_sent = block_count_when_sent,
+            .owns_memory = false,
         };
     }
     
@@ -134,8 +139,8 @@ pub const NeoTransaction = struct {
         // Write header
         try writer.writeByte(self.version);
         try writer.writeU32(self.nonce);
-        try writer.writeU64(@bitCast(self.system_fee));
-        try writer.writeU64(@bitCast(self.network_fee));
+        try writer.writeU64(self.system_fee);
+        try writer.writeU64(self.network_fee);
         try writer.writeU32(self.valid_until_block);
         
         // Write signers
@@ -185,37 +190,66 @@ pub const NeoTransaction = struct {
         // Read header
         const version = try reader.readByte();
         const nonce = try reader.readU32();
-        const system_fee = @as(i64, @bitCast(try reader.readU64()));
-        const network_fee = @as(i64, @bitCast(try reader.readU64()));
+        const system_fee = try reader.readU64();
+        const network_fee = try reader.readU64();
         const valid_until_block = try reader.readU32();
         
         // Read signers
         const signers_count = try reader.readVarInt();
-        var signers = try allocator.alloc(Signer, @intCast(signers_count));
-        for (signers) |*signer| {
+        const signers = try allocator.alloc(Signer, @intCast(signers_count));
+        errdefer allocator.free(signers);
+        var signers_filled: usize = 0;
+        errdefer {
+            var i: usize = 0;
+            while (i < signers_filled) : (i += 1) {
+                signers[i].deinit(allocator);
+            }
+        }
+        for (signers, 0..) |*signer, idx| {
             signer.* = try Signer.deserialize(&reader, allocator);
+            signers_filled = idx + 1;
         }
         
         // Read attributes
         const attributes_count = try reader.readVarInt();
-        var attributes = try allocator.alloc(TransactionAttribute, @intCast(attributes_count));
-        for (attributes) |*attribute| {
+        const attributes = try allocator.alloc(TransactionAttribute, @intCast(attributes_count));
+        errdefer allocator.free(attributes);
+        var attributes_filled: usize = 0;
+        errdefer {
+            var i: usize = 0;
+            while (i < attributes_filled) : (i += 1) {
+                attributes[i].deinit(allocator);
+            }
+        }
+        for (attributes, 0..) |*attribute, idx| {
             attribute.* = try TransactionAttribute.deserialize(&reader, allocator);
+            attributes_filled = idx + 1;
         }
         
         // Read script
         const script_length = try reader.readVarInt();
         const script = try allocator.alloc(u8, @intCast(script_length));
+        errdefer allocator.free(script);
         try reader.readBytes(script);
         
         // Read witnesses
         const witnesses_count = try reader.readVarInt();
-        var witnesses = try allocator.alloc(Witness, @intCast(witnesses_count));
-        for (witnesses) |*witness| {
+        const witnesses = try allocator.alloc(Witness, @intCast(witnesses_count));
+        errdefer allocator.free(witnesses);
+        var witnesses_filled: usize = 0;
+        errdefer {
+            var i: usize = 0;
+            while (i < witnesses_filled) : (i += 1) {
+                allocator.free(witnesses[i].invocation_script);
+                allocator.free(witnesses[i].verification_script);
+            }
+        }
+        for (witnesses, 0..) |*witness, idx| {
             witness.* = try Witness.deserialize(&reader, allocator);
+            witnesses_filled = idx + 1;
         }
         
-        return Self.init(
+        var tx = Self.init(
             null,
             version,
             nonce,
@@ -228,6 +262,34 @@ pub const NeoTransaction = struct {
             witnesses,
             null,
         );
+        tx.owns_memory = true;
+        return tx;
+    }
+
+    /// Releases allocations made by `deserialize`.
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        if (!self.owns_memory) return;
+
+        const signers_mut = @constCast(self.signers);
+        for (signers_mut) |*signer| {
+            signer.deinit(allocator);
+        }
+        allocator.free(signers_mut);
+
+        const attributes_mut = @constCast(self.attributes);
+        for (attributes_mut) |*attribute| {
+            attribute.deinit(allocator);
+        }
+        allocator.free(attributes_mut);
+
+        allocator.free(self.script);
+
+        for (self.witnesses) |*witness| {
+            witness.deinit(allocator);
+        }
+        allocator.free(self.witnesses);
+
+        self.* = undefined;
     }
     
     /// Validates transaction (equivalent to Swift validation)
@@ -266,19 +328,40 @@ pub const NeoTransaction = struct {
         }
     }
     
-    /// Sends transaction to network (equivalent to Swift send)
+    /// Sends transaction to network (equivalent to Swift send).
     pub fn send(self: Self) !Hash256 {
-        // This would use the RPC client to broadcast transaction
-        if (self.neo_swift == null) {
+        const raw_ptr = self.neo_swift orelse
             return errors.throwIllegalState("NeoSwift instance required for sending");
+        const neo_swift: *NeoSwift = @ptrCast(@alignCast(raw_ptr));
+        const service_allocator = neo_swift.getService().getAllocator();
+
+        try self.validate();
+
+        const serialized = try self.serialize(service_allocator);
+        defer service_allocator.free(serialized);
+
+        const hex_transaction = try bytes_utils.toHex(serialized, service_allocator);
+        defer service_allocator.free(hex_transaction);
+
+        var request = try neo_swift.sendRawTransaction(hex_transaction);
+        const response = try request.send();
+
+        if (!response.success) {
+            return errors.NetworkError.RequestFailed;
         }
-        
-        // Return transaction hash as placeholder
-        return try self.getHash(std.heap.page_allocator);
+
+        if (response.hash) |hash| {
+            return hash;
+        }
+
+        // Fallback to locally calculated transaction hash.
+        return try self.getHash(service_allocator);
     }
     
-    /// Tracks transaction status (equivalent to Swift tracking)
+    /// Tracks transaction status (equivalent to Swift tracking).
+    /// NOTE: Placeholder returning an empty log until RPC support is added.
     pub fn getApplicationLog(self: Self) !ApplicationLog {
+        _ = self;
         // This would query application log via RPC
         return ApplicationLog.init();
     }
@@ -335,7 +418,7 @@ const Witness = @import("transaction_builder.zig").Witness;
 
 /// Helper function for VarInt size calculation
 fn getVarIntSize(value: usize) usize {
-    if (value < 0xFC) return 1;
+    if (value < 0xFD) return 1;
     if (value <= 0xFFFF) return 3;
     if (value <= 0xFFFFFFFF) return 5;
     return 9;
@@ -344,7 +427,7 @@ fn getVarIntSize(value: usize) usize {
 // Tests (converted from Swift NeoTransaction tests)
 test "NeoTransaction creation and properties" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Create test transaction (equivalent to Swift NeoTransaction tests)
     const signers = [_]Signer{
@@ -374,8 +457,8 @@ test "NeoTransaction creation and properties" {
     try testing.expectEqual(@as(u8, 0), transaction.version);
     try testing.expectEqual(@as(u32, 12345), transaction.nonce);
     try testing.expectEqual(@as(u32, 1000000), transaction.valid_until_block);
-    try testing.expectEqual(@as(i64, 1000000), transaction.system_fee);
-    try testing.expectEqual(@as(i64, 500000), transaction.network_fee);
+    try testing.expectEqual(@as(u64, 1000000), transaction.system_fee);
+    try testing.expectEqual(@as(u64, 500000), transaction.network_fee);
     
     // Test sender property (equivalent to Swift .sender tests)
     const sender = transaction.getSender();
@@ -384,7 +467,7 @@ test "NeoTransaction creation and properties" {
 
 test "NeoTransaction size calculation" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     const signers = [_]Signer{
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
@@ -467,6 +550,10 @@ test "NeoTransaction serialization" {
         allocator.free(deserialized_tx.signers);
         allocator.free(deserialized_tx.attributes);
         allocator.free(deserialized_tx.script);
+        for (deserialized_tx.witnesses) |witness| {
+            allocator.free(witness.invocation_script);
+            allocator.free(witness.verification_script);
+        }
         allocator.free(deserialized_tx.witnesses);
     }
     
@@ -480,7 +567,7 @@ test "NeoTransaction serialization" {
 
 test "NeoTransaction validation" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test valid transaction
     const signers = [_]Signer{
@@ -520,7 +607,7 @@ test "NeoTransaction validation" {
 
 test "NeoTransaction fee estimation" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     const signers = [_]Signer{
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),

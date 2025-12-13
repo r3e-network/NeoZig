@@ -4,7 +4,6 @@
 //! Handles NEF3 file format for smart contract deployment.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
 
 
 const constants = @import("../core/constants.zig");
@@ -39,25 +38,36 @@ pub const NefFile = struct {
     
     const Self = @This();
     
-    /// Creates NEF file (equivalent to Swift init)
-    pub fn init(
+    /// Creates NEF file using a caller-provided allocator for checksum scratch space.
+    /// This avoids falling back to a global allocator for large scripts.
+    pub fn initWithAllocator(
+        allocator: std.mem.Allocator,
         compiler: ?[]const u8,
         source_url: []const u8,
         method_tokens: []const MethodToken,
         script: []const u8,
     ) !Self {
         // Validate constraints
-        if (source_url.len > MAX_SOURCE_URL_SIZE) {
+        if (compiler) |comp| {
+            if (comp.len > COMPILER_SIZE) {
+                return errors.throwIllegalArgument("The compiler name and version string is too long");
+            }
+        }
+
+        if (source_url.len >= MAX_SOURCE_URL_SIZE) {
             return errors.throwIllegalArgument("Source URL too long");
         }
-        
+
         if (script.len > MAX_SCRIPT_LENGTH) {
             return errors.throwIllegalArgument("Script too long");
         }
-        
-        // Calculate checksum
-        const checksum = try calculateChecksum(compiler, source_url, method_tokens, script);
-        
+
+        if (script.len == 0) {
+            return errors.throwIllegalArgument("Script cannot be empty in NEF file.");
+        }
+
+        const checksum = try calculateChecksumAlloc(allocator, compiler, source_url, method_tokens, script);
+
         return Self{
             .compiler = compiler,
             .source_url = source_url,
@@ -65,6 +75,16 @@ pub const NefFile = struct {
             .script = script,
             .checksum = checksum,
         };
+    }
+
+    /// Creates NEF file (equivalent to Swift init)
+    pub fn init(
+        compiler: ?[]const u8,
+        source_url: []const u8,
+        method_tokens: []const MethodToken,
+        script: []const u8,
+    ) !Self {
+        return initWithAllocator(std.heap.page_allocator, compiler, source_url, method_tokens, script);
     }
     
     /// Gets checksum as integer (equivalent to Swift .checksumInteger property)
@@ -88,7 +108,7 @@ pub const NefFile = struct {
         // Write compiler (64 bytes, null-padded)
         var compiler_bytes: [COMPILER_SIZE]u8 = std.mem.zeroes([COMPILER_SIZE]u8);
         if (self.compiler) |comp| {
-            const copy_len = @min(comp.len, COMPILER_SIZE - 1); // Reserve 1 byte for null terminator
+            const copy_len = @min(comp.len, COMPILER_SIZE);
             @memcpy(compiler_bytes[0..copy_len], comp[0..copy_len]);
         }
         try writer.writeBytes(&compiler_bytes);
@@ -97,8 +117,8 @@ pub const NefFile = struct {
         try writer.writeVarInt(self.source_url.len);
         try writer.writeBytes(self.source_url);
         
-        // Write reserved bytes (2 bytes)
-        try writer.writeBytes(&[_]u8{ 0x00, 0x00 });
+        // Reserved byte (must be 0)
+        try writer.writeByte(0);
         
         // Write method tokens
         try writer.writeVarInt(self.method_tokens.len);
@@ -106,8 +126,8 @@ pub const NefFile = struct {
             try token.serialize(&writer);
         }
         
-        // Write reserved bytes (2 bytes)
-        try writer.writeBytes(&[_]u8{ 0x00, 0x00 });
+        // Reserved UInt16 (must be 0)
+        try writer.writeU16(0);
         
         // Write script
         try writer.writeVarInt(self.script.len);
@@ -133,11 +153,9 @@ pub const NefFile = struct {
         var compiler_bytes: [COMPILER_SIZE]u8 = undefined;
         try reader.readBytes(&compiler_bytes);
         
-        // Extract compiler string (null-terminated)
-        var compiler_len: usize = 0;
-        while (compiler_len < COMPILER_SIZE and compiler_bytes[compiler_len] != 0) {
-            compiler_len += 1;
-        }
+        // Extract compiler string (trim trailing zeros, matches NeoSwift)
+        var compiler_len: usize = COMPILER_SIZE;
+        while (compiler_len > 0 and compiler_bytes[compiler_len - 1] == 0) : (compiler_len -= 1) {}
         
         const compiler = if (compiler_len > 0) 
             try allocator.dupe(u8, compiler_bytes[0..compiler_len])
@@ -146,16 +164,18 @@ pub const NefFile = struct {
         
         // Read source URL
         const source_url_len = try reader.readVarInt();
-        if (source_url_len > MAX_SOURCE_URL_SIZE) {
+        if (source_url_len >= MAX_SOURCE_URL_SIZE) {
             return errors.throwIllegalArgument("Source URL too long");
         }
         
         const source_url = try allocator.alloc(u8, @intCast(source_url_len));
         try reader.readBytes(source_url);
         
-        // Read reserved bytes (2 bytes)
-        var reserved1: [2]u8 = undefined;
-        try reader.readBytes(&reserved1);
+        // Read reserved byte (must be 0)
+        const reserved1 = try reader.readByte();
+        if (reserved1 != 0) {
+            return errors.throwIllegalArgument("Reserve bytes in NEF file must be 0.");
+        }
         
         // Read method tokens
         const tokens_count = try reader.readVarInt();
@@ -164,14 +184,20 @@ pub const NefFile = struct {
             token.* = try MethodToken.deserialize(&reader, allocator);
         }
         
-        // Read reserved bytes (2 bytes)
-        var reserved2: [2]u8 = undefined;
-        try reader.readBytes(&reserved2);
+        // Read reserved UInt16 (must be 0)
+        const reserved2 = try reader.readU16();
+        if (reserved2 != 0) {
+            return errors.throwIllegalArgument("Reserve bytes in NEF file must be 0.");
+        }
         
         // Read script
         const script_len = try reader.readVarInt();
         if (script_len > MAX_SCRIPT_LENGTH) {
             return errors.throwIllegalArgument("Script too long");
+        }
+
+        if (script_len == 0) {
+            return errors.throwIllegalArgument("Script cannot be empty in NEF file.");
         }
         
         const script = try allocator.alloc(u8, @intCast(script_len));
@@ -180,7 +206,12 @@ pub const NefFile = struct {
         // Read checksum
         var checksum: [4]u8 = undefined;
         try reader.readBytes(&checksum);
-        
+
+        const calculated_checksum = try calculateChecksumAlloc(allocator, compiler, source_url, method_tokens, script);
+        if (!std.mem.eql(u8, &checksum, &calculated_checksum)) {
+            return errors.throwIllegalArgument("The checksums did not match.");
+        }
+
         return Self{
             .compiler = compiler,
             .source_url = source_url,
@@ -193,7 +224,8 @@ pub const NefFile = struct {
     /// Validates NEF file integrity (equivalent to Swift validation)
     pub fn validate(self: Self, allocator: std.mem.Allocator) !void {
         // Recalculate checksum and verify
-        const calculated_checksum = try calculateChecksum(
+        const calculated_checksum = try calculateChecksumAlloc(
+            allocator,
             self.compiler,
             self.source_url,
             self.method_tokens,
@@ -205,12 +237,22 @@ pub const NefFile = struct {
         }
         
         // Validate constraints
-        if (self.source_url.len > MAX_SOURCE_URL_SIZE) {
+        if (self.compiler) |comp| {
+            if (comp.len > COMPILER_SIZE) {
+                return errors.throwIllegalArgument("The compiler name and version string is too long");
+            }
+        }
+
+        if (self.source_url.len >= MAX_SOURCE_URL_SIZE) {
             return errors.throwIllegalArgument("Source URL too long");
         }
         
         if (self.script.len > MAX_SCRIPT_LENGTH) {
             return errors.throwIllegalArgument("Script too long");
+        }
+
+        if (self.script.len == 0) {
+            return errors.throwIllegalArgument("Script cannot be empty in NEF file.");
         }
         
         // Validate method tokens
@@ -224,14 +266,14 @@ pub const NefFile = struct {
         var size: usize = HEADER_SIZE; // Magic + compiler
         
         size += getVarIntSize(self.source_url.len) + self.source_url.len; // Source URL
-        size += 2; // Reserved
+        size += 1; // Reserved byte
         size += getVarIntSize(self.method_tokens.len); // Method tokens count
         
         for (self.method_tokens) |token| {
             size += token.getSize();
         }
         
-        size += 2; // Reserved
+        size += 2; // Reserved UInt16
         size += getVarIntSize(self.script.len) + self.script.len; // Script
         size += CHECKSUM_SIZE; // Checksum
         
@@ -266,24 +308,22 @@ pub const MethodToken = struct {
     }
     
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
-        try writer.writeBytes(&self.hash.toArray());
+        try writer.writeHash160(self.hash);
         try writer.writeVarInt(self.method.len);
         try writer.writeBytes(self.method);
-        try writer.writeU32(@as(u16, self.parameters_count));
+        try writer.writeU16(self.parameters_count);
         try writer.writeByte(if (self.has_return_value) 1 else 0);
         try writer.writeByte(self.call_flags);
     }
     
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
-        var hash_bytes: [20]u8 = undefined;
-        try reader.readBytes(&hash_bytes);
-        const hash = @import("../types/hash160.zig").Hash160.fromArray(hash_bytes);
+        const hash = try @import("../types/hash160.zig").Hash160.deserialize(reader);
         
         const method_len = try reader.readVarInt();
         const method = try allocator.alloc(u8, @intCast(method_len));
         try reader.readBytes(method);
         
-        const parameters_count = @as(u16, @intCast(try reader.readU32()));
+        const parameters_count = try reader.readU16();
         const has_return_value = (try reader.readByte()) != 0;
         const call_flags = try reader.readByte();
         
@@ -303,71 +343,50 @@ pub const MethodToken = struct {
     pub fn getSize(self: Self) usize {
         return 20 + // Hash160
                getVarIntSize(self.method.len) + self.method.len + // Method
-               4 + // Parameters count (u32)
+               2 + // Parameters count (u16)
                1 + // Has return value
                1;  // Call flags
     }
 };
 
 /// Calculates NEF file checksum (equivalent to Swift checksum calculation)
-fn calculateChecksum(
+fn calculateChecksumAlloc(
+    allocator: std.mem.Allocator,
     compiler: ?[]const u8,
     source_url: []const u8,
     method_tokens: []const MethodToken,
     script: []const u8,
 ) ![4]u8 {
-    // Build data for checksum calculation (everything except checksum itself)
-    var data = ArrayList(u8).init(std.heap.page_allocator);
-    defer data.deinit();
-    
-    // Magic
-    const magic_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, NefFile.MAGIC));
-    try data.appendSlice(&magic_bytes);
-    
-    // Compiler (64 bytes, null-padded)
+    // Serialize NEF file without checksum (matches `serialize` up to the checksum field).
+    var writer = BinaryWriter.init(allocator);
+    defer writer.deinit();
+
+    try writer.writeU32(NefFile.MAGIC);
+
     var compiler_bytes: [NefFile.COMPILER_SIZE]u8 = std.mem.zeroes([NefFile.COMPILER_SIZE]u8);
     if (compiler) |comp| {
-        const copy_len = @min(comp.len, NefFile.COMPILER_SIZE - 1);
+        const copy_len = @min(comp.len, NefFile.COMPILER_SIZE);
         @memcpy(compiler_bytes[0..copy_len], comp[0..copy_len]);
     }
-    try data.appendSlice(&compiler_bytes);
-    
-    // Source URL with length
-    const source_len_bytes = getVarIntBytes(source_url.len);
-    try data.appendSlice(&source_len_bytes);
-    try data.appendSlice(source_url);
-    
-    // Reserved (2 bytes)
-    try data.appendSlice(&[_]u8{ 0x00, 0x00 });
-    
-    // Method tokens
-    const tokens_len_bytes = getVarIntBytes(method_tokens.len);
-    try data.appendSlice(&tokens_len_bytes);
-    
+    try writer.writeBytes(&compiler_bytes);
+
+    try writer.writeVarInt(source_url.len);
+    try writer.writeBytes(source_url);
+
+    try writer.writeByte(0);
+
+    try writer.writeVarInt(method_tokens.len);
     for (method_tokens) |token| {
-        try data.appendSlice(&token.hash.toArray());
-        
-        const method_len_bytes = getVarIntBytes(token.method.len);
-        try data.appendSlice(&method_len_bytes);
-        try data.appendSlice(token.method);
-        
-        const params_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, token.parameters_count));
-        try data.appendSlice(&params_bytes);
-        
-        try data.append(if (token.has_return_value) 1 else 0);
-        try data.append(token.call_flags);
+        try token.serialize(&writer);
     }
-    
-    // Reserved (2 bytes)
-    try data.appendSlice(&[_]u8{ 0x00, 0x00 });
-    
-    // Script with length
-    const script_len_bytes = getVarIntBytes(script.len);
-    try data.appendSlice(&script_len_bytes);
-    try data.appendSlice(script);
-    
+
+    try writer.writeU16(0);
+
+    try writer.writeVarInt(script.len);
+    try writer.writeBytes(script);
+
     // Calculate double SHA256
-    const first_hash = Hash256.sha256(data.items);
+    const first_hash = Hash256.sha256(writer.toSlice());
     const second_hash = Hash256.sha256(first_hash.toSlice());
     
     // Return first 4 bytes as checksum
@@ -377,37 +396,9 @@ fn calculateChecksum(
     return checksum;
 }
 
-/// Gets VarInt bytes for serialization
-fn getVarIntBytes(value: usize) [9]u8 {
-    var bytes: [9]u8 = undefined;
-    var len: usize = 0;
-    
-    if (value < 0xFC) {
-        bytes[0] = @intCast(value);
-        len = 1;
-    } else if (value <= 0xFFFF) {
-        bytes[0] = 0xFD;
-        const value_bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, @intCast(value)));
-        @memcpy(bytes[1..3], &value_bytes);
-        len = 3;
-    } else if (value <= 0xFFFFFFFF) {
-        bytes[0] = 0xFE;
-        const value_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, @intCast(value)));
-        @memcpy(bytes[1..5], &value_bytes);
-        len = 5;
-    } else {
-        bytes[0] = 0xFF;
-        const value_bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, value));
-        @memcpy(bytes[1..9], &value_bytes);
-        len = 9;
-    }
-    
-    return bytes;
-}
-
 /// Gets VarInt size
 fn getVarIntSize(value: usize) usize {
-    if (value < 0xFC) return 1;
+    if (value < 0xFD) return 1;
     if (value <= 0xFFFF) return 3;
     if (value <= 0xFFFFFFFF) return 5;
     return 9;
@@ -444,6 +435,67 @@ test "NefFile creation and properties" {
     try testing.expectEqual(@as(u32, 4), NefFile.MAGIC_SIZE);
     try testing.expectEqual(@as(u32, 64), NefFile.COMPILER_SIZE);
     try testing.expectEqual(@as(u32, 256), NefFile.MAX_SOURCE_URL_SIZE);
+}
+
+test "NefFile checksum matches NeoSwift vectors" {
+    const testing = std.testing;
+
+    // Vector: NeoSwift NefFileTests.testNewNefFile
+    var script_no_tokens: [5]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&script_no_tokens, "5700017840");
+    const nef_no_tokens = try NefFile.init(
+        "neon-3.0.0.0",
+        "",
+        &[_]MethodToken{},
+        &script_no_tokens,
+    );
+    var expected_checksum_no_tokens: [4]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&expected_checksum_no_tokens, "760f39a0");
+    try testing.expectEqualSlices(u8, &expected_checksum_no_tokens, &nef_no_tokens.checksum);
+
+    // Vector: NeoSwift NefFileTests.testNewNefFileWithMethodTokens
+    const hash1 = try @import("../types/hash160.zig").Hash160.initWithString("f61eebf573ea36593fd43aa150c055ad7906ab83");
+    const hash2 = try @import("../types/hash160.zig").Hash160.initWithString("70e2301955bf1e74cbb31d18c2f96972abadb328");
+    const method_tokens = [_]MethodToken{
+        MethodToken.init(hash1, "getGasPerBlock", 0, true, 0x0F),
+        MethodToken.init(hash2, "totalSupply", 0, true, 0x0F),
+    };
+    var script_with_tokens: [16]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&script_with_tokens, "213701004021370000405700017840");
+    const nef_with_tokens = try NefFile.init(
+        "neon-3.0.0.0",
+        "",
+        &method_tokens,
+        &script_with_tokens,
+    );
+    var expected_checksum_with_tokens: [4]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&expected_checksum_with_tokens, "b559a069");
+    try testing.expectEqualSlices(u8, &expected_checksum_with_tokens, &nef_with_tokens.checksum);
+}
+
+test "NefFile deserialize/serialize parity with NeoSwift fixtures" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const test_contract_bytes = @embedFile("../../NeoSwift/Tests/NeoSwiftTests/unit/resources/responses/contract/contracts/TestContract.nef");
+    const test_contract_with_tokens_bytes = @embedFile("../../NeoSwift/Tests/NeoSwiftTests/unit/resources/responses/contract/contracts/TestContractWithMethodTokens.nef");
+
+    const fixtures = [_][]const u8{ test_contract_bytes, test_contract_with_tokens_bytes };
+    for (fixtures) |fixture| {
+        const nef = try NefFile.deserialize(fixture, allocator);
+        defer {
+            if (nef.compiler) |comp| allocator.free(comp);
+            allocator.free(nef.source_url);
+            for (nef.method_tokens) |token| allocator.free(@constCast(token.method));
+            allocator.free(nef.method_tokens);
+            allocator.free(nef.script);
+        }
+
+        const serialized = try nef.serialize(allocator);
+        defer allocator.free(serialized);
+
+        try testing.expectEqualSlices(u8, fixture, serialized);
+    }
 }
 
 test "NefFile serialization and deserialization" {
@@ -500,6 +552,19 @@ test "NefFile validation and constraints" {
     try testing.expectError(
         errors.NeoError.IllegalArgument,
         NefFile.init("compiler", "source.neo", &[_]MethodToken{}, &long_script)
+    );
+
+    // Test empty script constraint (matches NeoSwift NefFileTests.testDeserializeWithEmptyScript)
+    try testing.expectError(
+        errors.NeoError.IllegalArgument,
+        NefFile.init("compiler", "source.neo", &[_]MethodToken{}, &[_]u8{})
+    );
+
+    // Test compiler length constraint
+    const long_compiler = "a" ** (NefFile.COMPILER_SIZE + 1);
+    try testing.expectError(
+        errors.NeoError.IllegalArgument,
+        NefFile.init(long_compiler, "source.neo", &[_]MethodToken{}, &[_]u8{0x40})
     );
     
     // Test valid NEF file validation

@@ -4,7 +4,7 @@
 //! Maintains full API compatibility with Swift wallet system.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -26,7 +26,9 @@ pub const Wallet = struct {
     
     allocator: std.mem.Allocator,
     name_field: []const u8,
+    owns_name: bool,
     version_field: []const u8,
+    owns_version: bool,
     scrypt_params_field: ScryptParams,
     accounts_map: std.HashMap(Hash160, Account, Hash160Context, std.hash_map.default_max_load_percentage),
     default_account_hash: ?Hash160,
@@ -38,7 +40,9 @@ pub const Wallet = struct {
         return Self{
             .allocator = allocator,
             .name_field = DEFAULT_WALLET_NAME,
+            .owns_name = false,
             .version_field = CURRENT_VERSION,
+            .owns_version = false,
             .scrypt_params_field = ScryptParams.DEFAULT,
             .accounts_map = std.HashMap(Hash160, Account, Hash160Context, std.hash_map.default_max_load_percentage).init(allocator),
             .default_account_hash = null,
@@ -52,6 +56,8 @@ pub const Wallet = struct {
             entry.value_ptr.deinit();
         }
         self.accounts_map.deinit();
+        if (self.owns_name) self.allocator.free(self.name_field);
+        if (self.owns_version) self.allocator.free(self.version_field);
     }
     
     /// Gets wallet name (equivalent to Swift name property)
@@ -61,7 +67,16 @@ pub const Wallet = struct {
     
     /// Sets wallet name (equivalent to Swift name(_ name: String))
     pub fn name(self: *Self, wallet_name: []const u8) *Self {
-        self.name_field = wallet_name;
+        if (self.owns_name) {
+            self.allocator.free(self.name_field);
+        }
+        const copy = self.allocator.dupe(u8, wallet_name) catch {
+            self.name_field = wallet_name;
+            self.owns_name = false;
+            return self;
+        };
+        self.name_field = copy;
+        self.owns_name = true;
         return self;
     }
     
@@ -72,7 +87,16 @@ pub const Wallet = struct {
     
     /// Sets wallet version (equivalent to Swift version(_ version: String))
     pub fn version(self: *Self, wallet_version: []const u8) *Self {
-        self.version_field = wallet_version;
+        if (self.owns_version) {
+            self.allocator.free(self.version_field);
+        }
+        const copy = self.allocator.dupe(u8, wallet_version) catch {
+            self.version_field = wallet_version;
+            self.owns_version = false;
+            return self;
+        };
+        self.version_field = copy;
+        self.owns_version = true;
         return self;
     }
     
@@ -269,36 +293,15 @@ pub const Hash160Context = struct {
     }
 };
 
-/// Scrypt parameters (converted from Swift ScryptParams)
-pub const ScryptParams = struct {
-    n: u32,
-    r: u32,
-    p: u32,
-    
-    /// Default scrypt parameters (matches Swift .DEFAULT)
-    pub const DEFAULT: ScryptParams = ScryptParams{
-        .n = 16384,  // 2^14
-        .r = 8,
-        .p = 8,
-    };
-    
-    /// Light parameters for testing
-    pub const LIGHT: ScryptParams = ScryptParams{
-        .n = 512,    // 2^9
-        .r = 1,
-        .p = 1,
-    };
-    
-    pub fn init(n: u32, r: u32, p: u32) ScryptParams {
-        return ScryptParams{ .n = n, .r = r, .p = p };
-    }
-};
+/// Scrypt parameters shared with NEP-6 (converted from Swift ScryptParams)
+pub const ScryptParams = @import("nep6_wallet.zig").ScryptParams;
 
 /// Account (converted from Swift Account)
 pub const Account = struct {
     allocator: std.mem.Allocator,
     address: Address,
     label: ?[]const u8,
+    owns_label: bool,
     is_locked: bool,
     encrypted_private_key: ?[]const u8,
     contract_info: ?ContractInfo,
@@ -312,7 +315,8 @@ pub const Account = struct {
         return Self{
             .allocator = allocator,
             .address = address,
-            .label = label,
+            .label = try copyLabel(allocator, label),
+            .owns_label = label != null,
             .is_locked = false,
             .encrypted_private_key = null,
             .contract_info = null,
@@ -332,7 +336,8 @@ pub const Account = struct {
         return Self{
             .allocator = allocator,
             .address = address,
-            .label = label,
+            .label = try copyLabel(allocator, label),
+            .owns_label = label != null,
             .is_locked = false,
             .encrypted_private_key = null,
             .contract_info = null,
@@ -343,6 +348,10 @@ pub const Account = struct {
     pub fn deinit(self: *Self) void {
         if (self.encrypted_private_key) |key| {
             self.allocator.free(key);
+        }
+        if (self.owns_label and self.label != null) {
+            const lbl = self.label.?;
+            self.allocator.free(lbl);
         }
         if (self.contract_info) |*info| {
             info.deinit();
@@ -447,6 +456,14 @@ pub const Account = struct {
         return try script.toOwnedSlice();
     }
 };
+
+fn copyLabel(allocator: std.mem.Allocator, label: ?[]const u8) !?[]const u8 {
+    if (label) |lbl| {
+        const duped = try allocator.dupe(u8, lbl);
+        return duped;
+    }
+    return null;
+}
 
 /// Contract information (converted from Swift contract data)
 pub const ContractInfo = struct {

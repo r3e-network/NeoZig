@@ -7,6 +7,7 @@ const std = @import("std");
 
 
 const neo = @import("neo-zig");
+const json_utils = @import("../src/utils/json_utils.zig");
 
 /// Complete contract tests (converted from ALL contract test files)
 test "all contract functionality tests" {
@@ -105,13 +106,8 @@ test "all transaction functionality tests" {
     const serialized = try neo_transaction.serialize(allocator);
     defer allocator.free(serialized);
     
-    const deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
-    defer {
-        allocator.free(deserialized.signers);
-        allocator.free(deserialized.attributes);
-        allocator.free(deserialized.script);
-        allocator.free(deserialized.witnesses);
-    }
+    var deserialized = try neo.transaction.NeoTransaction.deserialize(serialized, allocator);
+    defer deserialized.deinit(allocator);
     
     try testing.expectEqual(neo_transaction.version, deserialized.version);
     try testing.expectEqual(neo_transaction.nonce, deserialized.nonce);
@@ -219,7 +215,7 @@ test "all wallet functionality tests" {
     
     // Test NEP6 JSON operations
     const json_value = try nep6_wallet.toJson(allocator);
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const parsed_wallet = try neo.wallet.NEP6Wallet.fromJson(json_value, allocator);
     try testing.expect(nep6_wallet.eql(parsed_wallet));
@@ -412,11 +408,13 @@ test "all RPC functionality tests" {
     
     // Test HttpService functionality (converted from HttpServiceTests.swift)
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    const service_config = service.getConfiguration();
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
-    try testing.expectEqualStrings("https://testnet1.neo.coz.io:443", service.endpoint);
-    try testing.expectEqual(@as(u32, 30000), service.timeout_ms);
+    try testing.expectEqualStrings("https://testnet1.neo.coz.io:443", service_config.endpoint);
+    try testing.expectEqual(@as(u32, 30000), service_config.timeout_ms);
     
     // Test all request creation (converted from RequestTests.swift)
     const best_block_request = try client.getBestBlockHash();

@@ -54,6 +54,11 @@ pub const WitnessRule = struct {
     pub fn validate(self: Self) !void {
         try self.condition.validate();
     }
+
+    /// Frees any resources owned by this rule's condition.
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        self.condition.deinit(allocator);
+    }
     
     /// Evaluates witness rule against context (additional utility)
     pub fn evaluate(self: Self, context: WitnessContext) bool {
@@ -114,14 +119,28 @@ pub const WitnessAction = enum(u8) {
         if (std.mem.eql(u8, json_value, "Allow")) return .Allow;
         return null;
     }
+
+    /// Gets all cases (equivalent to Swift CaseIterable)
+    pub fn getAllCases() []const Self {
+        return &[_]Self{ .Deny, .Allow };
+    }
 };
 
 /// Witness condition (converted from Swift WitnessCondition)
 pub const WitnessCondition = union(enum(u8)) {
     Boolean: bool,
-    Not: *WitnessCondition,
-    And: []WitnessCondition,
-    Or: []WitnessCondition,
+    Not: struct {
+        condition: *WitnessCondition,
+        owns_condition: bool,
+    },
+    And: struct {
+        conditions: []WitnessCondition,
+        owns_conditions: bool,
+    },
+    Or: struct {
+        conditions: []WitnessCondition,
+        owns_conditions: bool,
+    },
     ScriptHash: Hash160,
     Group: [33]u8,
     CalledByEntry: void,
@@ -137,17 +156,22 @@ pub const WitnessCondition = union(enum(u8)) {
     
     /// Creates NOT condition
     pub fn not(condition: *WitnessCondition) Self {
-        return Self{ .Not = condition };
+        return Self{ .Not = .{ .condition = condition, .owns_condition = false } };
+    }
+
+    /// Creates NOT condition that owns the allocated child.
+    pub fn notOwned(condition: *WitnessCondition) Self {
+        return Self{ .Not = .{ .condition = condition, .owns_condition = true } };
     }
     
     /// Creates AND condition
     pub fn and_condition(conditions: []WitnessCondition) Self {
-        return Self{ .And = conditions };
+        return Self{ .And = .{ .conditions = conditions, .owns_conditions = false } };
     }
     
     /// Creates OR condition
     pub fn or_condition(conditions: []WitnessCondition) Self {
-        return Self{ .Or = conditions };
+        return Self{ .Or = .{ .conditions = conditions, .owns_conditions = false } };
     }
     
     /// Creates script hash condition
@@ -181,10 +205,16 @@ pub const WitnessCondition = union(enum(u8)) {
         
         switch (self) {
             .Boolean => total_size += 1,
-            .Not => |condition| total_size += condition.size(),
-            .And, .Or => |conditions| {
-                total_size += getVarIntSize(conditions.len);
-                for (conditions) |condition| {
+            .Not => |not_condition| total_size += not_condition.condition.size(),
+            .And => |and_payload| {
+                total_size += getVarIntSize(and_payload.conditions.len);
+                for (and_payload.conditions) |condition| {
+                    total_size += condition.size();
+                }
+            },
+            .Or => |or_payload| {
+                total_size += getVarIntSize(or_payload.conditions.len);
+                for (or_payload.conditions) |condition| {
                     total_size += condition.size();
                 }
             },
@@ -214,24 +244,24 @@ pub const WitnessCondition = union(enum(u8)) {
         
         switch (self) {
             .Boolean => |value| try writer.writeByte(if (value) 1 else 0),
-            .Not => |condition| try condition.serialize(writer),
-            .And => |conditions| {
-                try writer.writeVarInt(conditions.len);
-                for (conditions) |condition| {
+            .Not => |not_condition| try not_condition.condition.serialize(writer),
+            .And => |and_payload| {
+                try writer.writeVarInt(and_payload.conditions.len);
+                for (and_payload.conditions) |condition| {
                     try condition.serialize(writer);
                 }
             },
-            .Or => |conditions| {
-                try writer.writeVarInt(conditions.len);
-                for (conditions) |condition| {
+            .Or => |or_payload| {
+                try writer.writeVarInt(or_payload.conditions.len);
+                for (or_payload.conditions) |condition| {
                     try condition.serialize(writer);
                 }
             },
             .ScriptHash => |hash| try writer.writeBytes(&hash.toArray()),
-            .Group => |group| try writer.writeBytes(&group),
+            .Group => |group_key| try writer.writeBytes(&group_key),
             .CalledByEntry => {},
             .CalledByContract => |hash| try writer.writeBytes(&hash.toArray()),
-            .CalledByGroup => |group| try writer.writeBytes(&group),
+            .CalledByGroup => |group_key| try writer.writeBytes(&group_key),
         }
     }
     
@@ -246,24 +276,43 @@ pub const WitnessCondition = union(enum(u8)) {
             },
             0x01 => {
                 const condition = try allocator.create(WitnessCondition);
+                errdefer allocator.destroy(condition);
                 condition.* = try Self.deserialize(reader, allocator);
-                return Self{ .Not = condition };
+                return Self.notOwned(condition);
             },
             0x02 => {
                 const count = try reader.readVarInt();
-                var conditions = try allocator.alloc(WitnessCondition, @intCast(count));
+                const conditions = try allocator.alloc(WitnessCondition, @intCast(count));
+                errdefer allocator.free(conditions);
+                var filled: usize = 0;
+                errdefer {
+                    for (conditions[0..filled]) |*cond| {
+                        cond.deinit(allocator);
+                    }
+                }
+
                 for (conditions) |*condition| {
                     condition.* = try Self.deserialize(reader, allocator);
+                    filled += 1;
                 }
-                return Self{ .And = conditions };
+                return Self{ .And = .{ .conditions = conditions, .owns_conditions = true } };
             },
             0x03 => {
                 const count = try reader.readVarInt();
-                var conditions = try allocator.alloc(WitnessCondition, @intCast(count));
+                const conditions = try allocator.alloc(WitnessCondition, @intCast(count));
+                errdefer allocator.free(conditions);
+                var filled: usize = 0;
+                errdefer {
+                    for (conditions[0..filled]) |*cond| {
+                        cond.deinit(allocator);
+                    }
+                }
+
                 for (conditions) |*condition| {
                     condition.* = try Self.deserialize(reader, allocator);
+                    filled += 1;
                 }
-                return Self{ .Or = conditions };
+                return Self{ .Or = .{ .conditions = conditions, .owns_conditions = true } };
             },
             0x18 => {
                 var hash_bytes: [20]u8 = undefined;
@@ -271,9 +320,9 @@ pub const WitnessCondition = union(enum(u8)) {
                 return Self{ .ScriptHash = Hash160.fromArray(hash_bytes) };
             },
             0x19 => {
-                var group: [33]u8 = undefined;
-                try reader.readBytes(&group);
-                return Self{ .Group = group };
+                var group_key: [33]u8 = undefined;
+                try reader.readBytes(&group_key);
+                return Self{ .Group = group_key };
             },
             0x20 => Self{ .CalledByEntry = {} },
             0x28 => {
@@ -282,23 +331,60 @@ pub const WitnessCondition = union(enum(u8)) {
                 return Self{ .CalledByContract = Hash160.fromArray(hash_bytes) };
             },
             0x29 => {
-                var group: [33]u8 = undefined;
-                try reader.readBytes(&group);
-                return Self{ .CalledByGroup = group };
+                var group_key: [33]u8 = undefined;
+                try reader.readBytes(&group_key);
+                return Self{ .CalledByGroup = group_key };
             },
             else => return errors.throwIllegalArgument("Invalid witness condition type"),
         };
+    }
+
+    /// Frees any resources owned by this condition.
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .Not => |not_condition| {
+                not_condition.condition.deinit(allocator);
+                if (not_condition.owns_condition) {
+                    allocator.destroy(not_condition.condition);
+                }
+            },
+            .And => |and_payload| {
+                for (and_payload.conditions) |*condition| {
+                    condition.deinit(allocator);
+                }
+                if (and_payload.owns_conditions) {
+                    allocator.free(and_payload.conditions);
+                }
+            },
+            .Or => |or_payload| {
+                for (or_payload.conditions) |*condition| {
+                    condition.deinit(allocator);
+                }
+                if (or_payload.owns_conditions) {
+                    allocator.free(or_payload.conditions);
+                }
+            },
+            else => {},
+        }
     }
     
     /// Validates condition
     pub fn validate(self: Self) !void {
         switch (self) {
-            .Not => |condition| try condition.validate(),
-            .And, .Or => |conditions| {
-                if (conditions.len == 0) {
+            .Not => |not_condition| try not_condition.condition.validate(),
+            .And => |and_payload| {
+                if (and_payload.conditions.len == 0) {
                     return errors.throwIllegalArgument("Compound condition cannot be empty");
                 }
-                for (conditions) |condition| {
+                for (and_payload.conditions) |condition| {
+                    try condition.validate();
+                }
+            },
+            .Or => |or_payload| {
+                if (or_payload.conditions.len == 0) {
+                    return errors.throwIllegalArgument("Compound condition cannot be empty");
+                }
+                for (or_payload.conditions) |condition| {
                     try condition.validate();
                 }
             },
@@ -310,24 +396,24 @@ pub const WitnessCondition = union(enum(u8)) {
     pub fn evaluate(self: Self, context: WitnessContext) bool {
         return switch (self) {
             .Boolean => |value| value,
-            .Not => |condition| !condition.evaluate(context),
-            .And => |conditions| {
-                for (conditions) |condition| {
+            .Not => |not_condition| !not_condition.condition.evaluate(context),
+            .And => |and_payload| {
+                for (and_payload.conditions) |condition| {
                     if (!condition.evaluate(context)) return false;
                 }
                 return true;
             },
-            .Or => |conditions| {
-                for (conditions) |condition| {
+            .Or => |or_payload| {
+                for (or_payload.conditions) |condition| {
                     if (condition.evaluate(context)) return true;
                 }
                 return false;
             },
             .ScriptHash => |hash| context.calling_script_hash != null and context.calling_script_hash.?.eql(hash),
-            .Group => |group| context.hasGroup(group),
+            .Group => |group_key| context.hasGroup(group_key),
             .CalledByEntry => context.is_entry_script,
             .CalledByContract => |hash| context.calling_script_hash != null and context.calling_script_hash.?.eql(hash),
-            .CalledByGroup => |group| context.hasGroup(group),
+            .CalledByGroup => |group_key| context.hasGroup(group_key),
         };
     }
     
@@ -340,17 +426,17 @@ pub const WitnessCondition = union(enum(u8)) {
         
         return switch (self) {
             .Boolean => |a| a == other.Boolean,
-            .Not => |a| a.eql(other.Not.*),
+            .Not => |a| a.condition.eql(other.Not.condition.*),
             .And => |a| {
-                if (a.len != other.And.len) return false;
-                for (a, other.And) |cond_a, cond_b| {
+                if (a.conditions.len != other.And.conditions.len) return false;
+                for (a.conditions, other.And.conditions) |cond_a, cond_b| {
                     if (!cond_a.eql(cond_b)) return false;
                 }
                 return true;
             },
             .Or => |a| {
-                if (a.len != other.Or.len) return false;
-                for (a, other.Or) |cond_a, cond_b| {
+                if (a.conditions.len != other.Or.conditions.len) return false;
+                for (a.conditions, other.Or.conditions) |cond_a, cond_b| {
                     if (!cond_a.eql(cond_b)) return false;
                 }
                 return true;
@@ -361,33 +447,6 @@ pub const WitnessCondition = union(enum(u8)) {
             .CalledByContract => |a| a.eql(other.CalledByContract),
             .CalledByGroup => |a| std.mem.eql(u8, &a, &other.CalledByGroup),
         };
-    }
-};
-
-/// Witness action (converted from Swift WitnessAction)
-pub const WitnessAction = enum(u8) {
-    Deny = 0x00,
-    Allow = 0x01,
-    
-    const Self = @This();
-    
-    /// Gets byte value (equivalent to Swift .byte property)
-    pub fn getByte(self: Self) u8 {
-        return @intFromEnum(self);
-    }
-    
-    /// Creates from byte with validation (equivalent to Swift throwingValueOf)
-    pub fn fromByte(byte_value: u8) ?Self {
-        return switch (byte_value) {
-            0x00 => .Deny,
-            0x01 => .Allow,
-            else => null,
-        };
-    }
-    
-    /// Gets all cases
-    pub fn getAllCases() []const Self {
-        return &[_]Self{ .Deny, .Allow };
     }
 };
 
@@ -438,11 +497,18 @@ pub const WitnessContext = struct {
         }
         self.groups = new_groups;
     }
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.groups.len > 0) {
+            allocator.free(self.groups);
+        }
+        self.* = Self.init();
+    }
 };
 
 /// Helper function for VarInt size calculation
 fn getVarIntSize(value: usize) usize {
-    if (value < 0xFC) return 1;
+    if (value < 0xFD) return 1;
     if (value <= 0xFFFF) return 3;
     if (value <= 0xFFFFFFFF) return 5;
     return 9;
@@ -472,17 +538,17 @@ test "WitnessAction operations" {
 
 test "WitnessCondition creation and basic operations" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test basic condition creation (equivalent to Swift WitnessCondition tests)
     const bool_condition = WitnessCondition.boolean(true);
-    try testing.expectEqual(WitnessCondition.Boolean, @as(@TypeOf(bool_condition), bool_condition));
+    try testing.expectEqual(.Boolean, std.meta.activeTag(bool_condition));
     
     const script_hash_condition = WitnessCondition.scriptHash(Hash160.ZERO);
-    try testing.expectEqual(WitnessCondition.ScriptHash, @as(@TypeOf(script_hash_condition), script_hash_condition));
+    try testing.expectEqual(.ScriptHash, std.meta.activeTag(script_hash_condition));
     
     const entry_condition = WitnessCondition.calledByEntry();
-    try testing.expectEqual(WitnessCondition.CalledByEntry, @as(@TypeOf(entry_condition), entry_condition));
+    try testing.expectEqual(.CalledByEntry, std.meta.activeTag(entry_condition));
     
     // Test size calculation
     try testing.expect(bool_condition.size() >= 2); // Type + value
@@ -516,9 +582,42 @@ test "WitnessCondition compound operations" {
     try or_condition.validate();
 }
 
-test "WitnessRule creation and operations" {
+test "WitnessCondition deserialize frees owned memory" {
     const testing = std.testing;
     const allocator = testing.allocator;
+
+    // Build a compound condition containing both a slice (AND) and a heap pointer (NOT).
+    var entry_condition = WitnessCondition.calledByEntry();
+    const not_condition = WitnessCondition.not(&entry_condition);
+
+    var conditions = [_]WitnessCondition{
+        WitnessCondition.boolean(true),
+        not_condition,
+    };
+    const and_condition = WitnessCondition.and_condition(&conditions);
+
+    var writer = BinaryWriter.init(allocator);
+    defer writer.deinit();
+    try and_condition.serialize(&writer);
+
+    var reader = BinaryReader.init(writer.toSlice());
+    var decoded = try WitnessCondition.deserialize(&reader, allocator);
+    decoded.deinit(allocator);
+}
+
+test "WitnessCondition deserialize cleans up on error" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    // AND with 2 subconditions, but only one is present -> triggers UnexpectedEndOfData
+    const bytes = [_]u8{ 0x02, 0x02, 0x00, 0x01 };
+    var reader = BinaryReader.init(&bytes);
+    try testing.expectError(errors.SerializationError.UnexpectedEndOfData, WitnessCondition.deserialize(&reader, allocator));
+}
+
+test "WitnessRule creation and operations" {
+    const testing = std.testing;
+    _ = testing.allocator;
     
     // Test witness rule creation (equivalent to Swift WitnessRule tests)
     const condition = WitnessCondition.boolean(true);
@@ -567,7 +666,7 @@ test "WitnessRule serialization" {
 
 test "WitnessCondition evaluation" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test condition evaluation (additional utility tests)
     var context = WitnessContext.init();
@@ -599,7 +698,7 @@ test "WitnessCondition evaluation" {
 
 test "WitnessRule evaluation" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test rule evaluation (equivalent to Swift rule evaluation tests)
     var context = WitnessContext.init();

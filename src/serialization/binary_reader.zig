@@ -34,6 +34,17 @@ pub const BinaryReader = struct {
         self.position += 1;
         return byte;
     }
+
+    pub fn readBool(self: *Self) !bool {
+        const value = try self.readByte();
+        return value == 1;
+    }
+
+    pub fn readU16(self: *Self) !u16 {
+        var bytes: [2]u8 = undefined;
+        try self.readBytes(&bytes);
+        return std.mem.littleToNative(u16, std.mem.bytesToValue(u16, &bytes));
+    }
     
     pub fn readU32(self: *Self) !u32 {
         var bytes: [4]u8 = undefined;
@@ -50,11 +61,38 @@ pub const BinaryReader = struct {
     pub fn readVarInt(self: *Self) !u64 {
         const first_byte = try self.readByte();
         return switch (first_byte) {
-            0x00...0xFB => first_byte,
-            0xFD => try self.readU32(),
+            0x00...0xFC => first_byte,
+            0xFD => try self.readU16(),
             0xFE => try self.readU32(),
             0xFF => try self.readU64(),
-            else => errors.SerializationError.InvalidFormat,
         };
+    }
+
+    pub fn readVarBytes(self: *Self, allocator: std.mem.Allocator) ![]u8 {
+        const length = try self.readVarInt();
+
+        if (length > constants.MAX_TRANSACTION_SIZE) {
+            return errors.SerializationError.DataTooLarge;
+        }
+
+        const buffer = try allocator.alloc(u8, @intCast(length));
+        errdefer allocator.free(buffer);
+
+        try self.readBytes(buffer);
+        return buffer;
+    }
+
+    pub fn readVarString(self: *Self, allocator: std.mem.Allocator) ![]u8 {
+        const length = try self.readVarInt();
+
+        if (length > 1024 * 1024) {
+            return errors.SerializationError.DataTooLarge;
+        }
+
+        const buffer = try allocator.alloc(u8, @intCast(length));
+        errdefer allocator.free(buffer);
+
+        try self.readBytes(buffer);
+        return buffer;
     }
 };

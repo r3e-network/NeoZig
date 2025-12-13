@@ -6,7 +6,7 @@
 const std = @import("std");
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const Address = @import("../types/address.zig").Address;
@@ -36,10 +36,17 @@ pub const NeoSwift = struct {
         };
     }
 
-    /// Builder method (equivalent to Swift build method)
-    pub fn build(allocator: std.mem.Allocator, service: NeoSwiftService, config: ?NeoSwiftConfig) Self {
+    /// Builder method (equivalent to Swift build method).
+    ///
+    /// Ownership: this function moves `service` into the returned client. The
+    /// passed-in `service` pointer is invalidated (its owned transport is
+    /// relinquished and the internal pointer cleared) to prevent double-free.
+    pub fn build(allocator: std.mem.Allocator, service: *NeoSwiftService, config: ?NeoSwiftConfig) Self {
         const final_config = config orelse NeoSwiftConfig.init();
-        return Self.init(allocator, final_config, service);
+        const owned_service = service.*;
+        service.relinquish();
+        service.service_impl.http_service = undefined;
+        return Self.init(allocator, final_config, owned_service);
     }
 
     /// NNS resolver property (equivalent to Swift nnsResolver)
@@ -266,9 +273,9 @@ pub const NeoSwift = struct {
         try params.append(RpcParam.initString(address));
 
         if (from_time) |from| {
-            try params.append(RpcParam.initInt(@intCast(from)));
+            try params.append(RpcParam.initInt(from));
             if (to_time) |to| {
-                try params.append(RpcParam.initInt(@intCast(to)));
+                try params.append(RpcParam.initInt(to));
             }
         }
 
@@ -404,80 +411,22 @@ pub const NeoVersion = responses.NeoVersion;
 pub const InvocationResult = responses.InvocationResult;
 pub const StackItem = @import("../types/stack_item.zig").StackItem;
 
-/// NEP-17 balances (converted from Swift response)
-pub const Nep17Balances = struct {
-    balance: []const TokenBalance,
-    address: []const u8,
+/// NEP-17 balances (RPC response).
+pub const Nep17Balances = responses.Nep17Balances;
+pub const TokenBalance = responses.TokenBalance;
 
-    pub fn init() Nep17Balances {
-        return std.mem.zeroes(Nep17Balances);
-    }
-};
+/// NEP-17 transfers (RPC response).
+pub const Nep17Transfers = responses.Nep17Transfers;
+pub const TokenTransfer = responses.TokenTransfer;
 
-/// Token balance (converted from Swift)
-pub const TokenBalance = struct {
-    asset_hash: Hash160,
-    amount: []const u8,
-    last_updated_block: u32,
+/// Send raw transaction response.
+pub const SendRawTransactionResponse = responses.SendRawTransactionResponse;
 
-    pub fn init() TokenBalance {
-        return std.mem.zeroes(TokenBalance);
-    }
-};
+/// Network fee response.
+pub const NetworkFeeResponse = responses.NetworkFeeResponse;
 
-/// NEP-17 transfers (converted from Swift response)
-pub const Nep17Transfers = struct {
-    sent: []const TokenTransfer,
-    received: []const TokenTransfer,
-    address: []const u8,
-
-    pub fn init() Nep17Transfers {
-        return std.mem.zeroes(Nep17Transfers);
-    }
-};
-
-/// Token transfer (converted from Swift)
-pub const TokenTransfer = struct {
-    timestamp: u64,
-    asset_hash: Hash160,
-    transfer_address: []const u8,
-    amount: []const u8,
-    block_index: u32,
-    transfer_notify_index: u32,
-    tx_hash: Hash256,
-
-    pub fn init() TokenTransfer {
-        return std.mem.zeroes(TokenTransfer);
-    }
-};
-
-/// Send raw transaction response (converted from Swift)
-pub const SendRawTransactionResponse = struct {
-    hash: Hash256,
-
-    pub fn init() SendRawTransactionResponse {
-        return SendRawTransactionResponse{ .hash = Hash256.ZERO };
-    }
-};
-
-/// Network fee response (converted from Swift)
-pub const NetworkFeeResponse = struct {
-    network_fee: u64,
-
-    pub fn init() NetworkFeeResponse {
-        return NetworkFeeResponse{ .network_fee = 0 };
-    }
-};
-
-/// Address validation response (converted from Swift)
-pub const AddressValidation = struct {
-    address: []const u8,
-    is_valid: bool,
-
-    pub fn init() AddressValidation {
-        return AddressValidation{ .address = "", .is_valid = false };
-    }
-};
+/// Address validation response.
+pub const AddressValidation = @import("complete_responses.zig").NeoValidateAddress;
 
 // Tests (converted from Swift RPC tests)
 test "NeoSwift client creation and configuration" {
@@ -486,9 +435,8 @@ test "NeoSwift client creation and configuration" {
 
     const config = NeoSwiftConfig.init();
     var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, service, config);
+    var client = NeoSwift.build(allocator, &service, config);
     defer client.deinit();
-    service.relinquish();
 
     // Test configuration properties (matches Swift tests)
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
@@ -509,9 +457,8 @@ test "NeoSwift RPC method creation" {
 
     const config = NeoSwiftConfig.init();
     var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, service, config);
+    var client = NeoSwift.build(allocator, &service, config);
     defer client.deinit();
-    service.relinquish();
 
     // Test RPC request creation (matches Swift Request pattern)
     const best_block_request = try client.getBestBlockHash();
@@ -530,9 +477,8 @@ test "NeoSwift contract invocation" {
 
     const config = NeoSwiftConfig.init();
     var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, service, config);
+    var client = NeoSwift.build(allocator, &service, config);
     defer client.deinit();
-    service.relinquish();
 
     // Test contract function invocation (matches Swift invokeFunction)
     const contract_hash = Hash160.ZERO;

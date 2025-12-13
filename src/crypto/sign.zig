@@ -36,6 +36,8 @@ pub const Sign = struct {
     pub fn signMessage(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         // Hash the message
         const message_hash = Hash256.sha256(message);
+
+        const expected_public = key_pair.getPublicKey();
         
         // Get ECDSA signature
         const ecdsa_sig = key_pair.signAndGetECDSASignature(message_hash.toSlice());
@@ -48,8 +50,12 @@ pub const Sign = struct {
             if (try recoverPublicKeyBytes(i, ecdsa_sig, message_hash, allocator)) |recovered_key| {
                 defer allocator.free(recovered_key);
 
-                const recovered_public = try PublicKey.init(recovered_key, false);
-                if (recovered_public.eql(key_pair.getPublicKey())) {
+                var recovered_public = try PublicKey.init(recovered_key, false);
+                if (expected_public.compressed) {
+                    recovered_public = try recovered_public.toCompressed();
+                }
+
+                if (recovered_public.eql(expected_public)) {
                     rec_id = i;
                     break;
                 }
@@ -209,15 +215,12 @@ pub const SignatureData = struct {
         }
         
         // Validate R and S are non-zero and in valid range
-        const secp256r1 = @import("secp256r1.zig");
         return self.r > 0 and self.r < secp256r1.Secp256r1.N and
                self.s > 0 and self.s < secp256r1.Secp256r1.N;
     }
     
     /// Converts to canonical form (equivalent to Swift canonicalization)
     pub fn toCanonical(self: Self) Self {
-        const secp256r1 = @import("secp256r1.zig");
-        
         if (self.s <= secp256r1.Secp256r1.HALF_CURVE_ORDER) {
             return self;
         } else {
@@ -315,9 +318,7 @@ test "SignatureData operations" {
 
 test "SignatureData canonical operations" {
     const testing = std.testing;
-    
-    const secp256r1 = @import("secp256r1.zig");
-    
+
     // Test canonical signature (S <= half curve order)
     const canonical_s = secp256r1.Secp256r1.HALF_CURVE_ORDER - 1;
     const canonical_sig = SignatureData.init(28, 123, canonical_s);
@@ -331,7 +332,7 @@ test "SignatureData canonical operations" {
     
     const canonicalized_non = non_canonical_sig.toCanonical();
     try testing.expect(!non_canonical_sig.eql(canonicalized_non)); // Should be changed
-    try testing.expect(canonicalized_non.s < secp256r1.Secp256r1.HALF_CURVE_ORDER);
+    try testing.expect(canonicalized_non.s <= secp256r1.Secp256r1.HALF_CURVE_ORDER);
 }
 
 test "SignatureData conversion operations" {

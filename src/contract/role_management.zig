@@ -4,7 +4,7 @@
 //! Handles node role designation and management.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -88,7 +88,7 @@ pub const RoleManagement = struct {
             if (key_bytes.len == 33) {
                 var key_array: [33]u8 = undefined;
                 @memcpy(&key_array, key_bytes);
-                try pub_key_params.append(ContractParameter.publicKey(key_array));
+                try pub_key_params.append(ContractParameter.publicKey(&key_array));
             }
         }
         

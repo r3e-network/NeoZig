@@ -191,7 +191,7 @@ pub const AccountSignerFactory = struct {
 // Tests (converted from Swift AccountSigner tests)
 test "AccountSigner creation with different scopes" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Create test account
     const test_account = Account.init(Hash160.ZERO);
@@ -232,7 +232,7 @@ test "AccountSigner creation from hash" {
 
 test "AccountSigner validation and context" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     const test_account = Account.init(Hash160.ZERO);
     
@@ -252,7 +252,7 @@ test "AccountSigner validation and context" {
 
 test "AccountSigner factory methods" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     const sender_account = Account.init(Hash160.ZERO);
     const receiver_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");

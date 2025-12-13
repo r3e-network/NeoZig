@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 const NeoVMStateType = @import("../../types/neo_vm_state_type.zig").NeoVMStateType;
@@ -202,13 +202,7 @@ pub const NeoApplicationLog = struct {
 };
 
 fn stringifyJsonValue(value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
-    var buffer = ArrayList(u8).init(allocator);
-    defer buffer.deinit();
-
-    var stringify = std.json.Stringify{ .writer = buffer.writer(), .options = .{} };
-    try stringify.write(value);
-
-    return try buffer.toOwnedSlice();
+    return try std.json.stringifyAlloc(allocator, value, .{});
 }
 
 // Tests

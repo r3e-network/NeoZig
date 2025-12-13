@@ -5,10 +5,10 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const InvocationScript = @import("../../src/transaction/witness.zig").InvocationScript;
-const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
+const neo = @import("neo-zig");
+const InvocationScript = neo.transaction.InvocationScript;
+const ECKeyPair = neo.crypto.ECKeyPair;
 
 test "Invocation script creation from message and key pair" {
     const allocator = testing.allocator;
@@ -42,10 +42,8 @@ test "Invocation script from signatures" {
     const message = "Multi-sig test message";
     const message_bytes = @as([]const u8, message);
     
-    const signature = try key_pair.signMessage(message_bytes, allocator);
-    defer signature.deinit(allocator);
-    
-    const signatures = [_]@import("../../src/crypto/sign.zig").SignatureData{signature};
+    const signature = try neo.crypto.sign.Sign.signMessage(message_bytes, key_pair, allocator);
+    const signatures = [_]neo.crypto.sign.SignatureData{signature};
     
     var multi_sig_invocation = try InvocationScript.fromSignatures(&signatures, allocator);
     defer multi_sig_invocation.deinit(allocator);

@@ -7,6 +7,7 @@ const std = @import("std");
 
 
 const errors = @import("../core/errors.zig");
+const constants = @import("../core/constants.zig");
 
 /// Transaction-specific errors (converted from Swift TransactionError)
 pub const TransactionError = union(enum) {
@@ -216,7 +217,7 @@ pub const TransactionErrorUtils = struct {
         attribute_count: usize,
     ) TransactionError!void {
         // Validate script
-        try validateTransactionComponent(.Script, &[_]u8{0} ** script_len);
+        try Self.validateTransactionComponent(.Script, &[_]u8{0} ** script_len);
         
         // Validate signer/witness match
         if (signer_count != witness_count) {

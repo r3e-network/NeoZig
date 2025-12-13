@@ -7,7 +7,8 @@ const std = @import("std");
 
 
 const testing = std.testing;
-const HttpService = @import("../../src/rpc/http_service.zig").HttpService;
+const neo = @import("neo-zig");
+const HttpService = neo.rpc.HttpService;
 
 test "HTTP service creation" {
     const allocator = testing.allocator;

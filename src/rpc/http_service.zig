@@ -4,7 +4,7 @@
 //! Provides HTTP service implementation for Neo RPC communication.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
@@ -15,7 +15,7 @@ pub const HttpService = struct {
     pub const JSON_MEDIA_TYPE = "application/json; charset=utf-8";
     
     /// Default URL constant (matches Swift DEFAULT_URL)
-    pub const DEFAULT_URL = "http://localhost:10333/";
+    pub const DEFAULT_URL = "http://localhost:20332/";
     
     /// Service URL
     url: []const u8,
@@ -48,7 +48,23 @@ pub const HttpService = struct {
             .owns_url = owns_url,
             .include_raw_responses = include_raw_responses,
             .headers = std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage).init(allocator),
-            .http_client = @import("http_client.zig").HttpClient.init(allocator, url_slice),
+            .http_client = @import("http_client.zig").HttpClient.initBorrowed(allocator, url_slice),
+            .allocator = allocator,
+        };
+    }
+
+    /// Creates HTTP service by taking ownership of an already-allocated URL buffer.
+    pub fn initOwned(
+        allocator: std.mem.Allocator,
+        url: []u8,
+        include_raw_responses: bool,
+    ) Self {
+        return Self{
+            .url = url,
+            .owns_url = true,
+            .include_raw_responses = include_raw_responses,
+            .headers = std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage).init(allocator),
+            .http_client = @import("http_client.zig").HttpClient.initBorrowed(allocator, url),
             .allocator = allocator,
         };
     }
@@ -61,6 +77,7 @@ pub const HttpService = struct {
             self.allocator.free(entry.value_ptr.*);
         }
         self.headers.deinit();
+        self.http_client.deinit();
         if (self.owns_url) {
             self.allocator.free(self.url);
         }
@@ -68,82 +85,8 @@ pub const HttpService = struct {
     
     /// Performs I/O operation (equivalent to Swift performIO)
     pub fn performIO(self: *Self, payload: []const u8) ![]u8 {
-        var client = std.http.Client{ .allocator = self.allocator };
-        defer client.deinit();
-
-        const uri = try std.Uri.parse(self.url);
-
-        var extra_headers = ArrayList(std.http.Header).init(self.allocator);
-        defer extra_headers.deinit();
-
-        try extra_headers.append(.{ .name = "Content-Type", .value = JSON_MEDIA_TYPE });
-        try extra_headers.append(.{ .name = "User-Agent", .value = "Neo-Zig-SDK/1.0" });
-
-        var header_iterator = self.headers.iterator();
-        while (header_iterator.next()) |entry| {
-            try extra_headers.append(.{ .name = entry.key_ptr.*, .value = entry.value_ptr.* });
-        }
-
-        var request = try client.request(.POST, uri, .{
-            .headers = .{
-                .accept_encoding = .omit,
-                .content_type = .omit,
-                .user_agent = .omit,
-            },
-            .extra_headers = extra_headers.items,
-            .redirect_behavior = .not_allowed,
-        });
-        defer request.deinit();
-
-        request.transfer_encoding = .{ .content_length = @intCast(payload.len) };
-
-        var body_writer = try request.sendBodyUnflushed(&.{});
-        try body_writer.writer.writeAll(payload);
-        try body_writer.end();
-        try request.connection.?.flush();
-
-        var response = try request.receiveHead(&.{});
-
-        switch (response.head.status) {
-            .ok => {},
-            .bad_request => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.RequestFailed;
-            },
-            .unauthorized => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.AuthenticationFailed;
-            },
-            .not_found => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.InvalidEndpoint;
-            },
-            .internal_server_error => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.ServerError;
-            },
-            .service_unavailable => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.NetworkUnavailable;
-            },
-            .gateway_timeout => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.NetworkTimeout;
-            },
-            else => {
-                try discardResponseBody(&response);
-                return errors.NetworkError.InvalidResponse;
-            },
-        }
-
-        var transfer_buffer: [64]u8 = undefined;
-        const reader = response.reader(&transfer_buffer);
-        const response_body = reader.allocRemaining(self.allocator, std.Io.Limit.limited(10 * 1024 * 1024)) catch |err| switch (err) {
-            error.ReadFailed => return response.bodyErr().?,
-            else => return err,
-        };
-
-        return response_body;
+        self.http_client.withSender(sendWithHeaders, self);
+        return self.http_client.post(payload);
     }
 
 fn discardResponseBody(response: *std.http.Client.Response) !void {
@@ -151,6 +94,99 @@ fn discardResponseBody(response: *std.http.Client.Response) !void {
     _ = reader.discardRemaining() catch |err| switch (err) {
         error.ReadFailed => return response.bodyErr().?,
         else => return err,
+    };
+}
+
+fn sendWithHeaders(
+    ctx: ?*anyopaque,
+    allocator: std.mem.Allocator,
+    endpoint: []const u8,
+    payload: []const u8,
+    timeout_ms: u32,
+) errors.NetworkError![]u8 {
+    var timer = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
+    const raw_ctx = ctx orelse return errors.NetworkError.NetworkUnavailable;
+    const service: *HttpService = @ptrCast(@alignCast(raw_ctx));
+
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    const uri = std.Uri.parse(endpoint) catch return errors.NetworkError.InvalidEndpoint;
+
+    var extra_headers = ArrayList(std.http.Header).init(allocator);
+    defer extra_headers.deinit();
+
+    var header_iterator = service.headers.iterator();
+    while (header_iterator.next()) |entry| {
+        extra_headers.append(.{ .name = entry.key_ptr.*, .value = entry.value_ptr.* }) catch return errors.NetworkError.RequestFailed;
+    }
+
+    var response_body = ArrayList(u8).init(allocator);
+    defer response_body.deinit();
+
+    const result = client.fetch(.{
+        .location = .{ .uri = uri },
+        .method = .POST,
+        .payload = payload,
+        .headers = .{
+            .content_type = .{ .override = JSON_MEDIA_TYPE },
+            .user_agent = .{ .override = "Neo-Zig-SDK/1.0" },
+        },
+        .extra_headers = extra_headers.items,
+        .redirect_behavior = .not_allowed,
+        .keep_alive = false,
+        .response_storage = .{ .dynamic = &response_body },
+    }) catch |err| {
+        return mapFetchError(err);
+    };
+
+    switch (result.status) {
+        .ok => {},
+        .bad_request => return errors.NetworkError.RequestFailed,
+        .unauthorized => return errors.NetworkError.AuthenticationFailed,
+        .not_found => return errors.NetworkError.InvalidEndpoint,
+        .internal_server_error => return errors.NetworkError.ServerError,
+        .service_unavailable => return errors.NetworkError.NetworkUnavailable,
+        .gateway_timeout => return errors.NetworkError.NetworkTimeout,
+        else => {
+            if (result.status.class() == .server_error) return errors.NetworkError.ServerError;
+            return errors.NetworkError.InvalidResponse;
+        },
+    }
+
+    const body = response_body.toOwnedSlice() catch return errors.NetworkError.RequestFailed;
+
+    if (timer.read() / std.time.ns_per_ms > timeout_ms) {
+        allocator.free(body);
+        return errors.NetworkError.NetworkTimeout;
+    }
+
+    return body;
+}
+
+fn mapFetchError(err: anyerror) errors.NetworkError {
+    return switch (err) {
+        error.UnsupportedUriScheme,
+        error.UriMissingHost,
+        error.UriHostTooLong => errors.NetworkError.InvalidEndpoint,
+
+        error.NetworkUnreachable,
+        error.ConnectionRefused,
+        error.ConnectionResetByPeer,
+        error.UnknownHostName,
+        error.HostLacksNetworkAddresses,
+        error.UnexpectedConnectFailure => errors.NetworkError.ConnectionFailed,
+
+        error.ConnectionTimedOut => errors.NetworkError.NetworkTimeout,
+        error.TemporaryNameServerFailure,
+        error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
+
+        error.CertificateBundleLoadFailure,
+        error.StreamTooLong,
+        error.WriteFailed,
+        error.UnsupportedCompressionMethod,
+        error.TooManyHttpRedirects => errors.NetworkError.RequestFailed,
+        else => errors.NetworkError.RequestFailed,
     };
 }
     
@@ -190,6 +226,11 @@ fn discardResponseBody(response: *std.http.Client.Response) !void {
     pub fn getHeader(self: Self, key: []const u8) ?[]const u8 {
         return self.headers.get(key);
     }
+
+    /// Returns whether the given header is present.
+    pub fn hasHeader(self: Self, key: []const u8) bool {
+        return self.headers.contains(key);
+    }
     
     /// Gets all headers (utility method)
     pub fn getAllHeaders(self: Self) std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage) {
@@ -197,20 +238,19 @@ fn discardResponseBody(response: *std.http.Client.Response) !void {
     }
     
     /// Validates service connectivity (utility method)
+    /// Performs a simple RPC call to validate connectivity using the shared HttpClient.
+    /// Note: std.http lacks per-request deadlines; see HttpClient.post for elapsed-time guard.
     pub fn validateConnectivity(self: *Self) !bool {
         // Test with simple JSON-RPC call
         const test_payload = 
             \\{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":1}
         ;
-        
-        const response = self.performIO(test_payload) catch |err| {
-            return switch (err) {
-                error.NetworkTimeout, error.ConnectionFailed => false,
-                else => err,
-            };
+        self.http_client.withSender(sendWithHeaders, self);
+        const response = self.http_client.post(test_payload) catch |err| switch (err) {
+            error.NetworkTimeout, error.ConnectionFailed => return false,
+            else => return err,
         };
-        defer self.allocator.free(response);
-        
+        defer self.http_client.allocator.free(response);
         return response.len > 0;
     }
     
@@ -286,12 +326,9 @@ pub const HttpServiceFactory = struct {
     
     /// Creates service for local node
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) HttpService {
-        const actual_port = port orelse 10333;
-        const url_alloc = std.fmt.allocPrint(allocator, "http://localhost:{d}/", .{actual_port}) catch null;
-        defer if (url_alloc) |owned| allocator.free(owned);
-
-        const url = url_alloc orelse "http://localhost:10333/";
-        return HttpService.init(allocator, url, false);
+        const actual_port = port orelse 20332;
+        const url = std.fmt.allocPrint(allocator, "http://localhost:{d}/", .{actual_port}) catch return HttpService.init(allocator, "http://localhost:20332/", false);
+        return HttpService.initOwned(allocator, url, false);
     }
     
     /// Creates service with custom configuration
@@ -373,7 +410,7 @@ test "HttpService factory methods" {
     defer localhost_service.deinit();
     
     try testing.expect(std.mem.containsAtLeast(u8, localhost_service.url, 1, "localhost"));
-    try testing.expect(std.mem.containsAtLeast(u8, localhost_service.url, 1, "10333"));
+    try testing.expect(std.mem.containsAtLeast(u8, localhost_service.url, 1, "20332"));
     
     // Test custom service
     var custom_service = HttpServiceFactory.custom(allocator, "https://custom.endpoint:8080", true);

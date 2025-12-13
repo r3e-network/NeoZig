@@ -4,19 +4,21 @@
 //! Tests witness creation, serialization, and multi-signature functionality.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
-
+const neo = @import("neo-zig");
 
 const testing = std.testing;
-const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
-const Witness = @import("../../src/transaction/witness.zig").Witness;
-const InvocationScript = @import("../../src/transaction/witness.zig").InvocationScript;
-const VerificationScript = @import("../../src/transaction/witness.zig").VerificationScript;
-const Sign = @import("../../src/crypto/sign.zig").Sign;
-const OpCode = @import("../../src/script/op_code.zig").OpCode;
-const InteropService = @import("../../src/script/interop_service.zig").InteropService;
+const ArrayList = std.ArrayList;
 
-/// Test witness creation (converted from Swift testCreateWitness)
+const ECKeyPair = neo.crypto.ECKeyPair;
+const PublicKey = neo.crypto.PublicKey;
+const Sign = neo.crypto.sign.Sign;
+const SignatureData = neo.crypto.sign.SignatureData;
+const Witness = neo.transaction.WitnessScripts;
+const InvocationScript = neo.transaction.InvocationScript;
+const VerificationScript = neo.transaction.VerificationScript;
+const OpCode = neo.script.OpCode;
+
+// Test witness creation (converted from Swift testCreateWitness)
 test "Witness creation" {
     const allocator = testing.allocator;
     
@@ -24,11 +26,8 @@ test "Witness creation" {
     const message = [_]u8{10} ** 10;
     
     // Create key pair (equivalent to Swift ECKeyPair.createEcKeyPair())
-    const key_pair = try ECKeyPair.createRandom();
-    defer {
-        var mutable_kp = key_pair;
-        mutable_kp.zeroize();
-    }
+    var key_pair = try ECKeyPair.createRandom();
+    defer key_pair.zeroize();
     
     // Create witness (equivalent to Swift Witness.create(message, keyPair))
     var witness = try Witness.create(&message, key_pair, allocator);
@@ -44,31 +43,39 @@ test "Witness creation" {
     
     // Test expected signature (equivalent to Swift expectedSignature check)
     const expected_signature = try Sign.signMessage(&message, key_pair, allocator);
-    defer expected_signature.deinit(allocator);
+    const signature_bytes = expected_signature.getSignatureBytes();
     
     // Verify the signature is present in invocation script
     const invocation_script = witness.getInvocationScript();
     try testing.expect(invocation_script.len > 0);
+    try testing.expect(invocation_script.len >= 2 + signature_bytes.len);
+    try testing.expectEqual(@as(u8, @intFromEnum(OpCode.PUSHDATA1)), invocation_script[0]);
+    try testing.expectEqual(@as(u8, signature_bytes.len), invocation_script[1]);
+    try testing.expectEqualSlices(u8, &signature_bytes, invocation_script[2 .. 2 + signature_bytes.len]);
     
     // Verify verification script contains public key
     const verification_script = witness.getVerificationScript();
     try testing.expect(verification_script.len > 0);
+
+    const expected_verification = try neo.script.ScriptBuilder.buildVerificationScript(
+        key_pair.getPublicKey().toSlice(),
+        allocator,
+    );
+    defer allocator.free(expected_verification);
+    try testing.expectEqualSlices(u8, expected_verification, verification_script);
     
     // The exact byte verification would require more detailed script parsing
     // but the witness creation and basic structure validation is confirmed
 }
 
-/// Test witness serialization (converted from Swift testSerializeWitness)
+// Test witness serialization (converted from Swift testSerializeWitness)
 test "Witness serialization" {
     const allocator = testing.allocator;
     
     // Create test data (equivalent to Swift test setup)
     const message = [_]u8{10} ** 10;
-    const key_pair = try ECKeyPair.createRandom();
-    defer {
-        var mutable_kp = key_pair;
-        mutable_kp.zeroize();
-    }
+    var key_pair = try ECKeyPair.createRandom();
+    defer key_pair.zeroize();
     
     // Create witness (equivalent to Swift Witness.create)
     var witness = try Witness.create(&message, key_pair, allocator);
@@ -90,7 +97,7 @@ test "Witness serialization" {
     try testing.expectEqual(calculated_size, witness_size);
 }
 
-/// Test multi-signature witness creation (converted from Swift testSerializeMultiSigWitness)
+// Test multi-signature witness creation (converted from Swift testSerializeMultiSigWitness)
 test "Multi-signature witness creation" {
     const allocator = testing.allocator;
     
@@ -99,25 +106,17 @@ test "Multi-signature witness creation" {
     const signing_threshold: u32 = 2;
     
     // Create multiple key pairs and signatures (equivalent to Swift loop)
-    var signatures = ArrayList(Sign.SignatureData).init(allocator);
-    defer {
-        for (signatures.items) |*sig| {
-            sig.deinit(allocator);
-        }
-        signatures.deinit();
-    }
-    
-    var public_keys = ArrayList(@import("../../src/crypto/keys.zig").PublicKey).init(allocator);
+    var signatures = ArrayList(SignatureData).init(allocator);
+    defer signatures.deinit();
+
+    var public_keys = ArrayList(PublicKey).init(allocator);
     defer public_keys.deinit();
     
     // Create 3 key pairs (equivalent to Swift for loop 0...2)
     var i: usize = 0;
     while (i < 3) : (i += 1) {
-        const key_pair = try ECKeyPair.createRandom();
-        defer {
-            var mutable_kp = key_pair;
-            mutable_kp.zeroize();
-        }
+        var key_pair = try ECKeyPair.createRandom();
+        defer key_pair.zeroize();
         
         const signature = try Sign.signMessage(&message, key_pair, allocator);
         try signatures.append(signature);
@@ -147,7 +146,7 @@ test "Multi-signature witness creation" {
     try testing.expect(multi_sig_size > 100); // Should be substantial for 3 signatures
 }
 
-/// Test witness validation and edge cases
+// Test witness validation and edge cases
 test "Witness validation and edge cases" {
     const allocator = testing.allocator;
     
@@ -167,7 +166,7 @@ test "Witness validation and edge cases" {
     try testing.expectError(error.InvalidWitness, invalid_witness.validate());
 }
 
-/// Test witness equality and hashing
+// Test witness equality and hashing
 test "Witness equality and hashing" {
     const allocator = testing.allocator;
     
@@ -196,10 +195,10 @@ test "Witness equality and hashing" {
     const hash3 = witness3.hash();
     
     try testing.expectEqual(hash1, hash2); // Same witnesses should have same hash
-    try testing.expectNotEqual(hash1, hash3); // Different witnesses should have different hash
+    try testing.expect(hash1 != hash3); // Different witnesses should have different hash
 }
 
-/// Test witness utility methods
+// Test witness utility methods
 test "Witness utility methods" {
     const allocator = testing.allocator;
     
@@ -231,10 +230,8 @@ test "Witness utility methods" {
     try testing.expectEqualSlices(u8, witness.getVerificationScript(), cloned_witness.getVerificationScript());
 }
 
-/// Test invocation script creation
+// Test invocation script creation
 test "InvocationScript creation and operations" {
-    const allocator = testing.allocator;
-    
     // Test empty invocation script
     const empty_invocation = InvocationScript.init();
     try testing.expect(empty_invocation.isEmpty());
@@ -247,7 +244,7 @@ test "InvocationScript creation and operations" {
     try testing.expectEqualSlices(u8, &test_bytes, bytes_invocation.getScript());
 }
 
-/// Test verification script creation  
+// Test verification script creation
 test "VerificationScript creation and operations" {
     const allocator = testing.allocator;
     
@@ -263,11 +260,8 @@ test "VerificationScript creation and operations" {
     try testing.expectEqualSlices(u8, &test_bytes, bytes_verification.getScript());
     
     // Test verification script from public key
-    const key_pair = try ECKeyPair.createRandom();
-    defer {
-        var mutable_kp = key_pair;
-        mutable_kp.zeroize();
-    }
+    var key_pair = try ECKeyPair.createRandom();
+    defer key_pair.zeroize();
     
     var verification_from_key = try VerificationScript.fromPublicKey(key_pair.getPublicKey(), allocator);
     defer verification_from_key.deinit(allocator);

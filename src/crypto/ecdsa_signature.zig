@@ -4,7 +4,7 @@
 //! Provides detailed ECDSA signature management and validation.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -80,9 +80,9 @@ pub const ECDSASignature = struct {
         // SEQUENCE tag
         try der.append(0x30);
         
-        // Calculate content length (will be updated)
+        // Reserve a single-byte length (P-256 signatures always fit in short-form DER).
         const length_pos = der.items.len;
-        try der.append(0x00); // Placeholder
+        try der.append(0x00);
         
         // Add R INTEGER
         try der.append(0x02); // INTEGER tag
@@ -95,13 +95,17 @@ pub const ECDSASignature = struct {
             r_start += 1;
         }
         
-        // Add padding if high bit is set
-        const r_needs_padding = (r_start < 32) and (r_bytes[r_start] & 0x80) != 0;
-        const r_len = 32 - r_start + (if (r_needs_padding) @as(u8, 1) else @as(u8, 0));
-        
-        try der.append(r_len);
-        if (r_needs_padding) try der.append(0x00);
-        try der.appendSlice(r_bytes[r_start..]);
+        if (r_start == 32) {
+            try der.append(1);
+            try der.append(0x00);
+        } else {
+            const r_content = r_bytes[r_start..];
+            const r_needs_padding = (r_content[0] & 0x80) != 0;
+            const r_len: u8 = @intCast(r_content.len + (if (r_needs_padding) @as(usize, 1) else 0));
+            try der.append(r_len);
+            if (r_needs_padding) try der.append(0x00); // Ensure positive integer encoding
+            try der.appendSlice(r_content);
+        }
         
         // Add S INTEGER
         try der.append(0x02); // INTEGER tag
@@ -114,16 +118,21 @@ pub const ECDSASignature = struct {
             s_start += 1;
         }
         
-        // Add padding if high bit is set
-        const s_needs_padding = (s_start < 32) and (s_bytes[s_start] & 0x80) != 0;
-        const s_len = 32 - s_start + (if (s_needs_padding) @as(u8, 1) else @as(u8, 0));
-        
-        try der.append(s_len);
-        if (s_needs_padding) try der.append(0x00);
-        try der.appendSlice(s_bytes[s_start..]);
+        if (s_start == 32) {
+            try der.append(1);
+            try der.append(0x00);
+        } else {
+            const s_content = s_bytes[s_start..];
+            const s_needs_padding = (s_content[0] & 0x80) != 0;
+            const s_len: u8 = @intCast(s_content.len + (if (s_needs_padding) @as(usize, 1) else 0));
+            try der.append(s_len);
+            if (s_needs_padding) try der.append(0x00);
+            try der.appendSlice(s_content);
+        }
         
         // Update sequence length
         const total_len = der.items.len - 2; // Exclude SEQUENCE tag and length
+        if (total_len >= 128) return errors.CryptoError.InvalidSignature;
         der.items[length_pos] = @intCast(total_len);
         
         return try der.toOwnedSlice();
@@ -139,49 +148,88 @@ pub const ECDSASignature = struct {
         if (der_bytes[pos] != 0x30) return errors.CryptoError.InvalidSignature;
         pos += 1;
         
-        // Skip sequence length
+        // Parse sequence length (short-form expected, but accept long-form)
+        if (pos >= der_bytes.len) return errors.CryptoError.InvalidSignature;
+        var seq_len: usize = 0;
+        const len_byte = der_bytes[pos];
         pos += 1;
+        if ((len_byte & 0x80) == 0) {
+            seq_len = len_byte;
+        } else {
+            const len_len: usize = len_byte & 0x7F;
+            if (len_len == 0 or len_len > 4) return errors.CryptoError.InvalidSignature;
+            if (pos + len_len > der_bytes.len) return errors.CryptoError.InvalidSignature;
+            seq_len = 0;
+            for (0..len_len) |i| {
+                seq_len = (seq_len << 8) | der_bytes[pos + i];
+            }
+            pos += len_len;
+        }
+        if (pos + seq_len != der_bytes.len) return errors.CryptoError.InvalidSignature;
         
         // Parse R INTEGER
         if (pos >= der_bytes.len or der_bytes[pos] != 0x02) return errors.CryptoError.InvalidSignature;
         pos += 1;
         
+        if (pos >= der_bytes.len) return errors.CryptoError.InvalidSignature;
         const r_len = der_bytes[pos];
         pos += 1;
         
+        if (r_len == 0) return errors.CryptoError.InvalidSignature;
         if (pos + r_len > der_bytes.len) return errors.CryptoError.InvalidSignature;
         
         // Extract R value, handling padding
         var r_bytes: [32]u8 = std.mem.zeroes([32]u8);
-        var r_start: usize = 0;
-        if (r_len > 0 and der_bytes[pos] == 0x00) {
-            r_start = 1; // Skip padding
+        var r_start: usize = 0; // bytes to skip in the DER integer
+        if (der_bytes[pos] == 0x00) {
+            if (r_len == 1) {
+                r_start = 0;
+            } else {
+                if ((der_bytes[pos + 1] & 0x80) == 0) return errors.CryptoError.InvalidSignature;
+                r_start = 1;
+            }
+        } else {
+            if ((der_bytes[pos] & 0x80) != 0) return errors.CryptoError.InvalidSignature;
         }
         
-        const r_copy_len = @min(32, r_len - r_start);
+        const r_value_len: usize = r_len - r_start;
+        if (r_value_len > 32) return errors.CryptoError.InvalidSignature;
+        const r_copy_len = r_value_len;
         const r_offset = 32 - r_copy_len;
-        @memcpy(r_bytes[r_offset..32], der_bytes[pos + r_start..pos + r_start + r_copy_len]);
+        @memcpy(r_bytes[r_offset..32], der_bytes[pos + r_start .. pos + r_start + r_copy_len]);
         pos += r_len;
         
         // Parse S INTEGER
         if (pos >= der_bytes.len or der_bytes[pos] != 0x02) return errors.CryptoError.InvalidSignature;
         pos += 1;
         
+        if (pos >= der_bytes.len) return errors.CryptoError.InvalidSignature;
         const s_len = der_bytes[pos];
         pos += 1;
         
+        if (s_len == 0) return errors.CryptoError.InvalidSignature;
         if (pos + s_len > der_bytes.len) return errors.CryptoError.InvalidSignature;
         
         // Extract S value, handling padding
         var s_bytes: [32]u8 = std.mem.zeroes([32]u8);
         var s_start: usize = 0;
-        if (s_len > 0 and der_bytes[pos] == 0x00) {
-            s_start = 1; // Skip padding
+        if (der_bytes[pos] == 0x00) {
+            if (s_len == 1) {
+                s_start = 0;
+            } else {
+                if ((der_bytes[pos + 1] & 0x80) == 0) return errors.CryptoError.InvalidSignature;
+                s_start = 1;
+            }
+        } else {
+            if ((der_bytes[pos] & 0x80) != 0) return errors.CryptoError.InvalidSignature;
         }
         
-        const s_copy_len = @min(32, s_len - s_start);
+        const s_value_len: usize = s_len - s_start;
+        if (s_value_len > 32) return errors.CryptoError.InvalidSignature;
+        const s_copy_len = s_value_len;
         const s_offset = 32 - s_copy_len;
-        @memcpy(s_bytes[32 + s_offset..64], der_bytes[pos + s_start..pos + s_start + s_copy_len]);
+        @memcpy(s_bytes[s_offset..32], der_bytes[pos + s_start .. pos + s_start + s_copy_len]);
+        pos += s_len;
         
         const r = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &r_bytes));
         const s = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, &s_bytes));
@@ -218,7 +266,7 @@ pub const ECDSASignature = struct {
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(
             allocator,
-            "ECDSASignature(r: {x}, s: {x})",
+            "ECDSASignature(r: {}, s: {})",
             .{ self.r, self.s },
         );
     }
@@ -262,7 +310,7 @@ test "ECDSASignature canonical operations" {
     // Test canonicalization
     const canonicalized = non_canonical_sig.toCanonical();
     try testing.expect(canonicalized.isCanonical());
-    try testing.expect(canonicalized.getS() < secp256r1.Secp256r1.HALF_CURVE_ORDER);
+    try testing.expect(canonicalized.getS() <= secp256r1.Secp256r1.HALF_CURVE_ORDER);
 }
 
 test "ECDSASignature DER encoding/decoding" {
@@ -284,6 +332,65 @@ test "ECDSASignature DER encoding/decoding" {
     // Test DER decoding
     const parsed_signature = try ECDSASignature.fromDER(der_bytes);
     try testing.expect(signature.eql(parsed_signature));
+}
+
+test "ECDSASignature DER encodes zero components" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const signature = ECDSASignature.init(0, 0);
+    const der_bytes = try signature.toDER(allocator);
+    defer allocator.free(der_bytes);
+
+    const expected = [_]u8{ 0x30, 0x06, 0x02, 0x01, 0x00, 0x02, 0x01, 0x00 };
+    try testing.expectEqualSlices(u8, &expected, der_bytes);
+
+    const parsed = try ECDSASignature.fromDER(der_bytes);
+    try testing.expect(signature.eql(parsed));
+}
+
+test "ECDSASignature DER pads high-bit integers" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const high_bit: u256 = (@as(u256, 1) << 255);
+    const signature = ECDSASignature.init(high_bit, high_bit);
+
+    const der_bytes = try signature.toDER(allocator);
+    defer allocator.free(der_bytes);
+
+    // Sequence header.
+    try testing.expectEqual(@as(u8, 0x30), der_bytes[0]);
+
+    // First INTEGER (r) should be 33 bytes: leading 0x00 padding + 0x80...
+    // DER: 30 LL 02 21 00 80 ..(31 zeros).. 02 21 00 80 ..(31 zeros)..
+    try testing.expectEqual(@as(u8, 0x02), der_bytes[2]);
+    try testing.expectEqual(@as(u8, 33), der_bytes[3]);
+    try testing.expectEqual(@as(u8, 0x00), der_bytes[4]);
+    try testing.expectEqual(@as(u8, 0x80), der_bytes[5]);
+
+    const parsed = try ECDSASignature.fromDER(der_bytes);
+    try testing.expect(signature.eql(parsed));
+}
+
+test "ECDSASignature DER rejects non-minimal and negative encodings" {
+    const testing = std.testing;
+
+    // Non-minimal: unnecessary leading 0x00 when next byte does not set the high bit.
+    const non_minimal = [_]u8{
+        0x30, 0x08,
+        0x02, 0x02, 0x00, 0x01,
+        0x02, 0x01, 0x01,
+    };
+    try testing.expectError(errors.CryptoError.InvalidSignature, ECDSASignature.fromDER(&non_minimal));
+
+    // Negative: missing padding for a value with the high bit set.
+    const negative = [_]u8{
+        0x30, 0x06,
+        0x02, 0x01, 0x80,
+        0x02, 0x01, 0x01,
+    };
+    try testing.expectError(errors.CryptoError.InvalidSignature, ECDSASignature.fromDER(&negative));
 }
 
 test "ECDSASignature validation" {

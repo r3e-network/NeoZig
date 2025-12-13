@@ -3,7 +3,7 @@
 //! Complete conversion from Swift ContractParameter system.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("hash160.zig").Hash160;
@@ -106,13 +106,36 @@ pub const ContractParameter = union(ContractParameterType) {
     pub fn eql(self: Self, other: Self) bool {
         if (self.getType() != other.getType()) return false;
         return switch (self) {
+            .Any => true,
+            .Void => true,
             .Boolean => |a| a == other.Boolean,
             .Integer => |a| a == other.Integer,
             .ByteArray => |a| std.mem.eql(u8, a, other.ByteArray),
             .String => |a| std.mem.eql(u8, a, other.String),
             .Hash160 => |a| a.eql(other.Hash160),
             .Hash256 => |a| a.eql(other.Hash256),
-            else => true,
+            .PublicKey => |a| std.mem.eql(u8, &a, &other.PublicKey),
+            .Signature => |a| std.mem.eql(u8, &a, &other.Signature),
+            .Array => |a| {
+                const b = other.Array;
+                if (a.len != b.len) return false;
+                for (a, b) |item_a, item_b| {
+                    if (!item_a.eql(item_b)) return false;
+                }
+                return true;
+            },
+            .Map => |a| {
+                const b = other.Map;
+                if (a.count() != b.count()) return false;
+
+                var it = a.iterator();
+                while (it.next()) |entry| {
+                    const b_value = b.get(entry.key_ptr.*) orelse return false;
+                    if (!entry.value_ptr.*.eql(b_value)) return false;
+                }
+                return true;
+            },
+            .InteropInterface => |a| a == other.InteropInterface,
         };
     }
 
@@ -186,11 +209,7 @@ pub const ContractParameter = union(ContractParameterType) {
             var hasher = std.hash.Wyhash.init(0);
             hasher.update(&[_]u8{@intFromEnum(param.getType())});
             switch (param) {
-                .Any => |maybe_bytes| {
-                    if (maybe_bytes) |bytes| {
-                        hasher.update(bytes);
-                    }
-                },
+                .Any => {},
                 .Boolean => |value| {
                     const byte: u8 = if (value) 1 else 0;
                     hasher.update(&[_]u8{byte});
@@ -224,8 +243,8 @@ pub const ContractParameter = union(ContractParameterType) {
                     hasher.update(&bytes);
                 },
                 .InteropInterface => |iface| {
-                    hasher.update(iface.iterator_id);
-                    hasher.update(iface.interface_name);
+                    const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, iface));
+                    hasher.update(&bytes);
                 },
                 .Void => {},
             }
@@ -234,8 +253,8 @@ pub const ContractParameter = union(ContractParameterType) {
         
         pub fn eql(self: @This(), a: ContractParameter, b: ContractParameter) bool {
             _ = self;
-        return a.eql(b);
-    }
+            return a.eql(b);
+        }
 };
 
 fn stringifyKey(value: JsonValue, allocator: std.mem.Allocator) std.mem.Allocator.Error![]u8 {

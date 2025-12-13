@@ -7,8 +7,10 @@ const std = @import("std");
 
 
 const testing = std.testing;
-const ContractManifest = @import("../../src/protocol/response/contract_manifest.zig").ContractManifest;
-const ContractGroup = @import("../../src/protocol/response/contract_manifest.zig").ContractGroup;
+const neo = @import("neo-zig");
+const ContractManifest = neo.protocol.ContractManifest;
+const ContractGroup = neo.protocol.ContractGroup;
+const ContractPermission = neo.protocol.ContractPermission;
 
 test "Contract manifest creation" {
     const allocator = testing.allocator;
@@ -19,7 +21,7 @@ test "Contract manifest creation" {
         null,
         &[_][]const u8{"NEP-17"},
         null,
-        &[_]@import("../../src/protocol/response/contract_manifest.zig").ContractPermission{},
+        &[_]ContractPermission{},
         &[_][]const u8{},
         null,
         allocator,

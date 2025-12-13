@@ -53,8 +53,8 @@ pub fn ByteEnum(comptime T: type) type {
         
         /// Encodes to JSON (equivalent to Swift encode(to:))
         pub fn encodeToJson(self: T, allocator: std.mem.Allocator) !std.json.Value {
-            _ = allocator;
-            return std.json.Value{ .string = self.getJsonValue() };
+            const value = try allocator.dupe(u8, self.getJsonValue());
+            return std.json.Value{ .string = value };
         }
     };
 }

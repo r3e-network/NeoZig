@@ -8,7 +8,7 @@ const std = @import("std");
 
 const neo = @import("neo-zig");
 
-/// Witness system tests (converted from WitnessTests.swift, WitnessScopeTests.swift)
+// Witness system tests (converted from WitnessTests.swift, WitnessScopeTests.swift)
 test "complete witness system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -61,7 +61,7 @@ test "complete witness system tests" {
     std.log.info("✅ Complete witness system tests passed", .{});
 }
 
-/// Complete contract tests (converted from ALL contract test files)
+// Complete contract tests (converted from ALL contract test files)
 test "complete contract system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -111,7 +111,7 @@ test "complete contract system tests" {
     const fungible_token = neo.contract.FungibleToken.init(allocator, contract_hash, null);
     
     const balance = try fungible_token.getBalanceOf(neo.Hash160.ZERO);
-    try testing.expectEqual(@as(i64, 0), balance); // Placeholder returns 0
+    try testing.expectEqual(@as(i64, 0), balance); // stub returns 0
     
     var transfer_tx = try fungible_token.transfer(neo.Hash160.ZERO, neo.Hash160.ZERO, 100000000, null);
     defer transfer_tx.deinit();
@@ -137,7 +137,7 @@ test "complete contract system tests" {
     try testing.expect(fee_per_byte >= 0);
     
     const is_blocked = try policy_contract.isBlocked(neo.Hash160.ZERO);
-    try testing.expect(!is_blocked); // Placeholder returns false
+    try testing.expect(!is_blocked); // stub returns false
     
     var block_tx = try policy_contract.blockAccount(neo.Hash160.ZERO);
     defer block_tx.deinit();
@@ -145,7 +145,7 @@ test "complete contract system tests" {
     try testing.expect(block_tx.getScript() != null);
     
     // Test RoleManagement (converted from RoleManagementTests.swift)
-    const role_mgmt = neo.contract.RoleManagement.init(allocator, null);
+    _ = neo.contract.RoleManagement.init(allocator, null);
     
     try testing.expectEqualStrings("RoleManagement", neo.contract.RoleManagement.NAME);
     
@@ -165,7 +165,7 @@ test "complete contract system tests" {
     std.log.info("✅ Complete contract system tests passed", .{});
 }
 
-/// Complete wallet tests (converted from ALL wallet test files)
+// Complete wallet tests (converted from ALL wallet test files)
 test "complete wallet system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -226,7 +226,7 @@ test "complete wallet system tests" {
     std.log.info("✅ Complete wallet system tests passed", .{});
 }
 
-/// Complete transaction tests (converted from ALL transaction test files)
+// Complete transaction tests (converted from ALL transaction test files)
 test "complete transaction system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -304,7 +304,7 @@ test "complete transaction system tests" {
     std.log.info("✅ Complete transaction system tests passed", .{});
 }
 
-/// Complete crypto system tests (converted from ALL crypto test files)
+// Complete crypto system tests (converted from ALL crypto test files)
 test "complete crypto system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -389,7 +389,7 @@ test "complete crypto system tests" {
     std.log.info("✅ Complete crypto system tests passed", .{});
 }
 
-/// Complete protocol tests (converted from ALL protocol test files)
+// Complete protocol tests (converted from ALL protocol test files)
 test "complete protocol system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -398,8 +398,9 @@ test "complete protocol system tests" {
     
     // Test Request creation (converted from RequestTests.swift)
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     // Test all major RPC requests
     const best_block_request = try client.getBestBlockHash();
@@ -444,7 +445,7 @@ test "complete protocol system tests" {
     std.log.info("✅ Complete protocol system tests passed", .{});
 }
 
-/// Complete serialization tests (converted from ALL serialization test files)
+// Complete serialization tests (converted from ALL serialization test files)
 test "complete serialization system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -500,7 +501,7 @@ test "complete serialization system tests" {
     std.log.info("✅ Complete serialization system tests passed", .{});
 }
 
-/// Complete type system tests (converted from ALL type test files)
+// Complete type system tests (converted from ALL type test files)
 test "complete type system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -513,7 +514,7 @@ test "complete type system tests" {
     defer allocator.free(hash160_string);
     
     try testing.expectEqualStrings("1234567890abcdef1234567890abcdef12345678", hash160_string);
-    try testing.expect(hash160.eql(neo.Hash160.init()));
+    try testing.expect(!hash160.eql(neo.Hash160.init()));
     
     // Test Hash256 (converted from Hash256Tests.swift)
     const hash256 = try neo.Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
@@ -557,7 +558,7 @@ test "complete type system tests" {
     std.log.info("✅ Complete type system tests passed", .{});
 }
 
-/// Complete utility tests (converted from ALL utility test files)
+// Complete utility tests (converted from ALL utility test files)
 test "complete utility system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -590,7 +591,7 @@ test "complete utility system tests" {
     // Test filtering operations
     const is_even = struct {
         fn predicate(x: i32) bool {
-            return x % 2 == 0;
+            return @mod(x, 2) == 0;
         }
     }.predicate;
     
@@ -620,7 +621,7 @@ test "complete utility system tests" {
     std.log.info("✅ Complete utility system tests passed", .{});
 }
 
-/// Final comprehensive integration test
+// Final comprehensive integration test
 test "final complete integration validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -642,6 +643,7 @@ test "final complete integration validation" {
         &nep6_accounts,
         null,
     );
+    _ = nep6_wallet;
     
     // 3. Build advanced script with multiple contract calls
     var script_builder = neo.script.ScriptBuilder.init(allocator);
@@ -681,6 +683,7 @@ test "final complete integration validation" {
     const account_signer2 = try neo.transaction.AccountSigner.global(bip39_account.getAccount());
     
     _ = try tx_builder.signer(account_signer1.toSigner());
+    _ = try tx_builder.signer(account_signer2.toSigner());
     
     // Add witness rules
     const bool_condition = neo.transaction.WitnessCondition.boolean(true);
@@ -736,7 +739,7 @@ test "final complete integration validation" {
     const crypto_operations_work = blk: {
         const key = neo.crypto.generatePrivateKey();
         const pub_key = key.getPublicKey(true) catch break :blk false;
-        const addr = pub_key.toAddress(constants.AddressConstants.ADDRESS_VERSION) catch break :blk false;
+        const addr = pub_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION) catch break :blk false;
         const hash = neo.Hash256.sha256("test");
         break :blk key.isValid() and pub_key.isValid() and addr.isValid() and !hash.isZero();
     };

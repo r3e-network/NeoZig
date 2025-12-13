@@ -4,7 +4,7 @@
 //! Provides NEP-6 wallet contract structure.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const ContractParameterType = @import("../types/contract_parameter.zig").ContractParameterType;

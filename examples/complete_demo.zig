@@ -224,11 +224,13 @@ fn demonstrateRpcClient(allocator: std.mem.Allocator) !void {
     
     // Create RPC client (equivalent to Swift NeoSwift.build)
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    const service_config = service.getConfiguration();
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
-    std.log.info("  🔗 RPC client created for endpoint: {s}", .{service.endpoint});
-    std.log.info("  ⏱️ Timeout: {}ms", .{service.timeout_ms});
+    std.log.info("  🔗 RPC client created for endpoint: {s}", .{service_config.endpoint});
+    std.log.info("  ⏱️ Timeout: {}ms", .{service_config.timeout_ms});
     
     // Test RPC request creation (equivalent to Swift Request creation)
     const best_block_request = try client.getBestBlockHash();

@@ -64,13 +64,15 @@ pub const ECKeyPair = struct {
     
     /// Gets script hash (equivalent to Swift getScriptHash())
     pub fn getScriptHash(self: Self, allocator: std.mem.Allocator) !Hash160 {
-        const compressed_public_key = if (self.public_key.compressed)
-            self.public_key.toSlice()
-        else
-            (try self.public_key.toCompressed()).toSlice();
+        // Avoid returning a slice referencing a temporary `PublicKey` created by
+        // `toCompressed()`.
+        var compressed_public_key_value = self.public_key;
+        if (!compressed_public_key_value.compressed) {
+            compressed_public_key_value = try compressed_public_key_value.toCompressed();
+        }
         
         const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
-            compressed_public_key,
+            compressed_public_key_value.toSlice(),
             allocator,
         );
         defer allocator.free(script);
@@ -96,8 +98,14 @@ pub const ECKeyPair = struct {
         const signature = self.private_key.sign(hash256) catch {
             return ECDSASignature.init(0, 0); // Return zero signature on error
         };
-        
-        return ECDSASignature.fromBytes(signature.toSlice());
+
+        const signature_slice = signature.toSlice();
+        std.debug.assert(signature_slice.len == constants.SIGNATURE_SIZE);
+
+        var signature_bytes: [constants.SIGNATURE_SIZE]u8 = undefined;
+        @memcpy(&signature_bytes, signature_slice);
+
+        return ECDSASignature.fromBytes(signature_bytes);
     }
     
     /// Verifies signature (equivalent to Swift signature verification)
@@ -132,6 +140,10 @@ pub const ECKeyPair = struct {
     pub fn zeroize(self: *Self) void {
         self.private_key.zeroize();
     }
+
+    pub fn deinit(self: *Self) void {
+        self.zeroize();
+    }
     
     /// Exports private key as WIF (equivalent to Swift WIF export)
     pub fn exportWIF(self: Self, compressed: bool, network: @import("wif.zig").NetworkType, allocator: std.mem.Allocator) ![]u8 {
@@ -141,6 +153,7 @@ pub const ECKeyPair = struct {
     /// Imports key pair from WIF (equivalent to Swift WIF import)
     pub fn importFromWIF(wif: []const u8, allocator: std.mem.Allocator) !Self {
         const wif_result = try @import("wif.zig").decode(wif, allocator);
+        defer @constCast(&wif_result).deinit();
         return try Self.create(wif_result.private_key);
     }
     

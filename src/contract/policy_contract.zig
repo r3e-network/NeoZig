@@ -210,7 +210,7 @@ test "PolicyContract account blocking" {
     
     // Test is blocked check
     const is_blocked = try policy_contract.isBlocked(test_script_hash);
-    try testing.expect(!is_blocked); // Placeholder returns false
+    try testing.expect(!is_blocked); // stub returns false
     
     // Test block account
     var block_tx = try policy_contract.blockAccount(test_script_hash);

@@ -4,7 +4,7 @@
 //! Provides blockchain network roles for Neo consensus and services.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 

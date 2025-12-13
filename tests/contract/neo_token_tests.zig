@@ -43,8 +43,8 @@ test "NEO token constants and properties" {
     
     // Create NEO token instance (equivalent to Swift NeoToken(neoSwift))
     const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined; // Would need actual service for full testing
-    const neo_swift = NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const neo_token = NeoToken.init(neo_swift);
     
@@ -403,8 +403,8 @@ test "NEO token method name validation" {
     const allocator = testing.allocator;
     
     const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const neo_token = NeoToken.init(neo_swift);
     
@@ -479,8 +479,8 @@ test "NEO token transaction building integration" {
     
     // Test that script can be used in transaction builder
     const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     var tx_builder = @import("../../src/transaction/transaction_builder.zig").TransactionBuilder.init(allocator, neo_swift);
     defer tx_builder.deinit();

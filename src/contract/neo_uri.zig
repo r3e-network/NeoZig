@@ -4,7 +4,7 @@
 //! Handles NEP-9 compatible URI schemes for token transfers.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -240,10 +240,10 @@ pub const NeoURI = struct {
     
     /// Parses query parameters (equivalent to Swift query parsing)
     fn parseQueryParameters(self: *Self, query_string: []const u8) !void {
-        var param_iterator = std.mem.split(u8, query_string, "&");
+        var param_iterator = std.mem.splitScalar(u8, query_string, '&');
         
         while (param_iterator.next()) |param| {
-            var kv_iterator = std.mem.split(u8, param, "=");
+            var kv_iterator = std.mem.splitScalar(u8, param, '=');
             const key = kv_iterator.next() orelse continue;
             const value = kv_iterator.next() orelse continue;
             
@@ -383,9 +383,9 @@ pub const URIUtils = struct {
         const query_start = std.mem.indexOf(u8, uri_string, "?") orelse return params;
         const query_string = uri_string[query_start + 1..];
         
-        var param_iterator = std.mem.split(u8, query_string, "&");
+        var param_iterator = std.mem.splitScalar(u8, query_string, '&');
         while (param_iterator.next()) |param| {
-            var kv_iterator = std.mem.split(u8, param, "=");
+            var kv_iterator = std.mem.splitScalar(u8, param, '=');
             const key = kv_iterator.next() orelse continue;
             const value = kv_iterator.next() orelse continue;
             

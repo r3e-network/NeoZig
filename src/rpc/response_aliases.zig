@@ -4,7 +4,7 @@
 //! Provides all Neo RPC response type aliases and wrappers.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
@@ -860,7 +860,7 @@ pub const NeoTraverseIterator = struct {
         var items_list = ArrayList(StackItem).init(allocator);
         defer items_list.deinit();
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
-        for (json_value.array) |item| {
+        for (json_value.array.items) |item| {
             var parsed = try StackItem.decodeFromJson(item, allocator);
             var parsed_guard = true;
             defer if (parsed_guard) parsed.deinit(allocator);

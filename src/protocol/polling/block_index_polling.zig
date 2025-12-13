@@ -234,8 +234,7 @@ pub const BlockIndexPolling = struct {
     
     /// Stops polling (if running)
     pub fn stopPolling(self: *Self) void {
-        // Implementation would depend on how we track the polling thread
-        // For now, this is a placeholder
+        // No-op: polling thread detaches; tracking would be added in a full implementation.
         _ = self;
     }
 };

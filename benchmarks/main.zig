@@ -3,7 +3,7 @@
 //! Performance benchmarks for key Neo SDK operations
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const neo = @import("neo-zig");
@@ -186,13 +186,8 @@ fn benchmarkTransactionBuilding(allocator: std.mem.Allocator) !void {
         );
         
         // Build transaction
-        const transaction = try builder.build();
-        defer {
-            allocator.free(transaction.signers);
-            allocator.free(transaction.attributes);
-            allocator.free(transaction.script);
-            allocator.free(transaction.witnesses);
-        }
+        var transaction = try builder.build();
+        defer transaction.deinit(allocator);
     }
     
     const end = std.time.nanoTimestamp();

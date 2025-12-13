@@ -4,7 +4,7 @@
 //! Provides comprehensive witness scope functionality with combination operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const errors = @import("../core/errors.zig");
@@ -188,8 +188,8 @@ pub const CompleteWitnessScope = enum(u8) {
     
     /// Encodes to JSON (equivalent to Swift Codable)
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
-        _ = allocator;
-        return std.json.Value{ .string = self.getJsonValue() };
+        const value = try allocator.dupe(u8, self.getJsonValue());
+        return std.json.Value{ .string = value };
     }
 };
 
@@ -219,7 +219,7 @@ pub const WitnessScopesFromString = struct {
         var scopes = ArrayList(CompleteWitnessScope).init(allocator);
         defer scopes.deinit();
         
-        var scope_iterator = std.mem.split(u8, cleaned.items, ",");
+        var scope_iterator = std.mem.splitScalar(u8, cleaned.items, ',');
         while (scope_iterator.next()) |scope_str| {
             if (CompleteWitnessScope.fromJsonValue(scope_str)) |scope| {
                 try scopes.append(scope);
@@ -436,7 +436,7 @@ test "WitnessScopesFromString operations" {
 
 test "WitnessScopeUtils utility functions" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
     
     // Test scope compatibility (equivalent to Swift compatibility tests)
     try testing.expect(CompleteWitnessScope.areCompatible(.CalledByEntry, .CustomContracts));

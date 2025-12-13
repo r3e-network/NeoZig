@@ -92,8 +92,8 @@ pub const NeoVMStateType = enum {
 
     /// Encodes to JSON (equivalent to Swift encode(to:))
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
-        _ = allocator;
-        return std.json.Value{ .string = self.getJsonValue() };
+        const value = try allocator.dupe(u8, self.getJsonValue());
+        return std.json.Value{ .string = value };
     }
 
     /// Checks if state indicates successful execution
@@ -196,6 +196,7 @@ test "NeoVMStateType JSON encoding/decoding" {
 
     // Test JSON encoding (equivalent to Swift Codable tests)
     const halt_json = try NeoVMStateType.Halt.encodeToJson(allocator);
+    defer allocator.free(halt_json.string);
 
     try testing.expectEqualStrings("HALT", halt_json.string);
 

@@ -6,18 +6,20 @@
 const std = @import("std");
 
 const testing = std.testing;
-const Response = @import("../../src/rpc/response.zig").Response;
+const neo = @import("neo-zig");
+const Response = neo.rpc.Response;
+const ResponseError = neo.rpc.ResponseError;
 
 test "JSON-RPC response creation" {
+    const allocator = testing.allocator;
     const test_result = "test_result";
-    const response_id: u32 = 1;
-
-    var response = Response([]u8).init(test_result, null, response_id, null);
+    var response = Response([]const u8).init(allocator, test_result);
+    defer response.deinit();
 
     try testing.expectEqualStrings("2.0", response.jsonrpc);
     try testing.expectEqualStrings(test_result, response.result.?);
-    try testing.expect(response.rpc_error == null);
-    try testing.expectEqual(response_id, response.id);
+    try testing.expect(response.response_error == null);
+    try testing.expectEqual(@as(u32, 1), response.id);
 }
 
 test "Response error handling" {
@@ -26,16 +28,11 @@ test "Response error handling" {
     const error_code: i32 = -32601;
     const error_message = "Method not found";
 
-    const rpc_error = @import("../../src/protocol/service.zig").JsonRpcError.init(
-        error_code,
-        try allocator.dupe(u8, error_message),
-        null,
-    );
-
-    var error_response = Response([]u8).init(null, rpc_error, 1, null);
-    defer error_response.deinit(allocator);
+    const message_copy = try allocator.dupe(u8, error_message);
+    var error_response = Response([]const u8).initWithError(allocator, ResponseError.init(error_code, message_copy, null));
+    defer error_response.deinit();
 
     try testing.expect(error_response.result == null);
-    try testing.expect(error_response.rpc_error != null);
-    try testing.expectEqual(error_code, error_response.rpc_error.?.code);
+    try testing.expect(error_response.response_error != null);
+    try testing.expectEqual(error_code, error_response.response_error.?.code);
 }

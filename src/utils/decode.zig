@@ -4,7 +4,7 @@
 //! Provides safe decoding and string conversion protocols.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const errors = @import("../core/errors.zig");
@@ -53,6 +53,7 @@ pub fn SafeDecode(comptime T: type) type {
         
         /// Safe decoding from JSON (equivalent to Swift SafeDecode init(from:))
         pub fn decodeFromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            _ = allocator;
             // Try direct decoding first
             if (T.decodeFromJson) |decode_fn| {
                 if (decode_fn(json_value)) |decoded_value| {
@@ -113,7 +114,7 @@ pub const JsonDecodeUtils = struct {
     /// Safely decodes array from JSON value
     pub fn decodeArray(json_value: std.json.Value) ![]const std.json.Value {
         return switch (json_value) {
-            .array => |a| a,
+            .array => |a| a.items,
             else => errors.ValidationError.InvalidFormat,
         };
     }
@@ -182,7 +183,7 @@ pub const ArrayDecodeUtils = struct {
         return switch (json_value) {
             .array => |array| {
                 var result = ArrayList(T).init(allocator);
-                for (array) |item| {
+                for (array.items) |item| {
                     try result.append(try decode_fn(item, allocator));
                 }
                 return try result.toOwnedSlice();
@@ -272,7 +273,7 @@ test "Array decoding utilities" {
     try string_array.append(std.json.Value{ .string = "first" });
     try string_array.append(std.json.Value{ .string = "second" });
     
-    const array_json = std.json.Value{ .array = string_array.items };
+    const array_json = std.json.Value{ .array = string_array };
     const decoded_array = try ArrayDecodeUtils.decodeStringArray(array_json, allocator);
     defer {
         for (decoded_array) |str| {

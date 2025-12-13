@@ -4,7 +4,7 @@
 //! Ensures security and correctness of all external inputs.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");

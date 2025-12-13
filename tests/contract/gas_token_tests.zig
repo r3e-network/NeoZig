@@ -9,13 +9,13 @@ const std = @import("std");
 const testing = std.testing;
 const GasToken = @import("../../src/contract/gas_token.zig").GasToken;
 const constants = @import("../../src/core/constants.zig");
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "GAS token constants and properties" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const gas_token = GasToken.init(neo_swift);
     

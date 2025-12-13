@@ -9,7 +9,7 @@ const std = @import("std");
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 
-/// Express Contract State (simplified)
+/// Express Contract State (basic)
 pub const ExpressContractState = struct {
     hash: Hash160,
     manifest: []const u8,

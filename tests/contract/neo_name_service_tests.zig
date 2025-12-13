@@ -11,6 +11,7 @@ const NeoNameService = @import("../../src/contract/neo_name_service.zig").NeoNam
 const NNSName = @import("../../src/contract/nns_name.zig").NNSName;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;
 const RecordType = @import("../../src/types/record_type.zig").RecordType;
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "NNS name validation" {
     const allocator = testing.allocator;
@@ -51,9 +52,8 @@ test "NNS record type operations" {
 test "NNS service functionality" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const nns_hash = try Hash160.initWithString("0x50ac1c37690cc2cfc594472833cf57505d5f46de");
     const nns = NeoNameService.init(nns_hash, neo_swift);

@@ -8,6 +8,7 @@ const std = @import("std");
 
 const BinaryWriter = @import("../../serialization/binary_writer_complete.zig").CompleteBinaryWriter;
 const BinaryReader = @import("../../serialization/binary_reader_complete.zig").CompleteBinaryReader;
+const errors = @import("../../core/errors.zig");
 
 /// Oracle response code for transaction attributes
 pub const OracleResponseCode = enum(u8) {
@@ -85,7 +86,7 @@ pub const TransactionAttribute = union(enum) {
                 .id = 0, 
                 .response_code = .Error, 
                 .result = "" 
-            }}, // Placeholder - needs proper deserialization
+            }}, // stub - needs proper deserialization
             else => null,
         };
     }
@@ -170,7 +171,11 @@ pub const TransactionAttribute = union(enum) {
                     return error.InvalidOracleResponseCode;
                 };
                 
-                const result_bytes = try reader.readVarBytes(MAX_RESULT_SIZE, allocator);
+                const result_len = try reader.readVarInt();
+                if (result_len > MAX_RESULT_SIZE) {
+                    return errors.SerializationError.DataTooLarge;
+                }
+                const result_bytes = try reader.readBytes(@intCast(result_len), allocator);
                 defer allocator.free(result_bytes);
                 
                 // Encode result as base64

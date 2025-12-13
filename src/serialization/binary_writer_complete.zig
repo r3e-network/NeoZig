@@ -4,7 +4,7 @@
 //! Provides comprehensive binary serialization with Swift API compatibility.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const constants = @import("../core/constants.zig");
@@ -41,6 +41,11 @@ pub const CompleteBinaryWriter = struct {
     pub fn write(self: *Self, buffer: []const u8) !void {
         try self.array.appendSlice(buffer);
     }
+
+    /// Convenience alias to match the simplified writer API and some tests.
+    pub fn writeBytes(self: *Self, bytes: []const u8) !void {
+        try self.write(bytes);
+    }
     
     /// Writes boolean (equivalent to Swift writeBoolean(_ v: Bool))
     pub fn writeBoolean(self: *Self, value: bool) !void {
@@ -54,7 +59,8 @@ pub const CompleteBinaryWriter = struct {
     
     /// Writes double (equivalent to Swift writeDouble(_ v: Double))
     pub fn writeDouble(self: *Self, value: f64) !void {
-        const bytes = std.mem.toBytes(std.mem.nativeToBig(f64, value));
+        const bits: u64 = @bitCast(value);
+        const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, bits));
         try self.write(&bytes);
     }
     
@@ -83,19 +89,20 @@ pub const CompleteBinaryWriter = struct {
     
     /// Writes float (equivalent to Swift writeFloat(_ v: Float))
     pub fn writeFloat(self: *Self, value: f32) !void {
-        const bytes = std.mem.toBytes(std.mem.nativeToBig(f32, value));
+        const bits: u32 = @bitCast(value);
+        const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, bits));
         try self.write(&bytes);
     }
     
     /// Writes 32-bit signed integer (equivalent to Swift writeInt32(_ v: Int32))
     pub fn writeInt32(self: *Self, value: i32) !void {
-        const bytes = std.mem.toBytes(std.mem.nativeToBig(i32, value));
+        const bytes = std.mem.toBytes(std.mem.nativeToLittle(i32, value));
         try self.write(&bytes);
     }
     
     /// Writes 64-bit signed integer (equivalent to Swift writeInt64(_ v: Int64))
     pub fn writeInt64(self: *Self, value: i64) !void {
-        const bytes = std.mem.toBytes(std.mem.nativeToBig(i64, value));
+        const bytes = std.mem.toBytes(std.mem.nativeToLittle(i64, value));
         try self.write(&bytes);
     }
     
@@ -147,12 +154,14 @@ pub const CompleteBinaryWriter = struct {
     
     /// Writes Hash160 (equivalent to Swift Hash160 writing)
     pub fn writeHash160(self: *Self, hash: Hash160) !void {
-        try self.write(&hash.toArray());
+        const little_endian = hash.toLittleEndianArray();
+        try self.write(&little_endian);
     }
     
     /// Writes Hash256 (equivalent to Swift Hash256 writing)
     pub fn writeHash256(self: *Self, hash: Hash256) !void {
-        try self.write(&hash.toArray());
+        const little_endian = hash.toLittleEndianArray();
+        try self.write(&little_endian);
     }
     
     /// Writes big integer (equivalent to Swift writeBigInteger())
@@ -195,6 +204,11 @@ pub const CompleteBinaryWriter = struct {
     /// Clears writer (equivalent to Swift clear())
     pub fn clear(self: *Self) void {
         self.array.clearRetainingCapacity();
+    }
+
+    /// Alias used by some converted test suites.
+    pub fn reset(self: *Self) void {
+        self.clear();
     }
     
     /// Gets capacity
@@ -275,8 +289,8 @@ test "CompleteBinaryWriter hash operations" {
     defer writer.deinit();
     
     // Test hash writing (equivalent to Swift hash writing tests)
-    const test_hash160 = Hash160.ZERO;
-    const test_hash256 = Hash256.ZERO;
+    const test_hash160 = try Hash160.initWithString("000102030405060708090a0b0c0d0e0f10111213");
+    const test_hash256 = try Hash256.initWithString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
     
     try writer.writeHash160(test_hash160);
     try writer.writeHash256(test_hash256);
@@ -285,11 +299,11 @@ test "CompleteBinaryWriter hash operations" {
     try testing.expectEqual(@as(usize, 20 + 32), written_data.len);
     
     // Verify hashes written correctly
-    const zero160 = std.mem.zeroes([20]u8);
-    const zero256 = std.mem.zeroes([32]u8);
+    const le160 = test_hash160.toLittleEndianArray();
+    const le256 = test_hash256.toLittleEndianArray();
     
-    try testing.expectEqualSlices(u8, &zero160, written_data[0..20]);
-    try testing.expectEqualSlices(u8, &zero256, written_data[20..52]);
+    try testing.expectEqualSlices(u8, &le160, written_data[0..20]);
+    try testing.expectEqualSlices(u8, &le256, written_data[20..52]);
 }
 
 test "CompleteBinaryWriter signed integer operations" {
@@ -306,7 +320,7 @@ test "CompleteBinaryWriter signed integer operations" {
     const written_data = writer.toArray();
     try testing.expectEqual(@as(usize, 12), written_data.len); // 4 + 8 bytes
     
-    // Verify big-endian encoding for signed integers
+    // Verify encoding for signed integers (byte order matches unsigned writers)
     const expected_int32 = [_]u8{ 0xFF, 0xFF, 0xFF, 0xFF };
     const expected_int64 = [_]u8{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
     

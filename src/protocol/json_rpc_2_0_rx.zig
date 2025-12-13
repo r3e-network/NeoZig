@@ -4,7 +4,7 @@
 //! Provides reactive programming support for Neo blockchain operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
@@ -408,7 +408,7 @@ pub const AsyncExecutor = struct {
 
     pub fn execute(self: AsyncExecutor, task: *const fn () void) void {
         _ = self;
-        task(); // Simplified execution
+        task(); // basic execution
     }
 
     pub fn scheduleRepeating(

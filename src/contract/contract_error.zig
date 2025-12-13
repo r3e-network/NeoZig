@@ -4,7 +4,7 @@
 //! Provides specialized error handling for smart contract operations.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 
 
 const errors = @import("../core/errors.zig");

@@ -54,7 +54,7 @@ pub const MockNeoSwift = struct {
 /// Test JSON utilities (converted from Swift JSON helpers)
 pub const TestJSON = struct {
     pub fn fromFile(filename: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        return try allocator.dupe(u8, "{}"); // Placeholder
+        return try allocator.dupe(u8, "{}"); // stub
     }
     
     pub fn mockResponse(method: []const u8, allocator: std.mem.Allocator) ![]u8 {
@@ -67,3 +67,18 @@ pub const TestJSON = struct {
 };
 
 const StringContext = std.HashMap.StringContext;
+
+/// Constructs a NeoSwift client backed by a localhost HTTP service for tests.
+/// The returned client owns its transport; call `deinit` when done.
+/// Note: This is a lightweight stub; no real network calls are exercised.
+pub fn makeNeoSwiftStub(allocator: std.mem.Allocator) !@import("../../src/rpc/neo_client.zig").NeoSwift {
+    const NeoSwift = @import("../../src/rpc/neo_client.zig").NeoSwift;
+    const config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
+    var service = try @import("../../src/rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    return NeoSwift.build(allocator, &service, config);
+}
+
+/// Convenience to free a stubbed client and its underlying transport.
+pub fn destroyNeoSwiftStub(client: *@import("../../src/rpc/neo_client.zig").NeoSwift) void {
+    client.deinit();
+}

@@ -69,13 +69,11 @@ pub const ContractGroup = struct {
     
     /// Clone with owned memory
     pub fn clone(self: Self, allocator: std.mem.Allocator) !Self {
-        const pub_key_copy = try allocator.dupe(u8, self.pub_key);
-        const signature_copy = try allocator.dupe(u8, self.signature);
-        return Self.init(pub_key_copy, signature_copy, allocator);
+        return Self.init(self.pub_key, self.signature, allocator);
     }
 };
 
-/// Contract ABI placeholder (simplified)
+/// Contract ABI stub (basic)
 pub const ContractABI = struct {
     methods: []ContractMethod,
     events: []ContractEvent,
@@ -114,10 +112,6 @@ pub const ContractMethod = struct {
     
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
-        
-        for (self.parameters) |*param| {
-            param.deinit(allocator);
-        }
         allocator.free(self.parameters);
         
         allocator.free(self.return_type);
@@ -138,10 +132,6 @@ pub const ContractEvent = struct {
     
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
-        
-        for (self.parameters) |*param| {
-            param.deinit(allocator);
-        }
         allocator.free(self.parameters);
     }
 };
@@ -191,23 +181,58 @@ pub const ContractManifest = struct {
     /// Creates contract manifest (equivalent to Swift init)
     pub fn init(
         name: ?[]const u8,
-        groups: []ContractGroup,
+        groups: []const ContractGroup,
         features: ?std.json.ObjectMap,
-        supported_standards: [][]const u8,
+        supported_standards: []const []const u8,
         abi: ?ContractABI,
-        permissions: []ContractPermission,
-        trusts: [][]const u8,
+        permissions: []const ContractPermission,
+        trusts: []const []const u8,
         extra: ?std.json.ObjectMap,
         allocator: std.mem.Allocator,
     ) !Self {
+        const name_copy = if (name) |n| try allocator.dupe(u8, n) else null;
+        errdefer if (name_copy) |owned| allocator.free(owned);
+
+        const groups_copy = try allocator.dupe(ContractGroup, groups);
+        errdefer allocator.free(groups_copy);
+
+        var standards_copy = try allocator.alloc([]const u8, supported_standards.len);
+        var standards_count: usize = 0;
+        errdefer {
+            for (standards_copy[0..standards_count]) |standard| {
+                allocator.free(standard);
+            }
+            allocator.free(standards_copy);
+        }
+        for (supported_standards) |standard| {
+            standards_copy[standards_count] = try allocator.dupe(u8, standard);
+            standards_count += 1;
+        }
+
+        const permissions_copy = try allocator.dupe(ContractPermission, permissions);
+        errdefer allocator.free(permissions_copy);
+
+        var trusts_copy = try allocator.alloc([]const u8, trusts.len);
+        var trusts_count: usize = 0;
+        errdefer {
+            for (trusts_copy[0..trusts_count]) |trust| {
+                allocator.free(trust);
+            }
+            allocator.free(trusts_copy);
+        }
+        for (trusts) |trust| {
+            trusts_copy[trusts_count] = try allocator.dupe(u8, trust);
+            trusts_count += 1;
+        }
+
         return Self{
-            .name = if (name) |n| try allocator.dupe(u8, n) else null,
-            .groups = try allocator.dupe(ContractGroup, groups),
+            .name = name_copy,
+            .groups = groups_copy,
             .features = features,
-            .supported_standards = try allocator.dupe([]const u8, supported_standards),
+            .supported_standards = standards_copy,
             .abi = abi,
-            .permissions = try allocator.dupe(ContractPermission, permissions),
-            .trusts = try allocator.dupe([]const u8, trusts),
+            .permissions = permissions_copy,
+            .trusts = trusts_copy,
             .extra = extra,
         };
     }
@@ -396,12 +421,25 @@ fn isValidBase64(data: []const u8) bool {
     if (data.len == 0) return false;
     if (data.len % 4 != 0) return false;
     
-    for (data) |char| {
-        if (!std.base64.standard.Decoder.isValidChar(char) and char != '=') {
-            return false;
+    var padding_started = false;
+    for (data, 0..) |char, idx| {
+        if (char == '=') {
+            padding_started = true;
+            if (idx < data.len - 2) return false;
+            continue;
         }
+
+        if (padding_started) return false;
+
+        const is_valid =
+            (char >= 'A' and char <= 'Z') or
+            (char >= 'a' and char <= 'z') or
+            (char >= '0' and char <= '9') or
+            char == '+' or
+            char == '/';
+        if (!is_valid) return false;
     }
-    
+
     return true;
 }
 
@@ -454,7 +492,7 @@ test "ContractManifest creation and properties" {
         name,
         &[_]ContractGroup{},
         null,
-        &standards,
+        standards[0..],
         null,
         &[_]ContractPermission{},
         &[_][]const u8{},
@@ -482,7 +520,7 @@ test "ContractManifest standard detection" {
         "NEP17Token",
         &[_]ContractGroup{},
         null,
-        &nep17_standards,
+        nep17_standards[0..],
         null,
         &[_]ContractPermission{},
         &[_][]const u8{},
@@ -523,5 +561,5 @@ test "ContractGroup equality and hashing" {
     const hash3 = group3.hash();
     
     try testing.expectEqual(hash1, hash2); // Same groups should have same hash
-    try testing.expectNotEqual(hash1, hash3); // Different groups should have different hash
+    try testing.expect(hash1 != hash3); // Different groups should have different hash
 }

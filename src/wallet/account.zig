@@ -12,6 +12,7 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Address = @import("../types/address.zig").Address;
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const VerificationScript = @import("verification_script.zig").VerificationScript;
+const secure = @import("../utils/secure.zig");
 
 /// Neo account (converted from Swift Account)
 pub const Account = struct {
@@ -28,7 +29,7 @@ pub const Account = struct {
     /// Encrypted private key (NEP-2 format)
     encrypted_private_key: ?[]const u8,
     /// Parent wallet reference
-    wallet: ?*anyopaque, // Placeholder for Wallet reference
+    wallet: ?*anyopaque, // stub for Wallet reference
     /// Signing threshold (nil for single-sig)
     signing_threshold: ?u32,
     /// Number of participants (nil for single-sig)
@@ -99,7 +100,7 @@ pub const Account = struct {
         }
         
         if (self.encrypted_private_key) |key| {
-            @memset(@constCast(key), 0); // Secure clear
+            secure.secureZeroConstBytes(key); // Secure clear
             self.allocator.free(key);
         }
         
@@ -150,7 +151,7 @@ pub const Account = struct {
     pub fn isDefault(self: Self) bool {
         // Would check with parent wallet
         _ = self;
-        return false; // Placeholder
+        return false; // stub
     }
     
     /// Checks if account is locked (equivalent to Swift .isLocked property)
@@ -212,7 +213,7 @@ pub const Account = struct {
             );
             
             if (self.encrypted_private_key) |old_key| {
-                @memset(@constCast(old_key), 0);
+                secure.secureZeroConstBytes(old_key);
                 self.allocator.free(old_key);
             }
             

@@ -4,7 +4,7 @@
 //! Ensures 100% protocol coverage for complete Swift conversion.
 
 const std = @import("std");
-const ArrayList = std.array_list.Managed;
+const ArrayList = std.ArrayList;
 const json_utils = @import("../utils/json_utils.zig");
 
 const constants = @import("../core/constants.zig");

@@ -9,13 +9,13 @@ const std = @import("std");
 const testing = std.testing;
 const PolicyContract = @import("../../src/contract/policy_contract.zig").PolicyContract;
 const constants = @import("../../src/core/constants.zig");
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "Policy contract constants" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const policy_contract = PolicyContract.init(neo_swift);
     

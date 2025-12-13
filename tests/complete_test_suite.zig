@@ -7,8 +7,9 @@ const std = @import("std");
 
 
 const neo = @import("neo-zig");
+const json_utils = @import("../src/utils/json_utils.zig");
 
-/// Complete cryptographic test suite (converted from ALL Swift crypto tests)
+// Complete cryptographic test suite (converted from ALL Swift crypto tests)
 test "complete cryptographic functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -61,7 +62,7 @@ test "complete cryptographic functionality" {
     std.log.info("✅ All cryptographic tests passed", .{});
 }
 
-/// Complete transaction test suite (converted from ALL Swift transaction tests)
+// Complete transaction test suite (converted from ALL Swift transaction tests)
 test "complete transaction functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -109,7 +110,7 @@ test "complete transaction functionality" {
     std.log.info("✅ All transaction tests passed", .{});
 }
 
-/// Complete smart contract test suite (converted from ALL Swift contract tests)
+// Complete smart contract test suite (converted from ALL Swift contract tests)
 test "complete smart contract functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -166,7 +167,7 @@ test "complete smart contract functionality" {
     std.log.info("✅ All smart contract tests passed", .{});
 }
 
-/// Complete wallet test suite (converted from ALL Swift wallet tests)
+// Complete wallet test suite (converted from ALL Swift wallet tests)
 test "complete wallet functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -198,7 +199,7 @@ test "complete wallet functionality" {
     
     // Test NEP-6 JSON serialization
     const json_value = try nep6_wallet.toJson(allocator);
-    defer json_value.deinit();
+    defer json_utils.freeValue(json_value, allocator);
     
     const wallet_obj = json_value.object;
     try testing.expectEqualStrings("NEP6 Test Wallet", wallet_obj.get("name").?.string);
@@ -206,7 +207,7 @@ test "complete wallet functionality" {
     std.log.info("✅ All wallet tests passed", .{});
 }
 
-/// Complete RPC test suite (converted from ALL Swift RPC tests)
+// Complete RPC test suite (converted from ALL Swift RPC tests)
 test "complete RPC functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -215,8 +216,9 @@ test "complete RPC functionality" {
     
     // Test RPC client creation (NeoSwiftTests.swift equivalent)
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
     
@@ -240,7 +242,7 @@ test "complete RPC functionality" {
     std.log.info("✅ All RPC tests passed", .{});
 }
 
-/// Complete script building test suite (converted from Swift script tests)
+// Complete script building test suite (converted from Swift script tests)
 test "complete script building functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -280,7 +282,7 @@ test "complete script building functionality" {
     std.log.info("✅ All script building tests passed", .{});
 }
 
-/// Complete utility test suite (converted from ALL Swift utility tests)
+// Complete utility test suite (converted from ALL Swift utility tests)
 test "complete utility functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -319,7 +321,7 @@ test "complete utility functionality" {
     std.log.info("✅ All utility tests passed", .{});
 }
 
-/// Complete type system test suite (converted from ALL Swift type tests)
+// Complete type system test suite (converted from ALL Swift type tests)
 test "complete type system functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -364,7 +366,7 @@ test "complete type system functionality" {
     std.log.info("✅ All type system tests passed", .{});
 }
 
-/// Complete serialization test suite (converted from ALL Swift serialization tests)
+// Complete serialization test suite (converted from ALL Swift serialization tests)
 test "complete serialization functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -412,7 +414,7 @@ test "complete serialization functionality" {
     std.log.info("✅ All serialization tests passed", .{});
 }
 
-/// Performance and integration test suite
+// Performance and integration test suite
 test "complete performance and integration validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -584,8 +586,9 @@ test "complete Swift API compatibility validation" {
     
     // RPC types (Swift NeoSwift, Request, Response, etc.)
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
     
@@ -650,8 +653,9 @@ test "final comprehensive SDK validation" {
     
     // 6. Test RPC client setup
     const config = neo.rpc.NeoSwiftConfig.init();
-    const service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, service, config);
+    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
+    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    defer client.deinit();
     
     const balance_request = try client.getNep17Balances(account_script_hash);
     try testing.expectEqualStrings("getnep17balances", balance_request.method);

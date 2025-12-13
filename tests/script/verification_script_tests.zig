@@ -5,14 +5,12 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
-const VerificationScript = @import("../../src/transaction/witness.zig").VerificationScript;
-const PublicKey = @import("../../src/crypto/keys.zig").PublicKey;
-const OpCode = @import("../../src/script/op_code.zig").OpCode;
-const InteropService = @import("../../src/script/interop_service.zig").InteropService;
+const neo = @import("neo-zig");
+const VerificationScript = neo.transaction.VerificationScript;
+const PublicKey = neo.crypto.PublicKey;
 
-/// Test verification script from single public key (converted from Swift testFromPublicKey)
+// Test verification script from single public key (converted from Swift testFromPublicKey)
 test "Verification script from public key" {
     const allocator = testing.allocator;
     
@@ -20,7 +18,7 @@ test "Verification script from public key" {
     const key_hex = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
     
     // Create public key (equivalent to Swift ECPublicKey(key))
-    const key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(key_hex, allocator);
+    const key_bytes = try neo.utils.StringUtils.bytesFromHex(key_hex, allocator);
     defer allocator.free(key_bytes);
     
     const public_key = try PublicKey.initFromBytes(key_bytes);
@@ -43,7 +41,7 @@ test "Verification script from public key" {
     try testing.expect(!verification_script.isEmpty());
 }
 
-/// Test verification script from multiple public keys (converted from Swift testFromPublicKeys)
+// Test verification script from multiple public keys (converted from Swift testFromPublicKeys)
 test "Verification script from multiple public keys" {
     const allocator = testing.allocator;
     
@@ -53,11 +51,11 @@ test "Verification script from multiple public keys" {
     const key3_hex = "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e";
     
     // Create public keys (equivalent to Swift ECPublicKey array)
-    const key1_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(key1_hex, allocator);
+    const key1_bytes = try neo.utils.StringUtils.bytesFromHex(key1_hex, allocator);
     defer allocator.free(key1_bytes);
-    const key2_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(key2_hex, allocator);
+    const key2_bytes = try neo.utils.StringUtils.bytesFromHex(key2_hex, allocator);
     defer allocator.free(key2_bytes);
-    const key3_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(key3_hex, allocator);
+    const key3_bytes = try neo.utils.StringUtils.bytesFromHex(key3_hex, allocator);
     defer allocator.free(key3_bytes);
     
     const public_keys = [_]PublicKey{
@@ -76,7 +74,7 @@ test "Verification script from multiple public keys" {
     
     // Verify multi-sig script structure (equivalent to Swift expected string check)
     try testing.expect(script_bytes.len > 0);
-    try testing.expect(script_bytes.len >= 120); // Should contain threshold + all pubkeys + count + syscall
+    try testing.expect(script_bytes.len >= 110); // Threshold + 3 pubkeys + count + syscall
     
     // Script should contain all public key data
     const script_contains_key1 = std.mem.indexOf(u8, script_bytes, key1_bytes) != null;
@@ -91,7 +89,7 @@ test "Verification script from multiple public keys" {
     try testing.expect(!multi_sig_script.isEmpty());
 }
 
-/// Test verification script validation
+// Test verification script validation
 test "Verification script validation" {
     const allocator = testing.allocator;
     
@@ -101,7 +99,7 @@ test "Verification script validation" {
     // Empty scripts are valid by design
     
     // Test verification script with valid public key
-    const key_pair = try @import("../../src/crypto/ec_key_pair.zig").ECKeyPair.createRandom();
+    const key_pair = try neo.crypto.ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
         mutable_kp.zeroize();
@@ -116,12 +114,12 @@ test "Verification script validation" {
     try testing.expect(script_bytes.len > 30); // Reasonable size for single-sig script
 }
 
-/// Test verification script size calculations
+// Test verification script size calculations
 test "Verification script size calculations" {
     const allocator = testing.allocator;
     
     // Create single-sig verification script
-    const key_pair = try @import("../../src/crypto/ec_key_pair.zig").ECKeyPair.createRandom();
+    const key_pair = try neo.crypto.ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
         mutable_kp.zeroize();
@@ -144,15 +142,15 @@ test "Verification script size calculations" {
     
     // Both should be reasonable sizes
     try testing.expect(single_sig_size >= 35);  // PUSHDATA1 + 33-byte pubkey + SYSCALL + 4-byte hash
-    try testing.expect(multi_sig_size >= 45);   // Threshold + pubkey + count + SYSCALL + hash
+    try testing.expect(multi_sig_size >= 40);   // Threshold + pubkey + count + SYSCALL + hash
 }
 
-/// Test verification script equality
+// Test verification script equality
 test "Verification script equality" {
     const allocator = testing.allocator;
     
     // Create identical verification scripts
-    const key_pair = try @import("../../src/crypto/ec_key_pair.zig").ECKeyPair.createRandom();
+    const key_pair = try neo.crypto.ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
         mutable_kp.zeroize();
@@ -168,7 +166,7 @@ test "Verification script equality" {
     try testing.expectEqualSlices(u8, script1.getScript(), script2.getScript());
     
     // Create different verification script
-    const different_key_pair = try @import("../../src/crypto/ec_key_pair.zig").ECKeyPair.createRandom();
+    const different_key_pair = try neo.crypto.ECKeyPair.createRandom();
     defer {
         var mutable_kp = different_key_pair;
         mutable_kp.zeroize();

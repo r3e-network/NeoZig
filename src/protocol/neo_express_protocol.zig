@@ -104,7 +104,9 @@ test "NeoExpressProtocol builds express requests" {
 
     http_service.http_client.withSender(mock_send, &mock_context);
 
-    var neo_service = NeoSwiftService.init(&http_service);
+    const ServiceImplementation = @import("../rpc/neo_swift_service.zig").ServiceImplementation;
+    var service_impl = ServiceImplementation.init(&http_service, allocator, false);
+    var neo_service = NeoSwiftService.init(service_impl);
     var protocol = NeoExpressProtocol.init(&neo_service);
 
     const populated = try protocol.expressGetPopulatedBlocks();

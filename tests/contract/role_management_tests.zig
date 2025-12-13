@@ -9,13 +9,13 @@ const std = @import("std");
 const testing = std.testing;
 const RoleManagement = @import("../../src/contract/role_management.zig").RoleManagement;
 const Role = @import("../../src/types/role.zig").Role;
+const TestUtils = @import("../helpers/test_utilities.zig");
 
 test "Role management contract creation" {
     const allocator = testing.allocator;
     
-    const mock_config = @import("../../src/rpc/neo_swift_config.zig").NeoSwiftConfig.createDevConfig();
-    const mock_service = undefined;
-    const neo_swift = @import("../../src/rpc/neo_client.zig").NeoSwift.build(allocator, mock_service, mock_config);
+    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
+    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
     
     const role_management = RoleManagement.init(neo_swift);
     
