@@ -293,7 +293,7 @@ fn mapFetchError(err: anyerror) errors.NetworkError {
         error.ConnectionTimedOut => errors.NetworkError.NetworkTimeout,
         error.TemporaryNameServerFailure, error.NameServerFailure => errors.NetworkError.NetworkUnavailable,
         error.StreamTooLong => errors.NetworkError.InvalidResponse,
-        error.CertificateBundleLoadFailure, error.WriteFailed, error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
+        error.CertificateBundleLoadFailure, error.TooManyHttpRedirects, error.WriteFailed, error.UnsupportedCompressionMethod => errors.NetworkError.RequestFailed,
         else => errors.NetworkError.RequestFailed,
     };
 }
@@ -347,4 +347,9 @@ test "HttpClient validates HTTP status codes" {
     try testing.expectError(errors.NetworkError.InvalidEndpoint, validateHttpStatus(.not_found));
     try testing.expectError(errors.NetworkError.AuthenticationFailed, validateHttpStatus(.unauthorized));
     try testing.expectError(errors.NetworkError.RequestFailed, validateHttpStatus(.bad_request));
+}
+
+test "HttpClient maps redirect loops to RequestFailed" {
+    const testing = std.testing;
+    try testing.expectEqual(errors.NetworkError.RequestFailed, mapFetchError(error.TooManyHttpRedirects));
 }
