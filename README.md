@@ -377,6 +377,7 @@ Allocator notes:
 Networking notes:
 
 - HTTP timeouts are best-effort. `std.http` does not expose per-request socket deadlines, so the SDK relies on elapsed-time checks and retry limits.
+- HTTP response bodies captured into memory are capped by default (32 MiB) to avoid unbounded growth. Override via `NeoSwiftService.setMaxResponseBytes()` / `HttpService.setMaxResponseBytes()` / `HttpClient.setMaxResponseBytes()` (pass `0` to reset to the default cap).
 
 ## 🎖️ Project Status
 
