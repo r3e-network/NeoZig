@@ -138,34 +138,45 @@ pub const TransactionBuilder = struct {
     }
 
     /// Adds signers to the transaction (equivalent to Swift signers(_ signers: [Signer]))
+    /// Note: signers are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn signers(self: *Self, new_signers: []const Signer) !*Self {
-        // Clear existing signers
+        var cloned_signers = ArrayList(Signer).init(self.allocator);
+        errdefer {
+            for (cloned_signers.items) |*signer_entry| {
+                signer_entry.deinit(self.allocator);
+            }
+            cloned_signers.deinit();
+        }
+
+        for (new_signers) |signer_entry| {
+            try cloned_signers.append(try signer_entry.cloneOwned(self.allocator));
+        }
+
         for (self.signers_list.items) |*existing_signer| {
             existing_signer.deinit(self.allocator);
         }
-        self.signers_list.clearRetainingCapacity();
-
-        // Add new signers
-        for (new_signers) |signer_entry| {
-            try self.signers_list.append(signer_entry);
-        }
-
+        self.signers_list.deinit();
+        self.signers_list = cloned_signers;
         return self;
     }
 
     /// Adds a single signer (equivalent to Swift signer(_ signer: Signer))
+    /// Note: the signer is deep-cloned into allocator-owned storage; the builder owns its copy.
     pub fn signer(self: *Self, new_signer: Signer) !*Self {
+        var owned_signer = try new_signer.cloneOwned(self.allocator);
+        errdefer owned_signer.deinit(self.allocator);
+
         // Neo transactions require unique signer accounts. For Swift API parity,
         // treat re-adding an existing signer as an update.
         for (self.signers_list.items, 0..) |existing_signer, idx| {
-            if (existing_signer.signer_hash.eql(new_signer.signer_hash)) {
+            if (existing_signer.signer_hash.eql(owned_signer.signer_hash)) {
                 self.signers_list.items[idx].deinit(self.allocator);
-                self.signers_list.items[idx] = new_signer;
+                self.signers_list.items[idx] = owned_signer;
                 return self;
             }
         }
 
-        try self.signers_list.append(new_signer);
+        try self.signers_list.append(owned_signer);
         return self;
     }
 
@@ -182,21 +193,30 @@ pub const TransactionBuilder = struct {
     }
 
     /// Adds transaction attributes (equivalent to Swift attributes(_ attributes: [TransactionAttribute]))
+    /// Note: attributes are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn attributes(self: *Self, new_attributes: []const TransactionAttribute) !*Self {
         // Validate maximum attributes
         if (new_attributes.len > constants.MAX_TRANSACTION_ATTRIBUTES) {
             return errors.throwIllegalArgument("Too many transaction attributes");
         }
 
-        // Clear and add new attributes
+        var cloned_attributes = ArrayList(TransactionAttribute).init(self.allocator);
+        errdefer {
+            for (cloned_attributes.items) |*attribute_entry| {
+                attribute_entry.deinit(self.allocator);
+            }
+            cloned_attributes.deinit();
+        }
+
+        for (new_attributes) |attribute_item| {
+            try cloned_attributes.append(try attribute_item.cloneOwned(self.allocator));
+        }
+
         for (self.attributes_list.items) |*existing_attribute| {
             existing_attribute.deinit(self.allocator);
         }
-        self.attributes_list.clearRetainingCapacity();
-        for (new_attributes) |attribute_item| {
-            try self.attributes_list.append(attribute_item);
-        }
-
+        self.attributes_list.deinit();
+        self.attributes_list = cloned_attributes;
         return self;
     }
 
@@ -571,6 +591,43 @@ pub const Signer = struct {
         self.owns_rules = false;
     }
 
+    /// Deep-clone this signer into allocator-owned storage.
+    pub fn cloneOwned(self: Self, allocator: std.mem.Allocator) !Self {
+        var cloned = Self.init(self.signer_hash, self.scopes);
+        errdefer cloned.deinit(allocator);
+
+        if (self.allowed_contracts.len > 0) {
+            cloned.allowed_contracts = try allocator.dupe(Hash160, self.allowed_contracts);
+            cloned.owns_allowed_contracts = true;
+        }
+
+        if (self.allowed_groups.len > 0) {
+            cloned.allowed_groups = try allocator.dupe([33]u8, self.allowed_groups);
+            cloned.owns_allowed_groups = true;
+        }
+
+        if (self.rules.len > 0) {
+            const rules = try allocator.alloc(WitnessRule, self.rules.len);
+            errdefer allocator.free(rules);
+            var filled: usize = 0;
+            errdefer {
+                for (rules[0..filled]) |*rule| {
+                    rule.deinit(allocator);
+                }
+            }
+
+            for (self.rules, 0..) |rule, idx| {
+                rules[idx] = try rule.cloneOwned(allocator);
+                filled = idx + 1;
+            }
+
+            cloned.rules = rules;
+            cloned.owns_rules = true;
+        }
+
+        return cloned;
+    }
+
     pub fn toJsonValue(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var object = std.json.ObjectMap.init(allocator);
         const account_string = try formatHash160(self.signer_hash, allocator);
@@ -725,6 +782,18 @@ pub const TransactionAttribute = struct {
         }
         self.data = &[_]u8{};
         self.owns_data = false;
+    }
+
+    /// Deep-clone this attribute into allocator-owned storage.
+    pub fn cloneOwned(self: Self, allocator: std.mem.Allocator) !Self {
+        if (self.data.len == 0) {
+            return Self.init(self.attribute_type, &[_]u8{});
+        }
+
+        const data_copy = try allocator.dupe(u8, self.data);
+        var cloned = Self.init(self.attribute_type, data_copy);
+        cloned.owns_data = true;
+        return cloned;
     }
 };
 

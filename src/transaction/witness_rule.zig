@@ -59,6 +59,14 @@ pub const WitnessRule = struct {
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         self.condition.deinit(allocator);
     }
+
+    /// Deep-clones this rule, producing an owned copy of the condition tree.
+    pub fn cloneOwned(self: Self, allocator: std.mem.Allocator) !Self {
+        return Self{
+            .action = self.action,
+            .condition = try self.condition.cloneOwned(allocator),
+        };
+    }
     
     /// Evaluates witness rule against context (additional utility)
     pub fn evaluate(self: Self, context: WitnessContext) bool {
@@ -366,6 +374,58 @@ pub const WitnessCondition = union(enum(u8)) {
             },
             else => {},
         }
+    }
+
+    /// Deep-clones this condition, returning an owned copy suitable for independent `deinit`.
+    pub fn cloneOwned(self: Self, allocator: std.mem.Allocator) !Self {
+        return switch (self) {
+            .Boolean => |value| Self{ .Boolean = value },
+            .ScriptHash => |hash| Self{ .ScriptHash = hash },
+            .Group => |group_key| Self{ .Group = group_key },
+            .CalledByEntry => Self{ .CalledByEntry = {} },
+            .CalledByContract => |hash| Self{ .CalledByContract = hash },
+            .CalledByGroup => |group_key| Self{ .CalledByGroup = group_key },
+            .Not => |not_condition| {
+                const cloned_child = try allocator.create(WitnessCondition);
+                errdefer allocator.destroy(cloned_child);
+                cloned_child.* = try not_condition.condition.*.cloneOwned(allocator);
+                return Self{ .Not = .{ .condition = cloned_child, .owns_condition = true } };
+            },
+            .And => |and_payload| {
+                const cloned_conditions = try allocator.alloc(WitnessCondition, and_payload.conditions.len);
+                errdefer allocator.free(cloned_conditions);
+                var filled: usize = 0;
+                errdefer {
+                    for (cloned_conditions[0..filled]) |*condition| {
+                        condition.deinit(allocator);
+                    }
+                }
+
+                for (and_payload.conditions, 0..) |condition, idx| {
+                    cloned_conditions[idx] = try condition.cloneOwned(allocator);
+                    filled = idx + 1;
+                }
+
+                return Self{ .And = .{ .conditions = cloned_conditions, .owns_conditions = true } };
+            },
+            .Or => |or_payload| {
+                const cloned_conditions = try allocator.alloc(WitnessCondition, or_payload.conditions.len);
+                errdefer allocator.free(cloned_conditions);
+                var filled: usize = 0;
+                errdefer {
+                    for (cloned_conditions[0..filled]) |*condition| {
+                        condition.deinit(allocator);
+                    }
+                }
+
+                for (or_payload.conditions, 0..) |condition, idx| {
+                    cloned_conditions[idx] = try condition.cloneOwned(allocator);
+                    filled = idx + 1;
+                }
+
+                return Self{ .Or = .{ .conditions = cloned_conditions, .owns_conditions = true } };
+            },
+        };
     }
     
     /// Validates condition

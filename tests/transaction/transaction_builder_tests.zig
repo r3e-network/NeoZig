@@ -85,3 +85,65 @@ test "TransactionBuilder.sign rejects signer/account mismatches" {
         try testing.expectError(neo.errors.TransactionError.InvalidSigner, builder.sign(&[_]neo.transaction.Account{}, 1));
     }
 }
+
+test "TransactionBuilder.signer is alias-safe when updating existing signer" {
+    const allocator = testing.allocator;
+
+    var builder = neo.transaction.TransactionBuilder.init(allocator);
+    defer builder.deinit();
+
+    const signer_hash = try neo.Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
+    const contract_hash = try neo.Hash160.initWithString("0xabcdef1234567890abcdef1234567890abcdef12");
+
+    var signer = neo.transaction.Signer.init(signer_hash, neo.transaction.WitnessScope.CustomContracts);
+    signer.allowed_contracts = try allocator.dupe(neo.Hash160, &[_]neo.Hash160{contract_hash});
+    signer.owns_allowed_contracts = true;
+
+    _ = try builder.signer(signer);
+    signer.deinit(allocator);
+
+    try testing.expectEqual(@as(usize, 1), builder.getSigners().len);
+    try testing.expectEqual(@as(usize, 1), builder.getSigners()[0].allowed_contracts.len);
+
+    // Re-apply the same signer sourced from the builder (previously could corrupt ownership).
+    _ = try builder.signer(builder.getSigners()[0]);
+
+    try testing.expectEqual(@as(usize, 1), builder.getSigners().len);
+    try testing.expectEqual(@as(usize, 1), builder.getSigners()[0].allowed_contracts.len);
+    try testing.expect(builder.getSigners()[0].allowed_contracts[0].eql(contract_hash));
+}
+
+test "TransactionBuilder.signers and attributes handle self-sourced slices" {
+    const allocator = testing.allocator;
+
+    var builder = neo.transaction.TransactionBuilder.init(allocator);
+    defer builder.deinit();
+
+    const signer_hash = try neo.Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
+    const contract_hash = try neo.Hash160.initWithString("0xabcdef1234567890abcdef1234567890abcdef12");
+
+    var signer = neo.transaction.Signer.init(signer_hash, neo.transaction.WitnessScope.CustomContracts);
+    signer.allowed_contracts = try allocator.dupe(neo.Hash160, &[_]neo.Hash160{contract_hash});
+    signer.owns_allowed_contracts = true;
+
+    _ = try builder.signer(signer);
+    signer.deinit(allocator);
+
+    _ = try builder.signers(builder.getSigners());
+    try testing.expectEqual(@as(usize, 1), builder.getSigners().len);
+    try testing.expectEqual(@as(usize, 1), builder.getSigners()[0].allowed_contracts.len);
+    try testing.expect(builder.getSigners()[0].allowed_contracts[0].eql(contract_hash));
+
+    var attribute = neo.transaction.TransactionAttribute.init(
+        neo.transaction.AttributeType.NotValidBefore,
+        try allocator.dupe(u8, &[_]u8{ 0xAA, 0xBB }),
+    );
+    attribute.owns_data = true;
+
+    _ = try builder.attributes(&[_]neo.transaction.TransactionAttribute{attribute});
+    attribute.deinit(allocator);
+
+    _ = try builder.attributes(builder.attributes_list.items);
+    try testing.expectEqual(@as(usize, 1), builder.attributes_list.items.len);
+    try testing.expectEqualSlices(u8, &[_]u8{ 0xAA, 0xBB }, builder.attributes_list.items[0].data);
+}
