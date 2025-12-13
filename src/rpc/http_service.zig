@@ -141,19 +141,7 @@ pub const HttpService = struct {
             return mapFetchError(err);
         };
 
-        switch (result.status) {
-            .ok => {},
-            .bad_request => return errors.NetworkError.RequestFailed,
-            .unauthorized => return errors.NetworkError.AuthenticationFailed,
-            .not_found => return errors.NetworkError.InvalidEndpoint,
-            .internal_server_error => return errors.NetworkError.ServerError,
-            .service_unavailable => return errors.NetworkError.NetworkUnavailable,
-            .gateway_timeout => return errors.NetworkError.NetworkTimeout,
-            else => {
-                if (result.status.class() == .server_error) return errors.NetworkError.ServerError;
-                return errors.NetworkError.InvalidResponse;
-            },
-        }
+        try validateHttpStatus(result.status);
 
         const body = response_body.toOwnedSlice() catch return errors.NetworkError.RequestFailed;
 
@@ -442,4 +430,34 @@ test "HttpService configuration" {
 test "HttpService maps oversized response to InvalidResponse" {
     const testing = std.testing;
     try testing.expectEqual(errors.NetworkError.InvalidResponse, HttpService.mapFetchError(error.StreamTooLong));
+}
+
+test "HttpService validates HTTP status codes" {
+    const testing = std.testing;
+    try validateHttpStatus(.ok);
+    try testing.expectError(errors.NetworkError.InvalidEndpoint, validateHttpStatus(.not_found));
+    try testing.expectError(errors.NetworkError.AuthenticationFailed, validateHttpStatus(.unauthorized));
+    try testing.expectError(errors.NetworkError.AuthenticationFailed, validateHttpStatus(.forbidden));
+    try testing.expectError(errors.NetworkError.NetworkTimeout, validateHttpStatus(.request_timeout));
+    try testing.expectError(errors.NetworkError.RateLimitExceeded, validateHttpStatus(.too_many_requests));
+    try testing.expectError(errors.NetworkError.RequestFailed, validateHttpStatus(.bad_request));
+}
+
+fn validateHttpStatus(status: std.http.Status) errors.NetworkError!void {
+    switch (status) {
+        .ok => {},
+        .bad_request => return errors.NetworkError.RequestFailed,
+        .unauthorized => return errors.NetworkError.AuthenticationFailed,
+        .forbidden => return errors.NetworkError.AuthenticationFailed,
+        .not_found => return errors.NetworkError.InvalidEndpoint,
+        .request_timeout => return errors.NetworkError.NetworkTimeout,
+        .too_many_requests => return errors.NetworkError.RateLimitExceeded,
+        .internal_server_error => return errors.NetworkError.ServerError,
+        .service_unavailable => return errors.NetworkError.NetworkUnavailable,
+        .gateway_timeout => return errors.NetworkError.NetworkTimeout,
+        else => {
+            if (status.class() == .server_error) return errors.NetworkError.ServerError;
+            return errors.NetworkError.InvalidResponse;
+        },
+    }
 }
