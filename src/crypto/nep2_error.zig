@@ -4,9 +4,12 @@
 //! Provides specialized error handling for NEP-2 operations.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 const errors = @import("../core/errors.zig");
+
+const log = std.log.scoped(.neo_crypto);
 
 /// NEP-2 specific errors (converted from Swift NEP2Error)
 pub const NEP2Error = union(enum) {
@@ -37,8 +40,10 @@ pub const NEP2Error = union(enum) {
     pub fn throwError(self: Self, allocator: std.mem.Allocator) !void {
         const description = try self.getErrorDescription(allocator);
         defer allocator.free(description);
-        
-        std.log.err("NEP-2 Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("NEP-2 Error: {s}", .{description});
+        }
         
         return switch (self) {
             .InvalidPassphrase => errors.WalletError.InvalidPassword,
@@ -50,8 +55,10 @@ pub const NEP2Error = union(enum) {
     pub fn logError(self: Self, allocator: std.mem.Allocator) void {
         const description = self.getErrorDescription(allocator) catch "Unknown NEP-2 error";
         defer allocator.free(description);
-        
-        std.log.err("NEP-2 Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("NEP-2 Error: {s}", .{description});
+        }
     }
     
     /// Creates from Zig error (utility conversion)

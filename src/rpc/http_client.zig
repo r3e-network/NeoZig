@@ -3,12 +3,15 @@
 //! Provides JSON-RPC transport for Neo nodes with pluggable send behaviour.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const errors = @import("../core/errors.zig");
 const json_utils = @import("../utils/json_utils.zig");
 
 const ArrayList = std.ArrayList;
 const http = std.http;
 const Uri = std.Uri;
+
+const log = std.log.scoped(.neo_rpc);
 
 pub const HttpClient = struct {
     allocator: std.mem.Allocator,
@@ -139,7 +142,9 @@ pub const HttpClient = struct {
         if (response_obj.get("error")) |error_value| {
             const error_code = error_value.object.get("code").?.integer;
             const error_message = error_value.object.get("message").?.string;
-            std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
+            if (!builtin.is_test) {
+                log.debug("RPC Error {d}: {s}", .{ error_code, error_message });
+            }
             return errors.NetworkError.ServerError;
         }
 

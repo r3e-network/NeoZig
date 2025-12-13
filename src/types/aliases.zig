@@ -4,8 +4,9 @@
 //! Provides Swift-compatible type aliases and utility types.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
-
+const log = std.log.scoped(.neo_types);
 
 /// Byte type alias (equivalent to Swift Byte typealias)
 pub const Byte = u8;
@@ -79,7 +80,9 @@ pub const OptionalUtils = struct {
     /// Unwraps optional or throws error (equivalent to Swift guard let)
     pub fn unwrapOrThrow(comptime T: type, optional: ?T, error_msg: []const u8) !T {
         return optional orelse {
-            std.log.err("Unwrap failed: {s}", .{error_msg});
+            if (!builtin.is_test) {
+                log.debug("Unwrap failed: {s}", .{error_msg});
+            }
             return error.UnwrapFailed;
         };
     }
@@ -158,14 +161,18 @@ pub const CollectionUtils = struct {
 pub const ErrorUtils = struct {
     /// Throws error with message (equivalent to Swift throw with message)
     pub fn throwError(comptime E: type, error_value: E, message: []const u8) E {
-        std.log.err("Error: {s}", .{message});
+        if (!builtin.is_test) {
+            log.debug("Error: {s}", .{message});
+        }
         return error_value;
     }
     
     /// Validates condition or throws (equivalent to Swift guard)
     pub fn validateOrThrow(condition: bool, error_msg: []const u8) !void {
         if (!condition) {
-            std.log.err("Validation failed: {s}", .{error_msg});
+            if (!builtin.is_test) {
+                log.debug("Validation failed: {s}", .{error_msg});
+            }
             return error.ValidationFailed;
         }
     }

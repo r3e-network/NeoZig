@@ -4,10 +4,13 @@
 //! Provides specialized error handling for transaction operations.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 const errors = @import("../core/errors.zig");
 const constants = @import("../core/constants.zig");
+
+const log = std.log.scoped(.neo_transaction);
 
 /// Transaction-specific errors (converted from Swift TransactionError)
 pub const TransactionError = union(enum) {
@@ -45,8 +48,10 @@ pub const TransactionError = union(enum) {
     pub fn throwError(self: Self, allocator: std.mem.Allocator) !void {
         const description = try self.getErrorDescription(allocator);
         defer allocator.free(description);
-        
-        std.log.err("Transaction Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Transaction Error: {s}", .{description});
+        }
         
         return switch (self) {
             .ScriptFormat => errors.TransactionError.InvalidScript,
@@ -59,8 +64,10 @@ pub const TransactionError = union(enum) {
     pub fn logError(self: Self, allocator: std.mem.Allocator) void {
         const description = self.getErrorDescription(allocator) catch "Unknown transaction error";
         defer allocator.free(description);
-        
-        std.log.err("Transaction Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Transaction Error: {s}", .{description});
+        }
     }
     
     /// Creates from Zig error (utility conversion)

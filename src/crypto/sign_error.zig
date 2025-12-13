@@ -4,9 +4,12 @@
 //! Provides specialized error handling for signature operations.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 const errors = @import("../core/errors.zig");
+
+const log = std.log.scoped(.neo_crypto);
 
 /// Sign-specific errors (converted from Swift SignError)
 pub const SignError = union(enum) {
@@ -45,8 +48,10 @@ pub const SignError = union(enum) {
     pub fn throwError(self: Self, allocator: std.mem.Allocator) !void {
         const description = try self.getErrorDescription(allocator);
         defer allocator.free(description);
-        
-        std.log.err("Sign Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Sign Error: {s}", .{description});
+        }
         
         return switch (self) {
             .HeaderOutOfRange => errors.CryptoError.InvalidSignature,
@@ -58,8 +63,10 @@ pub const SignError = union(enum) {
     pub fn logError(self: Self, allocator: std.mem.Allocator) void {
         const description = self.getErrorDescription(allocator) catch "Unknown sign error";
         defer allocator.free(description);
-        
-        std.log.err("Sign Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Sign Error: {s}", .{description});
+        }
     }
     
     /// Creates from Zig error (utility conversion)
@@ -165,8 +172,10 @@ pub const SignErrorUtils = struct {
         allocator: std.mem.Allocator,
     ) !void {
         const sign_error = try SignError.fromZigError(zig_error, allocator);
-        
-        std.log.err("Signature operation '{s}' failed", .{operation});
+
+        if (!builtin.is_test) {
+            log.debug("Signature operation '{s}' failed", .{operation});
+        }
         try sign_error.throwError(allocator);
     }
 };

@@ -4,9 +4,12 @@
 //! Provides protocol-specific error handling for Neo RPC communication.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 const StackItem = @import("../types/stack_item.zig").StackItem;
+
+const log = std.log.scoped(.neo_protocol);
 
 /// Protocol errors for Neo RPC communication (converted from Swift ProtocolError)
 pub const ProtocolError = union(enum) {
@@ -93,8 +96,10 @@ pub const ProtocolError = union(enum) {
     pub fn throwError(self: Self, allocator: std.mem.Allocator) !void {
         const description = try self.getErrorDescription(allocator);
         defer allocator.free(description);
-        
-        std.log.err("Protocol Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Protocol Error: {s}", .{description});
+        }
         
         return switch (self) {
             .RpcResponseError => error.RpcError,
@@ -108,8 +113,10 @@ pub const ProtocolError = union(enum) {
     pub fn logError(self: Self, allocator: std.mem.Allocator) void {
         const description = self.getErrorDescription(allocator) catch "Unknown protocol error";
         defer allocator.free(description);
-        
-        std.log.err("Protocol Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Protocol Error: {s}", .{description});
+        }
     }
     
     /// Gets error severity
@@ -257,7 +264,9 @@ pub const ProtocolErrorUtils = struct {
         }
         
         if (retry_count >= max_retries) {
-            std.log.err("Maximum retries ({}) exceeded for operation '{s}'", .{ max_retries, operation });
+            if (!builtin.is_test) {
+                log.debug("Maximum retries ({}) exceeded for operation '{s}'", .{ max_retries, operation });
+            }
             try error_obj.throwError(allocator);
             return false;
         }

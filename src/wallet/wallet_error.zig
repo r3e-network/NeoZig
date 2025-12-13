@@ -4,8 +4,9 @@
 //! Provides wallet-specific error handling.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
-
+const log = std.log.scoped(.neo_wallet);
 
 /// Wallet-specific errors (converted from Swift WalletError)
 pub const WalletError = union(enum) {
@@ -92,8 +93,10 @@ pub const WalletError = union(enum) {
     pub fn throwError(self: Self, allocator: std.mem.Allocator) !void {
         const description = try self.getErrorDescription(allocator);
         defer allocator.free(description);
-        
-        std.log.err("Wallet Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Wallet Error: {s}", .{description});
+        }
         
         return switch (self) {
             .AccountState => error.WalletAccountState,
@@ -110,8 +113,10 @@ pub const WalletError = union(enum) {
     pub fn logError(self: Self, allocator: std.mem.Allocator) void {
         const description = self.getErrorDescription(allocator) catch "Unknown wallet error";
         defer allocator.free(description);
-        
-        std.log.err("Wallet Error: {s}", .{description});
+
+        if (!builtin.is_test) {
+            log.debug("Wallet Error: {s}", .{description});
+        }
     }
     
     /// Gets error severity

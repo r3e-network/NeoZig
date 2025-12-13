@@ -13,6 +13,8 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const json_utils = @import("../utils/json_utils.zig");
 
+const log = std.log.scoped(.neo_rpc);
+
 /// Parses RPC response result based on expected type
 pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: std.mem.Allocator) !T {
     return switch (T) {
@@ -98,7 +100,7 @@ fn validateResponseValue(value: std.json.Value) !void {
         const error_message = error_obj.get("message").?.string;
 
         if (!builtin.is_test) {
-            std.log.err("RPC Error {d}: {s}", .{ error_code, error_message });
+            log.debug("RPC Error {d}: {s}", .{ error_code, error_message });
         }
         return error.RPCError;
     }
