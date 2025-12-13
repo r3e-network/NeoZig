@@ -47,6 +47,23 @@ test "ContractParameter public key validation" {
     );
 }
 
+test "ContractParameter public key and signature length checks" {
+    const too_short_pubkey = [_]u8{0x02} ++ [_]u8{0xAB} ** 31;
+    try testing.expectError(
+        neo.ValidationError.InvalidLength,
+        ContractParameter.publicKeyChecked(&too_short_pubkey),
+    );
+
+    const valid_sig = [_]u8{0xAA} ** neo.constants.SIGNATURE_SIZE;
+    _ = try ContractParameter.signatureChecked(&valid_sig);
+
+    const too_short_sig = [_]u8{0xAA} ** (neo.constants.SIGNATURE_SIZE - 1);
+    try testing.expectError(
+        neo.ValidationError.InvalidLength,
+        ContractParameter.signatureChecked(&too_short_sig),
+    );
+}
+
 test "ContractParameter array equality" {
     const a_items = [_]ContractParameter{
         ContractParameter.integer(1),
@@ -85,4 +102,3 @@ test "ContractParameter JSON encoding" {
     try testing.expectEqualStrings("Integer", obj.get("type").?.string);
     try testing.expectEqualStrings("42", obj.get("value").?.string);
 }
-
