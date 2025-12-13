@@ -308,6 +308,12 @@ pub const TokenIterator = struct {
 
         var inner_iter = &self.inner.?;
         const batch = try inner_iter.traverse(1);
+        var cleanup_batch = true;
+        errdefer if (cleanup_batch) {
+            for (batch) |item| {
+                self.allocator.free(item);
+            }
+        };
         defer self.allocator.free(batch);
 
         if (batch.len == 0) {
@@ -316,6 +322,7 @@ pub const TokenIterator = struct {
         }
 
         try self.buffer.appendSlice(batch);
+        cleanup_batch = false;
         return true;
     }
 
