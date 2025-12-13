@@ -24,7 +24,7 @@ fn jsonValueToOwnedString(value: std.json.Value, allocator: std.mem.Allocator) !
     return switch (value) {
         .string => |str| try allocator.dupe(u8, str),
         .integer => |i| try std.fmt.allocPrint(allocator, "{d}", .{i}),
-        .float => |f| try std.fmt.allocPrint(allocator, "{g}", .{f}),
+        .float => |f| try std.fmt.allocPrint(allocator, "{}", .{f}),
         .bool => |b| try allocator.dupe(u8, if (b) "true" else "false"),
         .null => try allocator.dupe(u8, ""),
         else => try stringifyJsonValue(value, allocator),
@@ -1161,7 +1161,7 @@ pub const ContractManifest = struct {
         var standards_cleanup = TrueFlag{};
         defer if (standards_cleanup.value) {
             for (standards.items) |standard| {
-                if (standard.ptr != null) allocator.free(@constCast(standard));
+                if (standard.len > 0) allocator.free(@constCast(standard));
             }
             standards.deinit();
         };
@@ -1169,7 +1169,9 @@ pub const ContractManifest = struct {
             if (standards_value != .array) return errors.SerializationError.InvalidFormat;
             for (standards_value.array.items) |entry| {
                 if (entry != .string) return errors.SerializationError.InvalidFormat;
-                try standards.append(try allocator.dupe(u8, entry.string));
+                const standard_copy = try allocator.dupe(u8, entry.string);
+                errdefer allocator.free(standard_copy);
+                try standards.append(standard_copy);
             }
         }
 
@@ -1190,7 +1192,7 @@ pub const ContractManifest = struct {
         var trusts_cleanup = TrueFlag{};
         defer if (trusts_cleanup.value) {
             for (trusts.items) |trust| {
-                if (trust.ptr != null) allocator.free(@constCast(trust));
+                if (trust.len > 0) allocator.free(@constCast(trust));
             }
             trusts.deinit();
         };
@@ -1324,7 +1326,7 @@ pub const ContractGroup = struct {
         };
     }
 
-    pub fn deinit(self: *ContractGroup, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractGroup, allocator: std.mem.Allocator) void {
         if (self.public_key.len > 0) allocator.free(@constCast(self.public_key));
         if (self.signature.len > 0) allocator.free(@constCast(self.signature));
     }
@@ -1349,7 +1351,7 @@ pub const ContractParameterDefinition = struct {
         };
     }
 
-    pub fn deinit(self: *ContractParameterDefinition, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractParameterDefinition, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.parameter_type.len > 0) allocator.free(@constCast(self.parameter_type));
     }
@@ -1413,7 +1415,7 @@ pub const ContractMethod = struct {
         };
     }
 
-    pub fn deinit(self: *ContractMethod, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractMethod, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.return_type.len > 0) allocator.free(@constCast(self.return_type));
         if (self.parameters.len > 0) {
@@ -1461,7 +1463,7 @@ pub const ContractEvent = struct {
         };
     }
 
-    pub fn deinit(self: *ContractEvent, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractEvent, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.parameters.len > 0) {
             for (self.parameters) |*param| param.deinit(allocator);
@@ -1556,20 +1558,24 @@ pub const ContractPermission = struct {
         var methods_cleanup = TrueFlag{};
         defer if (methods_cleanup.value) {
             for (methods.items) |method| {
-                if (method.ptr != null) allocator.free(@constCast(method));
+                if (method.len > 0) allocator.free(@constCast(method));
             }
             methods.deinit();
         };
         if (obj.get("methods")) |methods_value| {
             switch (methods_value) {
                 .array => |method_array| {
-                    for (method_array) |entry| {
+                    for (method_array.items) |entry| {
                         if (entry != .string) return errors.SerializationError.InvalidFormat;
-                        try methods.append(try allocator.dupe(u8, entry.string));
+                        const method_copy = try allocator.dupe(u8, entry.string);
+                        errdefer allocator.free(method_copy);
+                        try methods.append(method_copy);
                     }
                 },
                 .string => |method_name| {
-                    try methods.append(try allocator.dupe(u8, method_name));
+                    const method_copy = try allocator.dupe(u8, method_name);
+                    errdefer allocator.free(method_copy);
+                    try methods.append(method_copy);
                 },
                 else => return errors.SerializationError.InvalidFormat,
             }
@@ -1584,7 +1590,7 @@ pub const ContractPermission = struct {
         };
     }
 
-    pub fn deinit(self: *ContractPermission, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractPermission, allocator: std.mem.Allocator) void {
         if (self.contract.len > 0) allocator.free(@constCast(self.contract));
         if (self.methods.len > 0) {
             for (self.methods) |method| {

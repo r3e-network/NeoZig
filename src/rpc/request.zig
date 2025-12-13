@@ -148,11 +148,14 @@ pub fn Request(comptime T: type, comptime U: type) type {
             const obj = json_value.object;
 
             const method = try allocator.dupe(u8, obj.get("method").?.string);
+            errdefer allocator.free(method);
             const id = @as(u32, @intCast(obj.get("id").?.integer));
 
             var params = ArrayList(std.json.Value).init(allocator);
+            errdefer params.deinit();
             if (obj.get("params")) |params_array| {
-                for (params_array.array) |param| {
+                if (params_array != .array) return errors.SerializationError.InvalidFormat;
+                for (params_array.array.items) |param| {
                     try params.append(param);
                 }
             }
@@ -377,6 +380,12 @@ test "Request JSON serialization" {
     const params_array = request_obj.get("params").?.array;
     try testing.expectEqual(@as(usize, 1), params_array.items.len);
     try testing.expectEqualStrings("test_param", params_array.items[0].string);
+
+    // Test JSON parsing round-trip
+    var parsed_request = try TestRequest.fromJson(json_value, allocator);
+    defer parsed_request.deinit();
+    try testing.expectEqualStrings("testmethod", parsed_request.method);
+    try testing.expectEqual(@as(usize, 1), parsed_request.getParams().len);
 }
 
 test "Request utilities" {

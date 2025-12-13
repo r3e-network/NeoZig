@@ -223,18 +223,37 @@ pub const NeoListPlugins = struct {
         }
 
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Plugin {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
 
+            const name_value = obj.get("name") orelse return errors.SerializationError.InvalidFormat;
+            if (name_value != .string) return errors.SerializationError.InvalidFormat;
+            const name = try allocator.dupe(u8, name_value.string);
+            errdefer allocator.free(name);
+
+            const version_value = obj.get("version") orelse return errors.SerializationError.InvalidFormat;
+            if (version_value != .string) return errors.SerializationError.InvalidFormat;
+            const version = try allocator.dupe(u8, version_value.string);
+            errdefer allocator.free(version);
+
             var interfaces = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (interfaces.items) |iface| allocator.free(@constCast(iface));
+                interfaces.deinit();
+            }
             if (obj.get("interfaces")) |interfaces_array| {
-                for (interfaces_array.array) |interface| {
-                    try interfaces.append(try allocator.dupe(u8, interface.string));
+                if (interfaces_array != .array) return errors.SerializationError.InvalidFormat;
+                for (interfaces_array.array.items) |interface| {
+                    if (interface != .string) return errors.SerializationError.InvalidFormat;
+                    const iface_copy = try allocator.dupe(u8, interface.string);
+                    errdefer allocator.free(iface_copy);
+                    try interfaces.append(iface_copy);
                 }
             }
 
             return Plugin{
-                .name = try allocator.dupe(u8, obj.get("name").?.string),
-                .version = try allocator.dupe(u8, obj.get("version").?.string),
+                .name = name,
+                .version = version,
                 .interfaces = try interfaces.toOwnedSlice(),
             };
         }
@@ -261,16 +280,21 @@ pub const NeoListPlugins = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListPlugins {
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
         const array = json_value.array;
 
         var plugins = ArrayList(Plugin).init(allocator);
-        for (array) |plugin_item| {
-            try plugins.append(try Plugin.fromJson(plugin_item, allocator));
+        errdefer {
+            for (plugins.items) |*plugin| plugin.deinit(allocator);
+            plugins.deinit();
+        }
+        for (array.items) |plugin_item| {
+            var plugin = try Plugin.fromJson(plugin_item, allocator);
+            errdefer plugin.deinit(allocator);
+            try plugins.append(plugin);
         }
 
-        return NeoListPlugins{
-            .plugins = try plugins.toOwnedSlice(),
-        };
+        return NeoListPlugins{ .plugins = try plugins.toOwnedSlice() };
     }
 
     pub fn deinit(self: *NeoListPlugins, allocator: std.mem.Allocator) void {
@@ -393,16 +417,21 @@ pub const NeoGetNextBlockValidators = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNextBlockValidators {
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
         const array = json_value.array;
 
         var validators = ArrayList(Validator).init(allocator);
-        for (array) |validator_item| {
-            try validators.append(try Validator.fromJson(validator_item, allocator));
+        errdefer {
+            for (validators.items) |*validator| validator.deinit(allocator);
+            validators.deinit();
+        }
+        for (array.items) |validator_item| {
+            var validator = try Validator.fromJson(validator_item, allocator);
+            errdefer validator.deinit(allocator);
+            try validators.append(validator);
         }
 
-        return NeoGetNextBlockValidators{
-            .validators = try validators.toOwnedSlice(),
-        };
+        return NeoGetNextBlockValidators{ .validators = try validators.toOwnedSlice() };
     }
 
     pub fn deinit(self: *NeoGetNextBlockValidators, allocator: std.mem.Allocator) void {
@@ -456,21 +485,24 @@ pub const NeoGetStateRoot = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetStateRoot {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
         var witnesses = ArrayList(NeoWitness).init(allocator);
+        errdefer {
+            for (witnesses.items) |*witness| witness.deinit(allocator);
+            witnesses.deinit();
+        }
         if (obj.get("witnesses")) |witnesses_array| {
-            for (witnesses_array.array) |witness| {
-                try witnesses.append(try NeoWitness.fromJson(witness, allocator));
+            if (witnesses_array != .array) return errors.SerializationError.InvalidFormat;
+            for (witnesses_array.array.items) |witness| {
+                var parsed = try NeoWitness.fromJson(witness, allocator);
+                errdefer parsed.deinit(allocator);
+                try witnesses.append(parsed);
             }
         }
 
-        return NeoGetStateRoot{
-            .version = @intCast(obj.get("version").?.integer),
-            .index = @intCast(obj.get("index").?.integer),
-            .root_hash = try Hash256.initWithString(obj.get("roothash").?.string),
-            .witnesses = try witnesses.toOwnedSlice(),
-        };
+        return NeoGetStateRoot{ .version = @intCast(obj.get("version").?.integer), .index = @intCast(obj.get("index").?.integer), .root_hash = try Hash256.initWithString(obj.get("roothash").?.string), .witnesses = try witnesses.toOwnedSlice() };
     }
 
     pub fn deinit(self: *NeoGetStateRoot, allocator: std.mem.Allocator) void {
@@ -497,12 +529,20 @@ pub const NeoWitness = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoWitness {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        return NeoWitness.init(
-            try allocator.dupe(u8, obj.get("invocation").?.string),
-            try allocator.dupe(u8, obj.get("verification").?.string),
-        );
+        const invocation_value = obj.get("invocation") orelse return errors.SerializationError.InvalidFormat;
+        if (invocation_value != .string) return errors.SerializationError.InvalidFormat;
+        const invocation = try allocator.dupe(u8, invocation_value.string);
+        errdefer allocator.free(invocation);
+
+        const verification_value = obj.get("verification") orelse return errors.SerializationError.InvalidFormat;
+        if (verification_value != .string) return errors.SerializationError.InvalidFormat;
+        const verification = try allocator.dupe(u8, verification_value.string);
+        errdefer allocator.free(verification);
+
+        return NeoWitness.init(invocation, verification);
     }
 
     pub fn toJson(self: NeoWitness, allocator: std.mem.Allocator) !std.json.Value {
@@ -665,19 +705,20 @@ pub const PopulatedBlocks = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !PopulatedBlocks {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
         var blocks = ArrayList(u32).init(allocator);
+        errdefer blocks.deinit();
         if (obj.get("blocks")) |blocks_array| {
-            for (blocks_array.array) |block| {
+            if (blocks_array != .array) return errors.SerializationError.InvalidFormat;
+            for (blocks_array.array.items) |block| {
+                if (block != .integer) return errors.SerializationError.InvalidFormat;
                 try blocks.append(@intCast(block.integer));
             }
         }
 
-        return PopulatedBlocks{
-            .count = @intCast(obj.get("count").?.integer),
-            .blocks = try blocks.toOwnedSlice(),
-        };
+        return PopulatedBlocks{ .count = @intCast(obj.get("count").?.integer), .blocks = try blocks.toOwnedSlice() };
     }
 
     pub fn deinit(self: *PopulatedBlocks, allocator: std.mem.Allocator) void {
@@ -739,21 +780,35 @@ pub const NativeContractState = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NativeContractState {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
         var update_history = ArrayList(u32).init(allocator);
+        errdefer update_history.deinit();
         if (obj.get("updatehistory")) |history_array| {
-            for (history_array.array) |item| {
+            if (history_array != .array) return errors.SerializationError.InvalidFormat;
+            for (history_array.array.items) |item| {
+                if (item != .integer) return errors.SerializationError.InvalidFormat;
                 try update_history.append(@intCast(item.integer));
             }
         }
+        const update_history_slice = try update_history.toOwnedSlice();
+        errdefer allocator.free(update_history_slice);
+
+        const nef_value = obj.get("nef") orelse return errors.SerializationError.InvalidFormat;
+        var nef = try ContractNef.fromJson(nef_value, allocator);
+        errdefer nef.deinit(allocator);
+
+        const manifest_value = obj.get("manifest") orelse return errors.SerializationError.InvalidFormat;
+        var manifest = try ContractManifest.fromJson(manifest_value, allocator);
+        errdefer manifest.deinit(allocator);
 
         return NativeContractState{
             .id = @intCast(obj.get("id").?.integer),
             .hash = try Hash160.initWithString(obj.get("hash").?.string),
-            .nef = try ContractNef.fromJson(obj.get("nef").?, allocator),
-            .manifest = try ContractManifest.fromJson(obj.get("manifest").?, allocator),
-            .update_history = try update_history.toOwnedSlice(),
+            .nef = nef,
+            .manifest = manifest,
+            .update_history = update_history_slice,
         };
     }
 
@@ -837,8 +892,8 @@ pub const Diagnostics = struct {
 };
 
 // Import dependencies
-const ContractManifest = @import("protocol_responses.zig").ContractManifest;
-const ContractNef = @import("protocol_responses.zig").ContractNef;
+const ContractManifest = @import("responses.zig").ContractManifest;
+const ContractNef = @import("responses.zig").ContractNef;
 pub const ContractStorageEntry = @import("protocol_responses.zig").ContractStorageEntry;
 
 // Tests (converted from ALL Swift response tests)
@@ -951,4 +1006,102 @@ test "State and diagnostic response types" {
     const diagnostics = Diagnostics.init();
     try testing.expectEqual(@as(usize, 0), diagnostics.invocation_id.len);
     try testing.expectEqual(@as(u32, 0), diagnostics.invocation_counter);
+}
+
+test "Complete response fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // NeoListPlugins
+    var interfaces_array = std.json.Array.init(allocator);
+    try interfaces_array.append(std.json.Value{ .string = "IPlugin" });
+    try interfaces_array.append(std.json.Value{ .string = "ILogging" });
+
+    var plugin_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&plugin_obj, allocator, "name", std.json.Value{ .string = "RpcServer" });
+    try json_utils.putOwnedKey(&plugin_obj, allocator, "version", std.json.Value{ .string = "1.0.0" });
+    try json_utils.putOwnedKey(&plugin_obj, allocator, "interfaces", std.json.Value{ .array = interfaces_array });
+
+    var plugins_array = std.json.Array.init(allocator);
+    try plugins_array.append(std.json.Value{ .object = plugin_obj });
+
+    const parsed_plugins = try NeoListPlugins.fromJson(std.json.Value{ .array = plugins_array }, allocator);
+    try testing.expectEqual(@as(usize, 1), parsed_plugins.plugins.len);
+    try testing.expectEqualStrings("RpcServer", parsed_plugins.plugins[0].name);
+    try testing.expectEqual(@as(usize, 2), parsed_plugins.plugins[0].interfaces.len);
+
+    // PopulatedBlocks
+    var blocks_array = std.json.Array.init(allocator);
+    try blocks_array.append(std.json.Value{ .integer = 1 });
+    try blocks_array.append(std.json.Value{ .integer = 2 });
+
+    var blocks_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&blocks_obj, allocator, "count", std.json.Value{ .integer = 2 });
+    try json_utils.putOwnedKey(&blocks_obj, allocator, "blocks", std.json.Value{ .array = blocks_array });
+
+    const populated = try PopulatedBlocks.fromJson(std.json.Value{ .object = blocks_obj }, allocator);
+    try testing.expectEqual(@as(u32, 2), populated.count);
+    try testing.expectEqual(@as(usize, 2), populated.blocks.len);
+
+    // NeoGetStateRoot
+    var witnesses_array = std.json.Array.init(allocator);
+    var witness_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&witness_obj, allocator, "invocation", std.json.Value{ .string = "00" });
+    try json_utils.putOwnedKey(&witness_obj, allocator, "verification", std.json.Value{ .string = "01" });
+    try witnesses_array.append(std.json.Value{ .object = witness_obj });
+
+    var state_root_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&state_root_obj, allocator, "version", std.json.Value{ .integer = 0 });
+    try json_utils.putOwnedKey(&state_root_obj, allocator, "index", std.json.Value{ .integer = 1 });
+    try json_utils.putOwnedKey(
+        &state_root_obj,
+        allocator,
+        "roothash",
+        std.json.Value{ .string = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" },
+    );
+    try json_utils.putOwnedKey(&state_root_obj, allocator, "witnesses", std.json.Value{ .array = witnesses_array });
+
+    const parsed_state_root = try NeoGetStateRoot.fromJson(std.json.Value{ .object = state_root_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), parsed_state_root.witnesses.len);
+
+    // NeoGetNextBlockValidators
+    var validators_array = std.json.Array.init(allocator);
+    var validator_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&validator_obj, allocator, "publickey", std.json.Value{ .string = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816" });
+    try json_utils.putOwnedKey(&validator_obj, allocator, "votes", std.json.Value{ .string = "42" });
+    try json_utils.putOwnedKey(&validator_obj, allocator, "active", std.json.Value{ .bool = true });
+    try validators_array.append(std.json.Value{ .object = validator_obj });
+
+    const parsed_validators = try NeoGetNextBlockValidators.fromJson(std.json.Value{ .array = validators_array }, allocator);
+    try testing.expectEqual(@as(usize, 1), parsed_validators.validators.len);
+    try testing.expectEqualStrings("42", parsed_validators.validators[0].votes);
+
+    // NativeContractState (exercises ContractNef + ContractManifest parsing)
+    var nef_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&nef_obj, allocator, "magic", std.json.Value{ .integer = 123 });
+    try json_utils.putOwnedKey(&nef_obj, allocator, "compiler", std.json.Value{ .string = "neo-zig-test" });
+    try json_utils.putOwnedKey(&nef_obj, allocator, "script", std.json.Value{ .string = "00" });
+    try json_utils.putOwnedKey(&nef_obj, allocator, "checksum", std.json.Value{ .integer = 1 });
+
+    var manifest_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "name", std.json.Value{ .string = "TestContract" });
+
+    var update_history_array = std.json.Array.init(allocator);
+    try update_history_array.append(std.json.Value{ .integer = 1 });
+    try update_history_array.append(std.json.Value{ .integer = 2 });
+
+    var native_contract_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&native_contract_obj, allocator, "id", std.json.Value{ .integer = 1 });
+    try json_utils.putOwnedKey(&native_contract_obj, allocator, "hash", std.json.Value{ .string = "1234567890abcdef1234567890abcdef12345678" });
+    try json_utils.putOwnedKey(&native_contract_obj, allocator, "nef", std.json.Value{ .object = nef_obj });
+    try json_utils.putOwnedKey(&native_contract_obj, allocator, "manifest", std.json.Value{ .object = manifest_obj });
+    try json_utils.putOwnedKey(&native_contract_obj, allocator, "updatehistory", std.json.Value{ .array = update_history_array });
+
+    var native_contract = try NativeContractState.fromJson(std.json.Value{ .object = native_contract_obj }, allocator);
+    try testing.expectEqual(@as(i32, 1), native_contract.id);
+    try testing.expectEqual(@as(usize, 2), native_contract.update_history.len);
+    native_contract.deinit(allocator);
 }

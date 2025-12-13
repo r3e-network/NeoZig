@@ -258,9 +258,12 @@ pub const ContextItem = struct {
         // Parse parameters if present
         var parameters: ?[]ContractParameter = null;
         if (obj.get("parameters")) |params_array| {
+            if (params_array != .array) return errors.SerializationError.InvalidFormat;
             var params_list = ArrayList(ContractParameter).init(allocator);
-            for (params_array.array) |param_json| {
+            errdefer params_list.deinit();
+            for (params_array.array.items) |param_json| {
                 // Would parse contract parameter from JSON
+                _ = param_json;
                 try params_list.append(ContractParameter.boolean(true)); // stub
             }
             parameters = try params_list.toOwnedSlice();
@@ -421,4 +424,10 @@ test "ContractParametersContext JSON operations" {
     // Verify items are present
     const items_obj = context_obj.get("items").?.object;
     try testing.expect(items_obj.contains("script1"));
+
+    // Smoke-test JSON import
+    var imported = try ContractParametersContext.fromJson(json_value, allocator);
+    defer imported.deinit();
+    try testing.expectEqual(constants.NetworkMagic.TESTNET, imported.network);
+    try testing.expect(imported.getItem("script1") != null);
 }

@@ -79,8 +79,10 @@ pub const NEP6Wallet = struct {
         
         // Parse accounts
         var accounts = ArrayList(NEP6Account).init(allocator);
+        errdefer accounts.deinit();
         if (obj.get("accounts")) |accounts_array| {
-            for (accounts_array.array) |account_json| {
+            if (accounts_array != .array) return errors.SerializationError.InvalidFormat;
+            for (accounts_array.array.items) |account_json| {
                 try accounts.append(try NEP6Account.fromJson(account_json, allocator));
             }
         }
@@ -248,8 +250,10 @@ pub const NEP6Contract = struct {
         
         // Parse parameters
         var parameters = ArrayList(ContractParameterInfo).init(allocator);
+        errdefer parameters.deinit();
         if (obj.get("parameters")) |params_array| {
-            for (params_array.array) |param_json| {
+            if (params_array != .array) return errors.SerializationError.InvalidFormat;
+            for (params_array.array.items) |param_json| {
                 try parameters.append(try ContractParameterInfo.fromJson(param_json, allocator));
             }
         }
@@ -370,6 +374,43 @@ test "NEP6Wallet JSON serialization" {
     try testing.expectEqual(@as(i64, 16384), scrypt_obj.get("n").?.integer);
     try testing.expectEqual(@as(i64, 8), scrypt_obj.get("r").?.integer);
     try testing.expectEqual(@as(i64, 8), scrypt_obj.get("p").?.integer);
+}
+
+test "NEP6Wallet and contract fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Wallet round-trip (empty accounts)
+    const accounts = [_]NEP6Account{};
+    const wallet = NEP6Wallet.init(
+        "Roundtrip Wallet",
+        "3.0",
+        ScryptParams.DEFAULT,
+        &accounts,
+        null,
+    );
+
+    const wallet_json = try wallet.toJson(allocator);
+    const parsed_wallet = try NEP6Wallet.fromJson(wallet_json, allocator);
+    try testing.expect(wallet.eql(parsed_wallet));
+
+    // Contract parsing
+    const script = [_]u8{ 0x01, 0x02 };
+    const params = [_]ContractParameterInfo{
+        ContractParameterInfo.init("param", "String"),
+    };
+    const contract = NEP6Contract.init(&script, &params, true);
+
+    const contract_json = try contract.toJson(allocator);
+    const parsed_contract = try NEP6Contract.fromJson(contract_json, allocator);
+    try testing.expect(parsed_contract.deployed);
+    try testing.expectEqual(@as(usize, 2), parsed_contract.script.len);
+    try testing.expect(std.mem.eql(u8, parsed_contract.script, &script));
+    try testing.expectEqual(@as(usize, 1), parsed_contract.parameters.len);
+    try testing.expectEqualStrings("param", parsed_contract.parameters[0].name);
 }
 
 test "NEP6Account creation and properties" {

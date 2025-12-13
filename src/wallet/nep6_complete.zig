@@ -154,7 +154,8 @@ pub const CompleteNEP6Wallet = struct {
         
         // Import accounts
         if (obj.get("accounts")) |accounts_array| {
-            for (accounts_array.array) |account_json| {
+            if (accounts_array != .array) return errors.SerializationError.InvalidFormat;
+            for (accounts_array.array.items) |account_json| {
                 const account = try CompleteNEP6Account.importFromJson(account_json, allocator);
                 try wallet.accounts.append(account);
             }
@@ -379,7 +380,8 @@ pub const NEP6Contract = struct {
         
         var parameters = ArrayList(NEP6ParameterInfo).init(allocator);
         if (obj.get("parameters")) |params_array| {
-            for (params_array.array) |param_json| {
+            if (params_array != .array) return errors.SerializationError.InvalidFormat;
+            for (params_array.array.items) |param_json| {
                 try parameters.append(try NEP6ParameterInfo.importFromJson(param_json, allocator));
             }
         }

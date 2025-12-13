@@ -8,9 +8,13 @@ const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const json_utils = @import("../utils/json_utils.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+
+/// NEF file (shared contract format).
+pub const ContractNef = @import("responses.zig").ContractNef;
 
 /// Contract manifest (converted from Swift ContractManifest)
 pub const ContractManifest = struct {
@@ -83,52 +87,101 @@ pub const ContractManifest = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const name = if (obj.get("name")) |n| try allocator.dupe(u8, n.string) else null;
-
-        // Parse groups
-        var groups = ArrayList(ContractGroup).init(allocator);
-        if (obj.get("groups")) |groups_array| {
-            for (groups_array.array) |group_item| {
-                try groups.append(try ContractGroup.fromJson(group_item, allocator));
-            }
-        }
-
-        // Parse supported standards
-        var standards = ArrayList([]const u8).init(allocator);
-        if (obj.get("supportedstandards")) |standards_array| {
-            for (standards_array.array) |standard| {
-                try standards.append(try allocator.dupe(u8, standard.string));
-            }
-        }
-
-        // Parse permissions
-        var permissions = ArrayList(ContractPermission).init(allocator);
-        if (obj.get("permissions")) |perms_array| {
-            for (perms_array.array) |perm_item| {
-                try permissions.append(try ContractPermission.fromJson(perm_item, allocator));
-            }
-        }
-
-        // Parse trusts
-        var trusts = ArrayList([]const u8).init(allocator);
-        if (obj.get("trusts")) |trusts_array| {
-            for (trusts_array.array) |trust| {
-                try trusts.append(try allocator.dupe(u8, trust.string));
-            }
-        }
-
-        return Self.init(
-            name,
-            try groups.toOwnedSlice(),
-            obj.get("features"),
-            try standards.toOwnedSlice(),
-            if (obj.get("abi")) |abi| try ContractABI.fromJson(abi, allocator) else null,
-            try permissions.toOwnedSlice(),
-            try trusts.toOwnedSlice(),
-            obj.get("extra"),
+        var result = Self.init(
+            null,
+            &[_]ContractGroup{},
+            null,
+            &[_][]const u8{},
+            null,
+            &[_]ContractPermission{},
+            &[_][]const u8{},
+            null,
         );
+        errdefer result.deinit(allocator);
+
+        if (obj.get("name")) |n| {
+            if (n != .string) return errors.SerializationError.InvalidFormat;
+            result.name = try allocator.dupe(u8, n.string);
+        }
+
+        if (obj.get("groups")) |groups_array| {
+            if (groups_array != .array) return errors.SerializationError.InvalidFormat;
+            var groups = ArrayList(ContractGroup).init(allocator);
+            errdefer {
+                for (groups.items) |*group| group.deinit(allocator);
+                groups.deinit();
+            }
+            for (groups_array.array.items) |group_item| {
+                var group = try ContractGroup.fromJson(group_item, allocator);
+                errdefer group.deinit(allocator);
+                try groups.append(group);
+            }
+            result.groups = try groups.toOwnedSlice();
+        }
+
+        if (obj.get("features")) |features_value| {
+            result.features = try json_utils.cloneValue(features_value, allocator);
+        }
+
+        if (obj.get("supportedstandards")) |standards_array| {
+            if (standards_array != .array) return errors.SerializationError.InvalidFormat;
+            var standards = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (standards.items) |standard| allocator.free(@constCast(standard));
+                standards.deinit();
+            }
+            for (standards_array.array.items) |standard| {
+                if (standard != .string) return errors.SerializationError.InvalidFormat;
+                const standard_copy = try allocator.dupe(u8, standard.string);
+                errdefer allocator.free(standard_copy);
+                try standards.append(standard_copy);
+            }
+            result.supported_standards = try standards.toOwnedSlice();
+        }
+
+        if (obj.get("abi")) |abi| {
+            result.abi = try ContractABI.fromJson(abi, allocator);
+        }
+
+        if (obj.get("permissions")) |perms_array| {
+            if (perms_array != .array) return errors.SerializationError.InvalidFormat;
+            var permissions = ArrayList(ContractPermission).init(allocator);
+            errdefer {
+                for (permissions.items) |*permission| permission.deinit(allocator);
+                permissions.deinit();
+            }
+            for (perms_array.array.items) |perm_item| {
+                var permission = try ContractPermission.fromJson(perm_item, allocator);
+                errdefer permission.deinit(allocator);
+                try permissions.append(permission);
+            }
+            result.permissions = try permissions.toOwnedSlice();
+        }
+
+        if (obj.get("trusts")) |trusts_array| {
+            if (trusts_array != .array) return errors.SerializationError.InvalidFormat;
+            var trusts = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (trusts.items) |trust| allocator.free(@constCast(trust));
+                trusts.deinit();
+            }
+            for (trusts_array.array.items) |trust| {
+                if (trust != .string) return errors.SerializationError.InvalidFormat;
+                const trust_copy = try allocator.dupe(u8, trust.string);
+                errdefer allocator.free(trust_copy);
+                try trusts.append(trust_copy);
+            }
+            result.trusts = try trusts.toOwnedSlice();
+        }
+
+        if (obj.get("extra")) |extra_value| {
+            result.extra = try json_utils.cloneValue(extra_value, allocator);
+        }
+
+        return result;
     }
 
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
@@ -174,8 +227,15 @@ pub const ContractManifest = struct {
             self.trusts = &[_][]const u8{};
         }
 
-        self.features = null;
-        self.extra = null;
+        if (self.features) |value| {
+            json_utils.freeValue(value, allocator);
+            self.features = null;
+        }
+
+        if (self.extra) |value| {
+            json_utils.freeValue(value, allocator);
+            self.extra = null;
+        }
     }
 };
 
@@ -228,7 +288,7 @@ pub const ContractGroup = struct {
         );
     }
 
-    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const Self, allocator: std.mem.Allocator) void {
         if (self.pub_key.len > 0) allocator.free(@constCast(self.pub_key));
         if (self.signature.len > 0) allocator.free(@constCast(self.signature));
     }
@@ -247,26 +307,43 @@ pub const ContractABI = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractABI {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var methods = ArrayList(ContractMethodInfo).init(allocator);
+        var result = ContractABI.init();
+        errdefer result.deinit(allocator);
+
         if (obj.get("methods")) |methods_array| {
-            for (methods_array.array) |method| {
-                try methods.append(try ContractMethodInfo.fromJson(method, allocator));
+            if (methods_array != .array) return errors.SerializationError.InvalidFormat;
+            var methods = ArrayList(ContractMethodInfo).init(allocator);
+            errdefer {
+                for (methods.items) |*method| method.deinit(allocator);
+                methods.deinit();
             }
+            for (methods_array.array.items) |method| {
+                var parsed = try ContractMethodInfo.fromJson(method, allocator);
+                errdefer parsed.deinit(allocator);
+                try methods.append(parsed);
+            }
+            result.methods = try methods.toOwnedSlice();
         }
 
-        var events = ArrayList(ContractEventInfo).init(allocator);
         if (obj.get("events")) |events_array| {
-            for (events_array.array) |event| {
-                try events.append(try ContractEventInfo.fromJson(event, allocator));
+            if (events_array != .array) return errors.SerializationError.InvalidFormat;
+            var events = ArrayList(ContractEventInfo).init(allocator);
+            errdefer {
+                for (events.items) |*event| event.deinit(allocator);
+                events.deinit();
             }
+            for (events_array.array.items) |event| {
+                var parsed = try ContractEventInfo.fromJson(event, allocator);
+                errdefer parsed.deinit(allocator);
+                try events.append(parsed);
+            }
+            result.events = try events.toOwnedSlice();
         }
 
-        return ContractABI{
-            .methods = try methods.toOwnedSlice(),
-            .events = try events.toOwnedSlice(),
-        };
+        return result;
     }
 
     pub fn deinit(self: *ContractABI, allocator: std.mem.Allocator) void {
@@ -307,38 +384,56 @@ pub const ContractMethodInfo = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractMethodInfo {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const name = try allocator.dupe(u8, obj.get("name").?.string);
-        const return_type = try allocator.dupe(u8, obj.get("returntype").?.string);
-        const offset = @as(u32, @intCast(obj.get("offset").?.integer));
-        const safe = obj.get("safe").?.bool;
+        var result = ContractMethodInfo.init();
+        errdefer result.deinit(allocator);
 
-        var parameters = ArrayList(ContractParameterDefinition).init(allocator);
+        const name_value = obj.get("name") orelse return errors.SerializationError.InvalidFormat;
+        if (name_value != .string) return errors.SerializationError.InvalidFormat;
+        result.name = try allocator.dupe(u8, name_value.string);
+
+        const return_type_value = obj.get("returntype") orelse return errors.SerializationError.InvalidFormat;
+        if (return_type_value != .string) return errors.SerializationError.InvalidFormat;
+        result.return_type = try allocator.dupe(u8, return_type_value.string);
+
+        const offset_value = obj.get("offset") orelse return errors.SerializationError.InvalidFormat;
+        if (offset_value != .integer) return errors.SerializationError.InvalidFormat;
+        result.offset = @intCast(offset_value.integer);
+
+        const safe_value = obj.get("safe") orelse return errors.SerializationError.InvalidFormat;
+        if (safe_value != .bool) return errors.SerializationError.InvalidFormat;
+        result.safe = safe_value.bool;
+
         if (obj.get("parameters")) |params_array| {
-            for (params_array.array) |param| {
-                try parameters.append(try ContractParameterDefinition.fromJson(param, allocator));
+            if (params_array != .array) return errors.SerializationError.InvalidFormat;
+            var parameters = ArrayList(ContractParameterDefinition).init(allocator);
+            errdefer {
+                for (parameters.items) |*param| param.deinit(allocator);
+                parameters.deinit();
             }
+            for (params_array.array.items) |param| {
+                var parsed = try ContractParameterDefinition.fromJson(param, allocator);
+                errdefer parsed.deinit(allocator);
+                try parameters.append(parsed);
+            }
+            result.parameters = try parameters.toOwnedSlice();
         }
 
-        return ContractMethodInfo{
-            .name = name,
-            .parameters = try parameters.toOwnedSlice(),
-            .return_type = return_type,
-            .offset = offset,
-            .safe = safe,
-        };
+        return result;
     }
 
-    pub fn deinit(self: *ContractMethodInfo, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractMethodInfo, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
-        if (self.return_type.len > 0) allocator.free(@constCast(self.return_type));
+        if (self.return_type.len > 0 and (self.return_type.ptr != "Any".ptr or self.return_type.len != "Any".len)) {
+            allocator.free(@constCast(self.return_type));
+        }
         if (self.parameters.len > 0) {
             for (self.parameters) |*param| {
                 param.deinit(allocator);
             }
             allocator.free(@constCast(self.parameters));
-            self.parameters = &[_]ContractParameterDefinition{};
         }
     }
 };
@@ -364,7 +459,7 @@ pub const ContractParameterDefinition = struct {
         );
     }
 
-    pub fn deinit(self: *ContractParameterDefinition, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractParameterDefinition, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.parameter_type.len > 0) allocator.free(@constCast(self.parameter_type));
     }
@@ -383,31 +478,41 @@ pub const ContractEventInfo = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractEventInfo {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const name = try allocator.dupe(u8, obj.get("name").?.string);
+        var result = ContractEventInfo.init();
+        errdefer result.deinit(allocator);
 
-        var parameters = ArrayList(ContractParameterDefinition).init(allocator);
+        const name_value = obj.get("name") orelse return errors.SerializationError.InvalidFormat;
+        if (name_value != .string) return errors.SerializationError.InvalidFormat;
+        result.name = try allocator.dupe(u8, name_value.string);
+
         if (obj.get("parameters")) |params_array| {
-            for (params_array.array) |param| {
-                try parameters.append(try ContractParameterDefinition.fromJson(param, allocator));
+            if (params_array != .array) return errors.SerializationError.InvalidFormat;
+            var parameters = ArrayList(ContractParameterDefinition).init(allocator);
+            errdefer {
+                for (parameters.items) |*param| param.deinit(allocator);
+                parameters.deinit();
             }
+            for (params_array.array.items) |param| {
+                var parsed = try ContractParameterDefinition.fromJson(param, allocator);
+                errdefer parsed.deinit(allocator);
+                try parameters.append(parsed);
+            }
+            result.parameters = try parameters.toOwnedSlice();
         }
 
-        return ContractEventInfo{
-            .name = name,
-            .parameters = try parameters.toOwnedSlice(),
-        };
+        return result;
     }
 
-    pub fn deinit(self: *ContractEventInfo, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractEventInfo, allocator: std.mem.Allocator) void {
         if (self.name.len > 0) allocator.free(@constCast(self.name));
         if (self.parameters.len > 0) {
             for (self.parameters) |*param| {
                 param.deinit(allocator);
             }
             allocator.free(@constCast(self.parameters));
-            self.parameters = &[_]ContractParameterDefinition{};
         }
     }
 };
@@ -425,31 +530,42 @@ pub const ContractPermission = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractPermission {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const contract = try allocator.dupe(u8, obj.get("contract").?.string);
+        var result = ContractPermission.init();
+        errdefer result.deinit(allocator);
 
-        var methods = ArrayList([]const u8).init(allocator);
+        const contract_value = obj.get("contract") orelse return errors.SerializationError.InvalidFormat;
+        if (contract_value != .string) return errors.SerializationError.InvalidFormat;
+        result.contract = try allocator.dupe(u8, contract_value.string);
+
         if (obj.get("methods")) |methods_array| {
-            for (methods_array.array) |method| {
-                try methods.append(try allocator.dupe(u8, method.string));
+            if (methods_array != .array) return errors.SerializationError.InvalidFormat;
+            var methods = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (methods.items) |method| allocator.free(@constCast(method));
+                methods.deinit();
             }
+            for (methods_array.array.items) |method| {
+                if (method != .string) return errors.SerializationError.InvalidFormat;
+                const method_copy = try allocator.dupe(u8, method.string);
+                errdefer allocator.free(method_copy);
+                try methods.append(method_copy);
+            }
+            result.methods = try methods.toOwnedSlice();
         }
 
-        return ContractPermission{
-            .contract = contract,
-            .methods = try methods.toOwnedSlice(),
-        };
+        return result;
     }
 
-    pub fn deinit(self: *ContractPermission, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const ContractPermission, allocator: std.mem.Allocator) void {
         if (self.contract.len > 0) allocator.free(@constCast(self.contract));
         if (self.methods.len > 0) {
             for (self.methods) |method| {
                 if (method.len > 0) allocator.free(@constCast(method));
             }
             allocator.free(@constCast(self.methods));
-            self.methods = &[_][]const u8{};
         }
     }
 };
@@ -469,29 +585,49 @@ pub const NeoGetMemPool = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetMemPool {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const height = @as(u32, @intCast(obj.get("height").?.integer));
+        var result = NeoGetMemPool.init();
+        errdefer result.deinit(allocator);
 
-        var verified = ArrayList([]const u8).init(allocator);
+        const height_value = obj.get("height") orelse return errors.SerializationError.InvalidFormat;
+        if (height_value != .integer) return errors.SerializationError.InvalidFormat;
+        result.height = @intCast(height_value.integer);
+
         if (obj.get("verified")) |verified_array| {
-            for (verified_array.array) |item| {
-                try verified.append(try allocator.dupe(u8, item.string));
+            if (verified_array != .array) return errors.SerializationError.InvalidFormat;
+            var verified = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (verified.items) |entry| allocator.free(@constCast(entry));
+                verified.deinit();
             }
+            for (verified_array.array.items) |item| {
+                if (item != .string) return errors.SerializationError.InvalidFormat;
+                const entry = try allocator.dupe(u8, item.string);
+                errdefer allocator.free(entry);
+                try verified.append(entry);
+            }
+            result.verified = try verified.toOwnedSlice();
         }
 
-        var unverified = ArrayList([]const u8).init(allocator);
         if (obj.get("unverified")) |unverified_array| {
-            for (unverified_array.array) |item| {
-                try unverified.append(try allocator.dupe(u8, item.string));
+            if (unverified_array != .array) return errors.SerializationError.InvalidFormat;
+            var unverified = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (unverified.items) |entry| allocator.free(@constCast(entry));
+                unverified.deinit();
             }
+            for (unverified_array.array.items) |item| {
+                if (item != .string) return errors.SerializationError.InvalidFormat;
+                const entry = try allocator.dupe(u8, item.string);
+                errdefer allocator.free(entry);
+                try unverified.append(entry);
+            }
+            result.unverified = try unverified.toOwnedSlice();
         }
 
-        return NeoGetMemPool{
-            .height = height,
-            .verified = try verified.toOwnedSlice(),
-            .unverified = try unverified.toOwnedSlice(),
-        };
+        return result;
     }
 
     pub fn deinit(self: *NeoGetMemPool, allocator: std.mem.Allocator) void {
@@ -528,34 +664,58 @@ pub const NeoGetPeers = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetPeers {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var unconnected = ArrayList(Peer).init(allocator);
-        if (obj.get("unconnected")) |array| {
-            for (array.array) |item| {
-                try unconnected.append(try Peer.fromJson(item, allocator));
+        var result = NeoGetPeers.init();
+        errdefer result.deinit(allocator);
+
+        if (obj.get("unconnected")) |unconnected_value| {
+            if (unconnected_value != .array) return errors.SerializationError.InvalidFormat;
+            var unconnected = ArrayList(Peer).init(allocator);
+            errdefer {
+                for (unconnected.items) |*peer| peer.deinit(allocator);
+                unconnected.deinit();
             }
+            for (unconnected_value.array.items) |item| {
+                var peer = try Peer.fromJson(item, allocator);
+                errdefer peer.deinit(allocator);
+                try unconnected.append(peer);
+            }
+            result.unconnected = try unconnected.toOwnedSlice();
         }
 
-        var bad = ArrayList(Peer).init(allocator);
-        if (obj.get("bad")) |array| {
-            for (array.array) |item| {
-                try bad.append(try Peer.fromJson(item, allocator));
+        if (obj.get("bad")) |bad_value| {
+            if (bad_value != .array) return errors.SerializationError.InvalidFormat;
+            var bad = ArrayList(Peer).init(allocator);
+            errdefer {
+                for (bad.items) |*peer| peer.deinit(allocator);
+                bad.deinit();
             }
+            for (bad_value.array.items) |item| {
+                var peer = try Peer.fromJson(item, allocator);
+                errdefer peer.deinit(allocator);
+                try bad.append(peer);
+            }
+            result.bad = try bad.toOwnedSlice();
         }
 
-        var connected = ArrayList(Peer).init(allocator);
-        if (obj.get("connected")) |array| {
-            for (array.array) |item| {
-                try connected.append(try Peer.fromJson(item, allocator));
+        if (obj.get("connected")) |connected_value| {
+            if (connected_value != .array) return errors.SerializationError.InvalidFormat;
+            var connected = ArrayList(Peer).init(allocator);
+            errdefer {
+                for (connected.items) |*peer| peer.deinit(allocator);
+                connected.deinit();
             }
+            for (connected_value.array.items) |item| {
+                var peer = try Peer.fromJson(item, allocator);
+                errdefer peer.deinit(allocator);
+                try connected.append(peer);
+            }
+            result.connected = try connected.toOwnedSlice();
         }
 
-        return NeoGetPeers{
-            .unconnected = try unconnected.toOwnedSlice(),
-            .bad = try bad.toOwnedSlice(),
-            .connected = try connected.toOwnedSlice(),
-        };
+        return result;
     }
 
     pub fn deinit(self: *NeoGetPeers, allocator: std.mem.Allocator) void {
@@ -597,9 +757,8 @@ pub const Peer = struct {
         );
     }
 
-    pub fn deinit(self: *Peer, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *const Peer, allocator: std.mem.Allocator) void {
         if (self.address.len > 0) allocator.free(@constCast(self.address));
-        self.address = "";
     }
 };
 
@@ -620,7 +779,9 @@ pub const NeoGetWalletBalance = struct {
     }
 
     pub fn deinit(self: *NeoGetWalletBalance, allocator: std.mem.Allocator) void {
-        if (self.balance.len > 0) allocator.free(@constCast(self.balance));
+        if (self.balance.len > 0 and (self.balance.ptr != "0".ptr or self.balance.len != "0".len)) {
+            allocator.free(@constCast(self.balance));
+        }
         self.balance = "0";
     }
 };
@@ -666,20 +827,31 @@ pub const NeoGetClaimable = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetClaimable {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var claimable = ArrayList(ClaimableTransaction).init(allocator);
+        var result = NeoGetClaimable.init();
+        errdefer result.deinit(allocator);
+
         if (obj.get("claimable")) |claimable_array| {
-            for (claimable_array.array) |item| {
+            if (claimable_array != .array) return errors.SerializationError.InvalidFormat;
+            var claimable = ArrayList(ClaimableTransaction).init(allocator);
+            errdefer claimable.deinit();
+            for (claimable_array.array.items) |item| {
                 try claimable.append(try ClaimableTransaction.fromJson(item, allocator));
             }
+            result.claimable = try claimable.toOwnedSlice();
         }
 
-        return NeoGetClaimable{
-            .claimable = try claimable.toOwnedSlice(),
-            .address = try allocator.dupe(u8, obj.get("address").?.string),
-            .unclaimed = try allocator.dupe(u8, obj.get("unclaimed").?.string),
-        };
+        const address_value = obj.get("address") orelse return errors.SerializationError.InvalidFormat;
+        if (address_value != .string) return errors.SerializationError.InvalidFormat;
+        result.address = try allocator.dupe(u8, address_value.string);
+
+        const unclaimed_value = obj.get("unclaimed") orelse return errors.SerializationError.InvalidFormat;
+        if (unclaimed_value != .string) return errors.SerializationError.InvalidFormat;
+        result.unclaimed = try allocator.dupe(u8, unclaimed_value.string);
+
+        return result;
     }
 
     pub fn deinit(self: *NeoGetClaimable, allocator: std.mem.Allocator) void {
@@ -688,7 +860,9 @@ pub const NeoGetClaimable = struct {
             self.claimable = &[_]ClaimableTransaction{};
         }
         if (self.address.len > 0) allocator.free(@constCast(self.address));
-        if (self.unclaimed.len > 0) allocator.free(@constCast(self.unclaimed));
+        if (self.unclaimed.len > 0 and (self.unclaimed.ptr != "0".ptr or self.unclaimed.len != "0".len)) {
+            allocator.free(@constCast(self.unclaimed));
+        }
         self.address = "";
         self.unclaimed = "0";
     }
@@ -811,4 +985,50 @@ test "Peers response parsing" {
     const peer = Peer.init("127.0.0.1", 20333);
     try testing.expectEqualStrings("127.0.0.1", peer.address);
     try testing.expectEqual(@as(u16, 20333), peer.port);
+}
+
+test "Protocol response fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // ContractManifest.fromJson (with arrays + nested objects)
+    var features_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&features_obj, allocator, "featureA", std.json.Value{ .bool = true });
+
+    var standards_array = std.json.Array.init(allocator);
+    try standards_array.append(std.json.Value{ .string = "NEP-17" });
+
+    var trusts_array = std.json.Array.init(allocator);
+    try trusts_array.append(std.json.Value{ .string = "*" });
+
+    var methods_array = std.json.Array.init(allocator);
+    try methods_array.append(std.json.Value{ .string = "transfer" });
+
+    var permission_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&permission_obj, allocator, "contract", std.json.Value{ .string = "*" });
+    try json_utils.putOwnedKey(&permission_obj, allocator, "methods", std.json.Value{ .array = methods_array });
+
+    var permissions_array = std.json.Array.init(allocator);
+    try permissions_array.append(std.json.Value{ .object = permission_obj });
+
+    var manifest_obj = std.json.ObjectMap.init(allocator);
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "name", std.json.Value{ .string = "TestContract" });
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "features", std.json.Value{ .object = features_obj });
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "supportedstandards", std.json.Value{ .array = standards_array });
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "permissions", std.json.Value{ .array = permissions_array });
+    try json_utils.putOwnedKey(&manifest_obj, allocator, "trusts", std.json.Value{ .array = trusts_array });
+
+    var parsed_manifest = try ContractManifest.fromJson(std.json.Value{ .object = manifest_obj }, allocator);
+    try testing.expect(parsed_manifest.name != null);
+    parsed_manifest.deinit(allocator);
+
+    // ContractABI.fromJson (empty object is valid and should yield empty lists)
+    const abi_obj = std.json.ObjectMap.init(allocator);
+    var parsed_abi = try ContractABI.fromJson(std.json.Value{ .object = abi_obj }, allocator);
+    defer parsed_abi.deinit(allocator);
+    try testing.expectEqual(@as(usize, 0), parsed_abi.methods.len);
+    try testing.expectEqual(@as(usize, 0), parsed_abi.events.len);
 }

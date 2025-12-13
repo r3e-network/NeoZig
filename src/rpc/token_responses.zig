@@ -43,13 +43,17 @@ pub const NeoGetNep17Balances = struct {
         }
         
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !BalanceSelf {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
+            errdefer allocator.free(address);
             
             var balance_list = ArrayList(Nep17Balance).init(allocator);
+            errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
-                for (balance_array.array) |balance_item| {
+                if (balance_array != .array) return errors.SerializationError.InvalidFormat;
+                for (balance_array.array.items) |balance_item| {
                     try balance_list.append(try Nep17Balance.fromJson(balance_item, allocator));
                 }
             }
@@ -152,20 +156,26 @@ pub const NeoGetNep17Transfers = struct {
         }
         
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !TransfersSelf {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
+            errdefer allocator.free(address);
             
             var sent_list = ArrayList(Nep17Transfer).init(allocator);
+            errdefer sent_list.deinit();
             if (obj.get("sent")) |sent_array| {
-                for (sent_array.array) |sent_item| {
+                if (sent_array != .array) return errors.SerializationError.InvalidFormat;
+                for (sent_array.array.items) |sent_item| {
                     try sent_list.append(try Nep17Transfer.fromJson(sent_item, allocator));
                 }
             }
             
             var received_list = ArrayList(Nep17Transfer).init(allocator);
+            errdefer received_list.deinit();
             if (obj.get("received")) |received_array| {
-                for (received_array.array) |received_item| {
+                if (received_array != .array) return errors.SerializationError.InvalidFormat;
+                for (received_array.array.items) |received_item| {
                     try received_list.append(try Nep17Transfer.fromJson(received_item, allocator));
                 }
             }
@@ -287,13 +297,17 @@ pub const NeoGetNep11Balances = struct {
         }
         
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Nep11Balances {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
+            errdefer allocator.free(address);
             
             var balance_list = ArrayList(Nep11Balance).init(allocator);
+            errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
-                for (balance_array.array) |balance_item| {
+                if (balance_array != .array) return errors.SerializationError.InvalidFormat;
+                for (balance_array.array.items) |balance_item| {
                     try balance_list.append(try Nep11Balance.fromJson(balance_item, allocator));
                 }
             }
@@ -327,6 +341,7 @@ pub const NeoGetNep11Balances = struct {
         }
         
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Nep11Balance {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
             
             const name = if (obj.get("name")) |n| try allocator.dupe(u8, n.string) else null;
@@ -335,9 +350,17 @@ pub const NeoGetNep11Balances = struct {
             const asset_hash = try Hash160.initWithString(obj.get("assethash").?.string);
             
             var token_list = ArrayList([]const u8).init(allocator);
+            errdefer {
+                for (token_list.items) |token| allocator.free(@constCast(token));
+                token_list.deinit();
+            }
             if (obj.get("tokens")) |tokens_array| {
-                for (tokens_array.array) |token| {
-                    try token_list.append(try allocator.dupe(u8, token.string));
+                if (tokens_array != .array) return errors.SerializationError.InvalidFormat;
+                for (tokens_array.array.items) |token| {
+                    if (token != .string) return errors.SerializationError.InvalidFormat;
+                    const token_copy = try allocator.dupe(u8, token.string);
+                    errdefer allocator.free(token_copy);
+                    try token_list.append(token_copy);
                 }
             }
             
@@ -390,20 +413,26 @@ pub const NeoGetNep11Transfers = struct {
         }
         
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Nep11Transfers {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
             
             const address = try allocator.dupe(u8, obj.get("address").?.string);
+            errdefer allocator.free(address);
             
             var sent_list = ArrayList(Nep11Transfer).init(allocator);
+            errdefer sent_list.deinit();
             if (obj.get("sent")) |sent_array| {
-                for (sent_array.array) |sent_item| {
+                if (sent_array != .array) return errors.SerializationError.InvalidFormat;
+                for (sent_array.array.items) |sent_item| {
                     try sent_list.append(try Nep11Transfer.fromJson(sent_item, allocator));
                 }
             }
             
             var received_list = ArrayList(Nep11Transfer).init(allocator);
+            errdefer received_list.deinit();
             if (obj.get("received")) |received_array| {
-                for (received_array.array) |received_item| {
+                if (received_array != .array) return errors.SerializationError.InvalidFormat;
+                for (received_array.array.items) |received_item| {
                     try received_list.append(try Nep11Transfer.fromJson(received_item, allocator));
                 }
             }
@@ -639,6 +668,111 @@ test "NeoGetNep11Balances and transfers" {
     try testing.expectEqualStrings("unique_nft_token_123", nft_transfer.token_id);
     try testing.expect(nft_transfer.isTokenTransfer("unique_nft_token_123"));
     try testing.expect(!nft_transfer.isTokenTransfer("different_token"));
+}
+
+test "Token response fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const hash160_str = "1234567890abcdef1234567890abcdef12345678";
+    const hash256_str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    // NEP-17 balances
+    var nep17_balance_obj = std.json.ObjectMap.init(allocator);
+    try nep17_balance_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try nep17_balance_obj.put("amount", std.json.Value{ .string = "100" });
+    try nep17_balance_obj.put("lastupdatedblock", std.json.Value{ .float = 42.0 });
+    try nep17_balance_obj.put("name", std.json.Value{ .string = "Test Token" });
+    try nep17_balance_obj.put("symbol", std.json.Value{ .string = "TST" });
+    try nep17_balance_obj.put("decimals", std.json.Value{ .string = "8" });
+
+    var nep17_balance_array = std.json.Array.init(allocator);
+    try nep17_balance_array.append(std.json.Value{ .object = nep17_balance_obj });
+
+    var nep17_obj = std.json.ObjectMap.init(allocator);
+    try nep17_obj.put("address", std.json.Value{ .string = "test_address" });
+    try nep17_obj.put("balance", std.json.Value{ .array = nep17_balance_array });
+
+    const nep17_parsed = try NeoGetNep17Balances.Nep17Balances.fromJson(std.json.Value{ .object = nep17_obj }, allocator);
+    try testing.expectEqualStrings("test_address", nep17_parsed.address);
+    try testing.expectEqual(@as(usize, 1), nep17_parsed.balances.len);
+
+    // NEP-17 transfers
+    var nep17_transfer_obj = std.json.ObjectMap.init(allocator);
+    try nep17_transfer_obj.put("timestamp", std.json.Value{ .integer = 1640995200 });
+    try nep17_transfer_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try nep17_transfer_obj.put("transferaddress", std.json.Value{ .string = "NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7" });
+    try nep17_transfer_obj.put("amount", std.json.Value{ .string = "1" });
+    try nep17_transfer_obj.put("blockindex", std.json.Value{ .integer = 1 });
+    try nep17_transfer_obj.put("transfernotifyindex", std.json.Value{ .integer = 0 });
+    try nep17_transfer_obj.put("txhash", std.json.Value{ .string = hash256_str });
+
+    var transfers_sent = std.json.Array.init(allocator);
+    try transfers_sent.append(std.json.Value{ .object = nep17_transfer_obj });
+
+    var transfers_received = std.json.Array.init(allocator);
+    try transfers_received.append(std.json.Value{ .object = nep17_transfer_obj });
+
+    var nep17_transfers_obj = std.json.ObjectMap.init(allocator);
+    try nep17_transfers_obj.put("address", std.json.Value{ .string = "test_address" });
+    try nep17_transfers_obj.put("sent", std.json.Value{ .array = transfers_sent });
+    try nep17_transfers_obj.put("received", std.json.Value{ .array = transfers_received });
+
+    const nep17_transfers = try NeoGetNep17Transfers.Nep17Transfers.fromJson(std.json.Value{ .object = nep17_transfers_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), nep17_transfers.sent.len);
+    try testing.expectEqual(@as(usize, 1), nep17_transfers.received.len);
+
+    // NEP-11 balances (tokens array)
+    var tokens_array = std.json.Array.init(allocator);
+    try tokens_array.append(std.json.Value{ .string = "token_1" });
+    try tokens_array.append(std.json.Value{ .string = "token_2" });
+
+    var nep11_balance_obj = std.json.ObjectMap.init(allocator);
+    try nep11_balance_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try nep11_balance_obj.put("tokens", std.json.Value{ .array = tokens_array });
+    try nep11_balance_obj.put("name", std.json.Value{ .string = "Test NFT" });
+    try nep11_balance_obj.put("symbol", std.json.Value{ .string = "TNFT" });
+    try nep11_balance_obj.put("decimals", std.json.Value{ .string = "0" });
+
+    var nep11_balance_array = std.json.Array.init(allocator);
+    try nep11_balance_array.append(std.json.Value{ .object = nep11_balance_obj });
+
+    var nep11_obj = std.json.ObjectMap.init(allocator);
+    try nep11_obj.put("address", std.json.Value{ .string = "test_address" });
+    try nep11_obj.put("balance", std.json.Value{ .array = nep11_balance_array });
+
+    const nep11_parsed = try NeoGetNep11Balances.Nep11Balances.fromJson(std.json.Value{ .object = nep11_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), nep11_parsed.balances.len);
+    try testing.expectEqual(@as(usize, 2), nep11_parsed.balances[0].tokens.len);
+
+    // NEP-11 transfers
+    var nep11_transfer_obj = std.json.ObjectMap.init(allocator);
+    try nep11_transfer_obj.put("timestamp", std.json.Value{ .integer = 1640995200 });
+    try nep11_transfer_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try nep11_transfer_obj.put("transferaddress", std.json.Value{ .string = "NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7" });
+    try nep11_transfer_obj.put("amount", std.json.Value{ .string = "1" });
+    try nep11_transfer_obj.put("tokenid", std.json.Value{ .string = "token_1" });
+    try nep11_transfer_obj.put("blockindex", std.json.Value{ .integer = 1 });
+    try nep11_transfer_obj.put("transfernotifyindex", std.json.Value{ .integer = 0 });
+    try nep11_transfer_obj.put("txhash", std.json.Value{ .string = hash256_str });
+
+    var nep11_sent = std.json.Array.init(allocator);
+    try nep11_sent.append(std.json.Value{ .object = nep11_transfer_obj });
+
+    var nep11_received = std.json.Array.init(allocator);
+    try nep11_received.append(std.json.Value{ .object = nep11_transfer_obj });
+
+    var nep11_transfers_obj = std.json.ObjectMap.init(allocator);
+    try nep11_transfers_obj.put("address", std.json.Value{ .string = "test_address" });
+    try nep11_transfers_obj.put("sent", std.json.Value{ .array = nep11_sent });
+    try nep11_transfers_obj.put("received", std.json.Value{ .array = nep11_received });
+
+    const nep11_transfers = try NeoGetNep11Transfers.Nep11Transfers.fromJson(std.json.Value{ .object = nep11_transfers_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), nep11_transfers.sent.len);
+    try testing.expectEqual(@as(usize, 1), nep11_transfers.received.len);
 }
 
 test "Token response traits and utilities" {

@@ -384,10 +384,18 @@ pub const NeoExpressGetContractStorage = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetContractStorage {
-        var storage_list = ArrayList(@import("complete_responses.zig").ContractStorageEntry).init(allocator);
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |entry| {
-            try storage_list.append(try @import("complete_responses.zig").ContractStorageEntry.fromJson(entry, allocator));
+        var storage_list = ArrayList(@import("complete_responses.zig").ContractStorageEntry).init(allocator);
+        errdefer {
+            for (storage_list.items) |*entry| entry.deinit(allocator);
+            storage_list.deinit();
+        }
+
+        for (json_value.array.items) |entry| {
+            var parsed = try @import("complete_responses.zig").ContractStorageEntry.fromJson(entry, allocator);
+            errdefer parsed.deinit(allocator);
+            try storage_list.append(parsed);
         }
 
         return NeoExpressGetContractStorage{ .result = try storage_list.toOwnedSlice() };
@@ -417,10 +425,18 @@ pub const NeoExpressGetNep17Contracts = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetNep17Contracts {
-        var contracts_list = ArrayList(@import("complete_responses.zig").Nep17Contract).init(allocator);
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |contract| {
-            try contracts_list.append(try @import("complete_responses.zig").Nep17Contract.fromJson(contract, allocator));
+        var contracts_list = ArrayList(@import("complete_responses.zig").Nep17Contract).init(allocator);
+        errdefer {
+            for (contracts_list.items) |*contract| contract.deinit(allocator);
+            contracts_list.deinit();
+        }
+
+        for (json_value.array.items) |contract| {
+            var parsed = try @import("complete_responses.zig").Nep17Contract.fromJson(contract, allocator);
+            errdefer parsed.deinit(allocator);
+            try contracts_list.append(parsed);
         }
 
         return NeoExpressGetNep17Contracts{ .result = try contracts_list.toOwnedSlice() };
@@ -450,11 +466,18 @@ pub const NeoExpressListContracts = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListContracts {
-        var list = ArrayList(@import("complete_responses.zig").ExpressContractState).init(allocator);
-        defer list.deinit();
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |contract_value| {
-            try list.append(try @import("complete_responses.zig").ExpressContractState.fromJson(contract_value, allocator));
+        var list = ArrayList(@import("complete_responses.zig").ExpressContractState).init(allocator);
+        errdefer {
+            for (list.items) |*contract| contract.deinit(allocator);
+            list.deinit();
+        }
+
+        for (json_value.array.items) |contract_value| {
+            var parsed = try @import("complete_responses.zig").ExpressContractState.fromJson(contract_value, allocator);
+            errdefer parsed.deinit(allocator);
+            try list.append(parsed);
         }
 
         return NeoExpressListContracts{ .result = try list.toOwnedSlice() };
@@ -484,11 +507,18 @@ pub const NeoExpressListOracleRequests = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListOracleRequests {
-        var list = ArrayList(@import("complete_responses.zig").OracleRequest).init(allocator);
-        defer list.deinit();
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |request_value| {
-            try list.append(try @import("complete_responses.zig").OracleRequest.fromJson(request_value, allocator));
+        var list = ArrayList(@import("complete_responses.zig").OracleRequest).init(allocator);
+        errdefer {
+            for (list.items) |*request| request.deinit(allocator);
+            list.deinit();
+        }
+
+        for (json_value.array.items) |request_value| {
+            var parsed = try @import("complete_responses.zig").OracleRequest.fromJson(request_value, allocator);
+            errdefer parsed.deinit(allocator);
+            try list.append(parsed);
         }
 
         return NeoExpressListOracleRequests{ .result = try list.toOwnedSlice() };
@@ -608,10 +638,18 @@ pub const NeoListAddress = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListAddress {
-        var addresses_list = ArrayList(@import("complete_responses.zig").NeoAddress).init(allocator);
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |address| {
-            try addresses_list.append(try @import("complete_responses.zig").NeoAddress.fromJson(address, allocator));
+        var addresses_list = ArrayList(@import("complete_responses.zig").NeoAddress).init(allocator);
+        errdefer {
+            for (addresses_list.items) |*address| address.deinit(allocator);
+            addresses_list.deinit();
+        }
+
+        for (json_value.array.items) |address| {
+            var parsed = try @import("complete_responses.zig").NeoAddress.fromJson(address, allocator);
+            errdefer parsed.deinit(allocator);
+            try addresses_list.append(parsed);
         }
 
         return NeoListAddress{ .result = try addresses_list.toOwnedSlice() };
@@ -749,11 +787,18 @@ pub const NeoGetNativeContracts = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNativeContracts {
-        var contracts_list = ArrayList(@import("complete_responses.zig").NativeContractState).init(allocator);
-        defer contracts_list.deinit();
+        if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        for (json_value.array) |contract| {
-            try contracts_list.append(try @import("complete_responses.zig").NativeContractState.fromJson(contract, allocator));
+        var contracts_list = ArrayList(@import("complete_responses.zig").NativeContractState).init(allocator);
+        errdefer {
+            for (contracts_list.items) |*contract| contract.deinit(allocator);
+            contracts_list.deinit();
+        }
+
+        for (json_value.array.items) |contract| {
+            var parsed = try @import("complete_responses.zig").NativeContractState.fromJson(contract, allocator);
+            errdefer parsed.deinit(allocator);
+            try contracts_list.append(parsed);
         }
 
         return NeoGetNativeContracts{ .result = try contracts_list.toOwnedSlice() };
@@ -762,7 +807,7 @@ pub const NeoGetNativeContracts = struct {
     pub fn deinit(self: *NeoGetNativeContracts, allocator: std.mem.Allocator) void {
         if (self.result) |contracts| {
             for (contracts) |*contract| {
-                contract.deinit(allocator);
+                @constCast(contract).deinit(allocator);
             }
             allocator.free(@constCast(contracts));
             self.result = null;
@@ -1092,4 +1137,64 @@ test "Transaction response types" {
 
     const terminate_with_result = NeoTerminateSession{ .result = true };
     try testing.expect(terminate_with_result.getTerminateSession().?);
+}
+
+test "Response alias fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // NeoListAddress
+    var addr_obj = std.json.ObjectMap.init(allocator);
+    try addr_obj.put("address", std.json.Value{ .string = "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNn" });
+    try addr_obj.put("isvalid", std.json.Value{ .bool = true });
+
+    var addr_array = std.json.Array.init(allocator);
+    try addr_array.append(std.json.Value{ .object = addr_obj });
+
+    const parsed_addresses = try NeoListAddress.fromJson(std.json.Value{ .array = addr_array }, allocator);
+    try testing.expect(parsed_addresses.result != null);
+    try testing.expectEqual(@as(usize, 1), parsed_addresses.result.?.len);
+
+    // NeoExpressGetContractStorage
+    var entry_obj = std.json.ObjectMap.init(allocator);
+    try entry_obj.put("key", std.json.Value{ .string = "01" });
+    try entry_obj.put("value", std.json.Value{ .string = "02" });
+
+    var storage_array = std.json.Array.init(allocator);
+    try storage_array.append(std.json.Value{ .object = entry_obj });
+
+    const parsed_storage = try NeoExpressGetContractStorage.fromJson(std.json.Value{ .array = storage_array }, allocator);
+    try testing.expect(parsed_storage.result != null);
+    try testing.expectEqual(@as(usize, 1), parsed_storage.result.?.len);
+
+    // NeoGetNativeContracts
+    var nef_obj = std.json.ObjectMap.init(allocator);
+    try nef_obj.put("magic", std.json.Value{ .integer = 123 });
+    try nef_obj.put("compiler", std.json.Value{ .string = "neo-zig-test" });
+    try nef_obj.put("script", std.json.Value{ .string = "00" });
+    try nef_obj.put("checksum", std.json.Value{ .integer = 1 });
+
+    var manifest_obj = std.json.ObjectMap.init(allocator);
+    try manifest_obj.put("name", std.json.Value{ .string = "TestContract" });
+
+    var update_history_array = std.json.Array.init(allocator);
+    try update_history_array.append(std.json.Value{ .integer = 1 });
+
+    var native_contract_obj = std.json.ObjectMap.init(allocator);
+    try native_contract_obj.put("id", std.json.Value{ .integer = 1 });
+    try native_contract_obj.put("hash", std.json.Value{ .string = "1234567890abcdef1234567890abcdef12345678" });
+    try native_contract_obj.put("nef", std.json.Value{ .object = nef_obj });
+    try native_contract_obj.put("manifest", std.json.Value{ .object = manifest_obj });
+    try native_contract_obj.put("updatehistory", std.json.Value{ .array = update_history_array });
+
+    var native_array = std.json.Array.init(allocator);
+    try native_array.append(std.json.Value{ .object = native_contract_obj });
+
+    var parsed_native = try NeoGetNativeContracts.fromJson(std.json.Value{ .array = native_array }, allocator);
+    defer parsed_native.deinit(allocator);
+    try testing.expect(parsed_native.result != null);
+    try testing.expectEqual(@as(usize, 1), parsed_native.result.?.len);
 }

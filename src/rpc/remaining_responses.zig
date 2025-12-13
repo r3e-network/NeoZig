@@ -67,13 +67,19 @@ pub fn TokenBalances(comptime BalanceType: type) type {
         }
 
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            if (json_value != .object) return errors.SerializationError.InvalidFormat;
             const obj = json_value.object;
 
-            const address = try allocator.dupe(u8, obj.get("address").?.string);
+            const address_value = obj.get("address") orelse return errors.SerializationError.InvalidFormat;
+            if (address_value != .string) return errors.SerializationError.InvalidFormat;
+            const address = try allocator.dupe(u8, address_value.string);
+            errdefer allocator.free(address);
 
             var balance_list = ArrayList(BalanceType).init(allocator);
+            errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
-                for (balance_array.array) |balance_item| {
+                if (balance_array != .array) return errors.SerializationError.InvalidFormat;
+                for (balance_array.array.items) |balance_item| {
                     try balance_list.append(try BalanceType.fromJson(balance_item, allocator));
                 }
             }
@@ -123,29 +129,33 @@ pub const NeoGetTokenTransfers = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const address = try allocator.dupe(u8, obj.get("address").?.string);
+        const address_value = obj.get("address") orelse return errors.SerializationError.InvalidFormat;
+        if (address_value != .string) return errors.SerializationError.InvalidFormat;
+        const address = try allocator.dupe(u8, address_value.string);
+        errdefer allocator.free(address);
 
         var sent_list = ArrayList(TokenTransfer).init(allocator);
+        errdefer sent_list.deinit();
         if (obj.get("sent")) |sent_array| {
-            for (sent_array.array) |sent_item| {
+            if (sent_array != .array) return errors.SerializationError.InvalidFormat;
+            for (sent_array.array.items) |sent_item| {
                 try sent_list.append(try TokenTransfer.fromJson(sent_item, allocator));
             }
         }
 
         var received_list = ArrayList(TokenTransfer).init(allocator);
+        errdefer received_list.deinit();
         if (obj.get("received")) |received_array| {
-            for (received_array.array) |received_item| {
+            if (received_array != .array) return errors.SerializationError.InvalidFormat;
+            for (received_array.array.items) |received_item| {
                 try received_list.append(try TokenTransfer.fromJson(received_item, allocator));
             }
         }
 
-        return Self{
-            .address = address,
-            .sent = try sent_list.toOwnedSlice(),
-            .received = try received_list.toOwnedSlice(),
-        };
+        return Self{ .address = address, .sent = try sent_list.toOwnedSlice(), .received = try received_list.toOwnedSlice() };
     }
 
     /// Generic token transfer (base class)
@@ -286,25 +296,35 @@ pub const NeoFindStates = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const first_proof = if (obj.get("firstproof")) |fp| try allocator.dupe(u8, fp.string) else null;
-        const last_proof = if (obj.get("lastproof")) |lp| try allocator.dupe(u8, lp.string) else null;
-        const truncated = obj.get("truncated").?.bool;
+        const first_proof = if (obj.get("firstproof")) |fp| blk: {
+            if (fp != .string) return errors.SerializationError.InvalidFormat;
+            break :blk try allocator.dupe(u8, fp.string);
+        } else null;
+        errdefer if (first_proof) |value| allocator.free(@constCast(value));
+
+        const last_proof = if (obj.get("lastproof")) |lp| blk: {
+            if (lp != .string) return errors.SerializationError.InvalidFormat;
+            break :blk try allocator.dupe(u8, lp.string);
+        } else null;
+        errdefer if (last_proof) |value| allocator.free(@constCast(value));
+
+        const truncated_value = obj.get("truncated") orelse return errors.SerializationError.InvalidFormat;
+        if (truncated_value != .bool) return errors.SerializationError.InvalidFormat;
+        const truncated = truncated_value.bool;
 
         var results = ArrayList(StateResult).init(allocator);
+        errdefer results.deinit();
         if (obj.get("results")) |results_array| {
-            for (results_array.array) |result_item| {
+            if (results_array != .array) return errors.SerializationError.InvalidFormat;
+            for (results_array.array.items) |result_item| {
                 try results.append(try StateResult.fromJson(result_item, allocator));
             }
         }
 
-        return Self{
-            .first_proof = first_proof,
-            .last_proof = last_proof,
-            .truncated = truncated,
-            .results = try results.toOwnedSlice(),
-        };
+        return Self{ .first_proof = first_proof, .last_proof = last_proof, .truncated = truncated, .results = try results.toOwnedSlice() };
     }
 
     /// State result entry
@@ -340,21 +360,24 @@ pub const NeoGetUnspents = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetUnspents {
+        if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        const address = try allocator.dupe(u8, obj.get("address").?.string);
+        const address_value = obj.get("address") orelse return errors.SerializationError.InvalidFormat;
+        if (address_value != .string) return errors.SerializationError.InvalidFormat;
+        const address = try allocator.dupe(u8, address_value.string);
+        errdefer allocator.free(address);
 
         var balance_list = ArrayList(UnspentOutput).init(allocator);
+        errdefer balance_list.deinit();
         if (obj.get("balance")) |balance_array| {
-            for (balance_array.array) |balance_item| {
+            if (balance_array != .array) return errors.SerializationError.InvalidFormat;
+            for (balance_array.array.items) |balance_item| {
                 try balance_list.append(try UnspentOutput.fromJson(balance_item, allocator));
             }
         }
 
-        return NeoGetUnspents{
-            .balance = try balance_list.toOwnedSlice(),
-            .address = address,
-        };
+        return NeoGetUnspents{ .balance = try balance_list.toOwnedSlice(), .address = address };
     }
 
     /// Unspent output
@@ -424,12 +447,16 @@ pub const NotificationResponse = struct {
 
         const contract = try Hash160.initWithString(obj.get("contract").?.string);
         const event_name = try allocator.dupe(u8, obj.get("eventname").?.string);
+        errdefer allocator.free(event_name);
 
         var state_list = ArrayList(StackItem).init(allocator);
-        defer state_list.deinit();
+        errdefer {
+            for (state_list.items) |*item| item.deinit(allocator);
+            state_list.deinit();
+        }
         if (obj.get("state")) |state_array| {
             if (state_array != .array) return errors.SerializationError.InvalidFormat;
-            for (state_array.array) |state_item| {
+            for (state_array.array.items) |state_item| {
                 var decoded = try StackItem.decodeFromJson(state_item, allocator);
                 var decoded_guard = true;
                 defer if (decoded_guard) decoded.deinit(allocator);
@@ -688,4 +715,125 @@ test "Diagnostics and utility responses" {
     const shutdown = ExpressShutdownResponse.init();
     try testing.expectEqual(@as(u32, 0), shutdown.process_id);
     try testing.expectEqual(@as(usize, 0), shutdown.message.len);
+}
+
+test "Remaining response fromJson smoke tests" {
+    const testing = std.testing;
+
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const hash160_str = "1234567890abcdef1234567890abcdef12345678";
+    const hash256_str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    // TokenBalances generic fromJson
+    const TestBalance = struct {
+        asset_hash: Hash160,
+        amount: []const u8,
+
+        pub fn fromJson(json_value: std.json.Value, alloc: std.mem.Allocator) !@This() {
+            _ = alloc;
+            const obj = json_value.object;
+            return @This(){
+                .asset_hash = try Hash160.initWithString(obj.get("assethash").?.string),
+                .amount = obj.get("amount").?.string,
+            };
+        }
+    };
+
+    var balance_obj = std.json.ObjectMap.init(allocator);
+    try balance_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try balance_obj.put("amount", std.json.Value{ .string = "100" });
+
+    var balance_array = std.json.Array.init(allocator);
+    try balance_array.append(std.json.Value{ .object = balance_obj });
+
+    var balances_obj = std.json.ObjectMap.init(allocator);
+    try balances_obj.put("address", std.json.Value{ .string = "test_address" });
+    try balances_obj.put("balance", std.json.Value{ .array = balance_array });
+
+    const ParsedBalances = TokenBalances(TestBalance);
+    const parsed_balances = try ParsedBalances.fromJson(std.json.Value{ .object = balances_obj }, allocator);
+    try testing.expectEqualStrings("test_address", parsed_balances.address);
+    try testing.expectEqual(@as(usize, 1), parsed_balances.balances.len);
+
+    // NeoGetTokenTransfers fromJson
+    var transfer_obj = std.json.ObjectMap.init(allocator);
+    try transfer_obj.put("timestamp", std.json.Value{ .integer = 1640995200 });
+    try transfer_obj.put("assethash", std.json.Value{ .string = hash160_str });
+    try transfer_obj.put("transferaddress", std.json.Value{ .string = "NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7" });
+    try transfer_obj.put("amount", std.json.Value{ .string = "1" });
+    try transfer_obj.put("blockindex", std.json.Value{ .integer = 1 });
+    try transfer_obj.put("transfernotifyindex", std.json.Value{ .integer = 0 });
+    try transfer_obj.put("txhash", std.json.Value{ .string = hash256_str });
+
+    var sent_array = std.json.Array.init(allocator);
+    try sent_array.append(std.json.Value{ .object = transfer_obj });
+
+    var received_array = std.json.Array.init(allocator);
+    try received_array.append(std.json.Value{ .object = transfer_obj });
+
+    var transfers_obj = std.json.ObjectMap.init(allocator);
+    try transfers_obj.put("address", std.json.Value{ .string = "test_address" });
+    try transfers_obj.put("sent", std.json.Value{ .array = sent_array });
+    try transfers_obj.put("received", std.json.Value{ .array = received_array });
+
+    const parsed_transfers = try NeoGetTokenTransfers.fromJson(std.json.Value{ .object = transfers_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), parsed_transfers.sent.len);
+    try testing.expectEqual(@as(usize, 1), parsed_transfers.received.len);
+
+    // NeoFindStates fromJson
+    var result_obj = std.json.ObjectMap.init(allocator);
+    try result_obj.put("key", std.json.Value{ .string = "01" });
+    try result_obj.put("value", std.json.Value{ .string = "02" });
+
+    var results_array = std.json.Array.init(allocator);
+    try results_array.append(std.json.Value{ .object = result_obj });
+
+    var find_states_obj = std.json.ObjectMap.init(allocator);
+    try find_states_obj.put("firstproof", std.json.Value{ .string = "first" });
+    try find_states_obj.put("lastproof", std.json.Value{ .string = "last" });
+    try find_states_obj.put("truncated", std.json.Value{ .bool = false });
+    try find_states_obj.put("results", std.json.Value{ .array = results_array });
+
+    const parsed_states = try NeoFindStates.fromJson(std.json.Value{ .object = find_states_obj }, allocator);
+    try testing.expect(!parsed_states.truncated);
+    try testing.expectEqual(@as(usize, 1), parsed_states.results.len);
+
+    // NeoGetUnspents fromJson
+    var unspent_obj = std.json.ObjectMap.init(allocator);
+    try unspent_obj.put("txid", std.json.Value{ .string = hash256_str });
+    try unspent_obj.put("n", std.json.Value{ .integer = 0 });
+    try unspent_obj.put("asset", std.json.Value{ .string = hash160_str });
+    try unspent_obj.put("value", std.json.Value{ .string = "1" });
+    try unspent_obj.put("address", std.json.Value{ .string = "test_address" });
+
+    var unspent_array = std.json.Array.init(allocator);
+    try unspent_array.append(std.json.Value{ .object = unspent_obj });
+
+    var unspents_obj = std.json.ObjectMap.init(allocator);
+    try unspents_obj.put("address", std.json.Value{ .string = "test_address" });
+    try unspents_obj.put("balance", std.json.Value{ .array = unspent_array });
+
+    const parsed_unspents = try NeoGetUnspents.fromJson(std.json.Value{ .object = unspents_obj }, allocator);
+    try testing.expectEqual(@as(usize, 1), parsed_unspents.balance.len);
+
+    // NotificationResponse fromJson
+    var stack_item_obj = std.json.ObjectMap.init(allocator);
+    try stack_item_obj.put("type", std.json.Value{ .string = "ByteString" });
+    try stack_item_obj.put("value", std.json.Value{ .string = "SGVsbG8=" }); // "Hello" in base64
+
+    var state_array = std.json.Array.init(allocator);
+    try state_array.append(std.json.Value{ .object = stack_item_obj });
+
+    var notification_obj = std.json.ObjectMap.init(allocator);
+    try notification_obj.put("contract", std.json.Value{ .string = hash160_str });
+    try notification_obj.put("eventname", std.json.Value{ .string = "Transfer" });
+    try notification_obj.put("state", std.json.Value{ .array = state_array });
+
+    var parsed_notification = try NotificationResponse.fromJson(std.json.Value{ .object = notification_obj }, allocator);
+    try testing.expectEqualStrings("Transfer", parsed_notification.event_name);
+    try testing.expectEqual(@as(usize, 1), parsed_notification.state.len);
+    parsed_notification.deinit(allocator);
 }
