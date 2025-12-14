@@ -10,4 +10,3 @@ pub const encode = base58.encode;
 pub const decode = base58.decode;
 pub const encodeCheck = base58.encodeCheck;
 pub const decodeCheck = base58.decodeCheck;
-

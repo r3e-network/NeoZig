@@ -4,7 +4,6 @@
 
 const std = @import("std");
 
-
 const errors = @import("../core/errors.zig");
 const BytesExtensions = @import("bytes_extensions.zig").BytesUtils;
 
@@ -15,7 +14,7 @@ pub fn toHex(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
 pub fn fromHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
     const clean_hex = if (std.mem.startsWith(u8, hex_str, "0x")) hex_str[2..] else hex_str;
     if (clean_hex.len % 2 != 0) return errors.ValidationError.InvalidParameter;
-    
+
     const bytes = try allocator.alloc(u8, clean_hex.len / 2);
     _ = std.fmt.hexToBytes(bytes, clean_hex) catch {
         allocator.free(bytes);

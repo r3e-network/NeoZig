@@ -6,7 +6,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-
 const builtin = @import("builtin");
 
 /// Log levels for production use
@@ -16,7 +15,7 @@ pub const LogLevel = enum(u8) {
     Warn = 2,
     Error = 3,
     Critical = 4,
-    
+
     pub fn toString(self: LogLevel) []const u8 {
         return switch (self) {
             .Debug => "DEBUG",
@@ -26,13 +25,13 @@ pub const LogLevel = enum(u8) {
             .Critical => "CRITICAL",
         };
     }
-    
+
     pub fn getColor(self: LogLevel) []const u8 {
         return switch (self) {
-            .Debug => "\x1b[36m",    // Cyan
-            .Info => "\x1b[32m",     // Green
-            .Warn => "\x1b[33m",     // Yellow
-            .Error => "\x1b[31m",    // Red
+            .Debug => "\x1b[36m", // Cyan
+            .Info => "\x1b[32m", // Green
+            .Warn => "\x1b[33m", // Yellow
+            .Error => "\x1b[31m", // Red
             .Critical => "\x1b[35m", // Magenta
         };
     }
@@ -45,9 +44,9 @@ pub const Logger = struct {
     use_colors: bool,
     include_timestamp: bool,
     include_source: bool,
-    
+
     const Self = @This();
-    
+
     /// Creates logger with configuration
     pub fn init(level: LogLevel) Self {
         return Self{
@@ -58,13 +57,13 @@ pub const Logger = struct {
             .include_source = true,
         };
     }
-    
+
     /// Sets output file for logging
     pub fn setOutputFile(self: *Self, file_path: []const u8) !void {
         const file = try std.fs.cwd().createFile(file_path, .{ .truncate = false });
         self.output_file = file;
     }
-    
+
     /// Closes output file
     pub fn close(self: *Self) void {
         if (self.output_file) |file| {
@@ -72,7 +71,7 @@ pub const Logger = struct {
             self.output_file = null;
         }
     }
-    
+
     /// Logs message with level
     pub fn log(
         self: Self,
@@ -82,15 +81,15 @@ pub const Logger = struct {
         src: std.builtin.SourceLocation,
     ) void {
         if (@intFromEnum(level) < @intFromEnum(self.level)) return;
-        
+
         var buffer: [4096]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buffer);
         const allocator = fba.allocator();
-        
+
         // Build log message
         var log_msg = ArrayList(u8).init(allocator);
         defer log_msg.deinit();
-        
+
         // Timestamp
         if (self.include_timestamp) {
             const timestamp = std.time.timestamp();
@@ -101,23 +100,23 @@ pub const Logger = struct {
             ) catch "[TIME] ";
             log_msg.appendSlice(formatted_time) catch {};
         }
-        
+
         // Level with color
         if (self.use_colors) {
             log_msg.appendSlice(level.getColor()) catch {};
         }
-        
+
         const level_str = std.fmt.allocPrint(
             allocator,
             "[{s}]",
             .{level.toString()},
         ) catch "[LEVEL]";
         log_msg.appendSlice(level_str) catch {};
-        
+
         if (self.use_colors) {
             log_msg.appendSlice("\x1b[0m") catch {}; // Reset color
         }
-        
+
         // Source location
         if (self.include_source) {
             const source_info = std.fmt.allocPrint(
@@ -127,22 +126,22 @@ pub const Logger = struct {
             ) catch " [SRC]";
             log_msg.appendSlice(source_info) catch {};
         }
-        
+
         log_msg.appendSlice(" ") catch {};
-        
+
         // Message
         const formatted_msg = std.fmt.allocPrint(allocator, format, args) catch "LOG_ERROR";
         log_msg.appendSlice(formatted_msg) catch {};
         log_msg.append('\n') catch {};
-        
+
         // Output to stderr and file
         std.debug.print("{s}", .{log_msg.items});
-        
+
         if (self.output_file) |file| {
             file.writeAll(log_msg.items) catch {};
         }
     }
-    
+
     /// Security-specific logging (no sensitive data)
     pub fn logSecurity(
         self: Self,
@@ -153,7 +152,7 @@ pub const Logger = struct {
     ) void {
         self.log(level, "Security: {s} - {s}", .{ operation, if (success) "SUCCESS" else "FAILURE" }, src);
     }
-    
+
     /// Performance logging
     pub fn logPerformance(
         self: Self,
@@ -164,7 +163,7 @@ pub const Logger = struct {
         const duration_ms = duration_ns / std.time.ns_per_ms;
         self.log(.Info, "Performance: {s} - {d}ms", .{ operation, duration_ms }, src);
     }
-    
+
     /// Network operation logging
     pub fn logNetwork(
         self: Self,
@@ -270,14 +269,14 @@ pub const Monitoring = struct {
     pub const PerformanceCounter = struct {
         start_time: i128,
         operation: []const u8,
-        
+
         pub fn start(operation: []const u8) PerformanceCounter {
             return PerformanceCounter{
                 .start_time = std.time.nanoTimestamp(),
                 .operation = operation,
             };
         }
-        
+
         pub fn end(self: PerformanceCounter, src: std.builtin.SourceLocation) void {
             const end_time = std.time.nanoTimestamp();
             const delta: i128 = end_time - self.start_time;
@@ -285,7 +284,7 @@ pub const Monitoring = struct {
             logPerformanceOperation(self.operation, duration, src);
         }
     };
-    
+
     /// Security audit trail
     pub const SecurityAudit = struct {
         pub fn logKeyGeneration(success: bool, src: std.builtin.SourceLocation) void {
@@ -295,7 +294,7 @@ pub const Monitoring = struct {
                 logSecurityFailure("key_generation", src);
             }
         }
-        
+
         pub fn logSignature(success: bool, src: std.builtin.SourceLocation) void {
             if (success) {
                 logSecuritySuccess("signature_operation", src);
@@ -303,7 +302,7 @@ pub const Monitoring = struct {
                 logSecurityFailure("signature_operation", src);
             }
         }
-        
+
         pub fn logWalletAccess(success: bool, src: std.builtin.SourceLocation) void {
             if (success) {
                 logSecuritySuccess("wallet_access", src);
@@ -311,7 +310,7 @@ pub const Monitoring = struct {
                 logSecurityFailure("wallet_access", src);
             }
         }
-        
+
         pub fn logTransactionSigning(success: bool, src: std.builtin.SourceLocation) void {
             if (success) {
                 logSecuritySuccess("transaction_signing", src);
@@ -325,14 +324,14 @@ pub const Monitoring = struct {
 // Tests
 test "Logger creation and basic operations" {
     const testing = std.testing;
-    
+
     var logger = Logger.init(.Info);
     defer logger.close();
-    
+
     try testing.expectEqual(LogLevel.Info, logger.level);
     try testing.expect(logger.include_timestamp);
     try testing.expect(logger.include_source);
-    
+
     // Test level filtering
     logger.level = .Critical;
     logger.log(.Debug, "Debug message should be filtered", .{}, @src());
@@ -343,22 +342,22 @@ test "Logger creation and basic operations" {
 test "Security and performance monitoring" {
     // Initialize global logger for testing
     initGlobalLogger(.Critical);
-    
+
     // Test security logging
     logSecuritySuccess("test_operation", @src());
     logSecurityFailure("test_operation", @src());
-    
+
     // Test performance monitoring
     var counter = Monitoring.PerformanceCounter.start("test_performance");
-    
+
     // Simulate some work
     var i: usize = 0;
     while (i < 1000) : (i += 1) {
         _ = i * i;
     }
-    
+
     counter.end(@src());
-    
+
     // Test network logging
     logNetworkRequest("getblockcount", "localhost:20332", @src());
     logNetworkSuccess("getblockcount", "localhost:20332", @src());

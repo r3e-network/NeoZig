@@ -392,7 +392,7 @@ pub const TransactionSigner = struct {
     account: Hash160,
     scopes: []const u8,
     allowed_contracts: ?[]Hash160,
-    allowed_groups: ?[] [33]u8,
+    allowed_groups: ?[][33]u8,
     rules: ?[]WitnessRule,
 
     const Self = @This();
@@ -419,7 +419,7 @@ pub const TransactionSigner = struct {
             allowed_contracts_slice = try contracts_list.toOwnedSlice();
         }
 
-        var allowed_groups_slice: ?[] [33]u8 = null;
+        var allowed_groups_slice: ?[][33]u8 = null;
         if (obj.get("allowedgroups")) |groups_json| {
             var groups_list = ArrayList([33]u8).init(allocator);
             defer groups_list.deinit();
@@ -672,7 +672,8 @@ pub const NeoVersion = struct {
 
         return Self{
             .tcp_port = @intCast(obj.get("tcpport").?.integer),
-            .ws_port = @intCast(obj.get("wsport").?.integer),
+            // Some nodes omit `wsport` when WebSocket is disabled.
+            .ws_port = if (obj.get("wsport")) |port| @intCast(port.integer) else 0,
             .nonce = @intCast(obj.get("nonce").?.integer),
             .user_agent = try allocator.dupe(u8, obj.get("useragent").?.string),
             .protocol = if (obj.get("protocol")) |p| try ProtocolConfiguration.fromJson(p, allocator) else null,
@@ -692,11 +693,25 @@ pub const NeoVersion = struct {
 pub const ProtocolConfiguration = struct {
     network: u32,
     address_version: u8,
+    ms_per_block: ?u32,
+    max_valid_until_block_increment: ?u32,
+    max_traceable_blocks: ?u32,
+    max_transactions_per_block: ?u32,
+    memory_pool_max_transactions: ?u32,
+    validators_count: ?u32,
+    initial_gas_distribution: ?u64,
 
     pub fn init() ProtocolConfiguration {
         return ProtocolConfiguration{
             .network = 0,
             .address_version = 0,
+            .ms_per_block = null,
+            .max_valid_until_block_increment = null,
+            .max_traceable_blocks = null,
+            .max_transactions_per_block = null,
+            .memory_pool_max_transactions = null,
+            .validators_count = null,
+            .initial_gas_distribution = null,
         };
     }
 
@@ -707,6 +722,13 @@ pub const ProtocolConfiguration = struct {
         return ProtocolConfiguration{
             .network = @intCast(obj.get("network").?.integer),
             .address_version = @intCast(obj.get("addressversion").?.integer),
+            .ms_per_block = if (obj.get("msperblock")) |v| try parseIntFromJson(u32, v) else null,
+            .max_valid_until_block_increment = if (obj.get("maxvaliduntilblockincrement")) |v| try parseIntFromJson(u32, v) else null,
+            .max_traceable_blocks = if (obj.get("maxtraceableblocks")) |v| try parseIntFromJson(u32, v) else null,
+            .max_transactions_per_block = if (obj.get("maxtransactionsperblock")) |v| try parseIntFromJson(u32, v) else null,
+            .memory_pool_max_transactions = if (obj.get("memorypoolmaxtransactions")) |v| try parseIntFromJson(u32, v) else null,
+            .validators_count = if (obj.get("validatorscount")) |v| try parseIntFromJson(u32, v) else null,
+            .initial_gas_distribution = if (obj.get("initialgasdistribution")) |v| try parseIntFromJson(u64, v) else null,
         };
     }
 };

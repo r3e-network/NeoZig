@@ -2,20 +2,20 @@
 
 ## 🛡️ Security Features
 
-The Neo Zig SDK implements comprehensive security measures throughout:
+The Neo Zig SDK aims to be secure-by-default, but security is a process: review, test, and threat-model your usage (especially around key management and networking).
 
 ### Cryptographic Security
 - **secp256r1 ECDSA**: Production-grade elliptic curve cryptography
 - **RFC 6979**: Deterministic signature generation prevents nonce reuse
 - **RIPEMD-160**: Full implementation with test vector validation
 - **Secure Random**: Uses OS cryptographic random number generator
-- **Constant-Time Operations**: Prevents timing side-channel attacks
+- **Timing-safe comparisons**: Uses `std.crypto.timing_safe` for secret equality checks where applicable (not a blanket constant-time guarantee)
 
 ### Memory Safety
-- **Zero Buffer Overflows**: Zig's compile-time guarantees prevent overruns
-- **Explicit Allocators**: No hidden memory allocations or leaks
+- **Bounds checks in safe code**: Zig helps prevent common memory bugs when you stay in safe code
+- **Explicit allocators**: Most APIs are allocator-aware; convenience constructors may allocate using `std.heap.page_allocator`
 - **Secure Zeroization**: Private keys are securely erased from memory
-- **Bounds Checking**: All array accesses are bounds-checked
+- **Unsafe operations reviewed**: Some low-level code uses casts/pointers for performance and protocol parsing; treat these as review hotspots
 
 ### Input Validation
 - **Comprehensive Validation**: All inputs validated with proper error reporting
@@ -24,10 +24,10 @@ The Neo Zig SDK implements comprehensive security measures throughout:
 - **Parameter Validation**: Contract parameters validated according to Neo VM rules
 
 ### Network Security
-- **TLS by Default**: HTTPS connections for mainnet/testnet
+- **TLS by configuration**: Use HTTPS endpoints for mainnet/testnet
 - **Request Validation**: JSON-RPC requests properly validated
 - **Error Handling**: Detailed error reporting without information leakage
-- **Timeout Protection**: Network operations have proper timeouts
+- **Best-effort timeouts**: `std.http` lacks per-request socket deadlines; the SDK uses elapsed-time guards and retry limits to avoid hanging forever
 
 ## 🔒 Secure Usage Guidelines
 
@@ -69,7 +69,7 @@ const account = try wallet.importAccount(private_key, strong_password, "Main Acc
 If you discover a security vulnerability in the Neo Zig SDK:
 
 1. **DO NOT** open a public GitHub issue
-2. Email security reports to: [security@example.com]
+2. Email security reports to: `jimmy@r3e.network`
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce
@@ -87,20 +87,20 @@ If you discover a security vulnerability in the Neo Zig SDK:
 ### Cryptographic Implementation Audit
 - **Algorithm Compliance**: All algorithms follow industry standards
 - **Test Vector Validation**: Cryptographic functions validated against known test vectors
-- **Side-Channel Protection**: Constant-time operations for sensitive computations
+- **Side-Channel Notes**: Timing-safe comparisons are used in some paths; this is not a formal side-channel hardening claim
 - **Key Generation**: Uses cryptographically secure random number generation
 
 ### Code Security Review
-- **Memory Safety**: 100% memory-safe with Zig's compile-time guarantees
+- **Memory Safety**: Zig safety checks + explicit ownership; unsafe casts require review
 - **Input Sanitization**: All external inputs properly validated
 - **Error Handling**: Comprehensive error handling without information leakage
 - **Dependency Security**: Minimal dependencies, all from trusted sources
 
 ### Network Security Assessment
-- **TLS Enforcement**: HTTPS required for production endpoints
-- **Certificate Validation**: Proper certificate chain validation
+- **TLS**: Use HTTPS endpoints for production
+- **Certificate Validation**: Delegated to Zig stdlib HTTP/TLS behaviour and the platform certificate bundle configuration
 - **Request/Response Validation**: All JSON-RPC communications validated
-- **Timeout Protection**: All network operations have reasonable timeouts
+- **Timeouts**: Best-effort via elapsed-time checks and retry limits (not a hard socket deadline)
 
 ## 📋 Security Checklist
 
@@ -119,10 +119,10 @@ Before using the Neo Zig SDK in production:
 
 ## 🏆 Security Certifications
 
-- **Memory Safety**: 100% - Zig compile-time guarantees
+- **Memory Safety**: Zig safety checks + explicit ownership (not a formal certification)
 - **Cryptographic Compliance**: RFC standards (6979, NEP-2, NEP-6)
 - **Test Coverage**: Comprehensive test suite with edge cases
-- **Code Quality**: Production-ready with security-first design
+- **Code Quality**: Security-first design and regression coverage
 
 ## 📚 Security Resources
 

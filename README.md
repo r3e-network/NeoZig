@@ -6,7 +6,7 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/neo-zig-sdk)
 [![Release](https://img.shields.io/github/v/release/r3e-network/neo-zig-sdk?sort=semver&display_name=tag)](https://github.com/r3e-network/neo-zig-sdk/releases/latest)
 
-A **complete, production-ready Neo blockchain SDK** implemented in Zig, providing type-safe, memory-efficient, and high-performance tools for interacting with the Neo N3 blockchain.
+A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and NeoSwift API familiarity.
 
 ## ✨ Features
 
@@ -19,10 +19,22 @@ A **complete, production-ready Neo blockchain SDK** implemented in Zig, providin
 - **🧪 Testing**: Broad validation coverage mirroring Swift SDK behavior
 - **📚 Documentation**: Examples, API docs, and migration notes
 
-## 🆕 v1.0.0 Release
+## ✅ Status
 
-The Neo Zig SDK has reached the `v1.0.0` milestone with parity to the Swift SDK
-surface. Highlights:
+- **Zig**: `0.14.0+` (see `build.zig.zon`)
+- **Test coverage**: `zig build test` runs unit + parity suites
+- **Networking**: RPC transport uses `std.http.Client`; timeouts are best-effort (no socket deadlines in stdlib)
+- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.NeoSwift` for live calls
+
+## 📖 Docs
+
+- `docs/SWIFT_MIGRATION.md`
+- `docs/USAGE.md`
+- `docs/ARCHITECTURE.md`
+
+## 🆕 v1.0.1 Release
+
+`v1.0.1` is a patch release focused on correctness, safer ownership patterns, and docs polish. Highlights:
 
 - ✅ **Cryptography + addresses** – Base58/Base58Check, `Hash160` helpers, NEP-2, WIF, and RIPEMD160 validated against reference vectors.
 - 🧾 **Transactions + wallets** – Builders, account abstractions, and witness handling mirror Swift semantics.
@@ -33,7 +45,7 @@ surface. Highlights:
 Grab the release straight from GitHub:
 
 ```bash
-git clone --branch v1.0.0 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v1.0.1 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
 # Individual suites:
@@ -51,6 +63,12 @@ zig build types-test
 zig build witnessrule-test
 ```
 
+If you hit cache errors (e.g. `failed to check cache: invalid manifest file format`) when switching Zig versions, use a repo-local global cache:
+
+```bash
+zig build test --global-cache-dir .zig-global-cache
+```
+
 Run the offline demos (no node required):
 
 ```bash
@@ -64,9 +82,9 @@ required `.hash` is recorded in your `build.zig.zon`):
 
 ```zig
 .dependencies = .{
-    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.0.tar.gz`
+    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz`
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.0.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz",
         .hash = "...",
     },
 };
@@ -210,15 +228,12 @@ var transfer_tx = try gas_token.transfer(
 defer transfer_tx.deinit();
 
 // Build and broadcast transaction
-const final_tx = try transfer_tx.build();
-defer {
-    allocator.free(final_tx.signers);
-    allocator.free(final_tx.attributes);
-    allocator.free(final_tx.script);
-    allocator.free(final_tx.witnesses);
-}
+var final_tx = try transfer_tx.build();
+defer final_tx.deinit(allocator);
 
-const broadcaster = neo.transaction.BroadcastUtils.testnet(allocator);
+// Broadcasting requires a live node endpoint.
+var broadcaster = neo.transaction.BroadcastUtils.testnet(allocator);
+defer broadcaster.deinit();
 const tx_hash = try broadcaster.broadcastTransaction(final_tx);
 ```
 
@@ -230,7 +245,7 @@ var bip39_account = try neo.wallet.Bip39Account.create(allocator, "secure_passwo
 defer bip39_account.deinit();
 
 const mnemonic = bip39_account.getMnemonic();
-std.log.info("Mnemonic: {s}", .{mnemonic});
+std.log.info("Mnemonic words: {}", .{std.mem.count(u8, mnemonic, " ") + 1});
 
 // Note: For now, BIP-39 seed derivation supports ASCII mnemonics/passphrases only.
 // Non-ASCII requires Unicode NFKD normalization (not yet implemented in this SDK).
@@ -270,7 +285,7 @@ zig build bench
 
 ## 📊 Swift Migration
 
-The Neo Zig SDK provides **100% API compatibility** with the original Swift SDK while offering enhanced security and performance:
+The Neo Zig SDK aims for NeoSwift API familiarity and broad parity coverage. Some higher-level helpers are still evolving; see **Known Limitations** below.
 
 ### Migration Examples
 
@@ -302,11 +317,9 @@ const response = try request.send();
 
 ## ⚡ Performance
 
-- **21% smaller codebase** while maintaining 100% functionality
-- **Zero-cost abstractions** with compile-time optimizations
-- **Memory efficient** with explicit allocator control
-- **Fast compilation** enabling rapid development cycles
-- **Optimized algorithms** for all cryptographic operations
+- **Allocator-aware APIs**: explicit ownership and predictable memory use
+- **Low overhead**: idiomatic Zig, compile-time specialization, and minimal hidden work
+- **Benchmarkable**: use `zig build bench` to measure on your target and optimize mode
 
 ## 🎯 Use Cases
 
@@ -364,7 +377,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📝 Known Limitations
 
-The SDK aims for full NeoSwift parity, but a few higher-level surfaces are still in progress:
+The SDK aims for NeoSwift parity, but a few higher-level surfaces are still in progress:
 
 - Contract iterator helpers (`ContractIterator`, `TokenIterator`) now support RPC traversal via `traverseiterator`, but remain experimental; remember to call `deinit()` to terminate remote iterator sessions.
 - Transaction tracking (`NeoTransaction.getApplicationLog`) is still stubbed; use the `rpc` client directly for application logs.
@@ -382,45 +395,28 @@ Networking notes:
 
 ## 🎖️ Project Status
 
-- **Status**: Core modules production-ready; some helper APIs experimental
-- **Version**: 1.0.0
-- **Stability**: Enterprise-grade
+- **Status**: Core modules implemented; some helper APIs experimental
+- **Version**: 1.0.1
 - **Maintenance**: Actively maintained
-- **Support**: Full community and enterprise support
 
 ---
 
-## 🔍 Technical Specifications
+## 🔍 Technical Notes
 
 ### Requirements
 - **Zig**: 0.14.0 or later
-- **Memory**: Minimal (explicit allocator control)
 - **Platform**: Cross-platform (Linux, macOS, Windows)
 - **Dependencies**: Zero external dependencies (self-contained)
 
-### Performance Characteristics
-- **Binary Size**: <2MB for complete SDK
-- **Memory Usage**: Predictable with explicit control
-- **Key Generation**: <10ms for secure key pairs
-- **Hash Operations**: <1ms for SHA256/RIPEMD160
-- **Transaction Building**: <5ms for complex transactions
-- **Network Operations**: <100ms for local RPC calls
+### Performance
+- Benchmark on your target with `zig build bench` and the desired `-Doptimize=` mode.
+- Most APIs are allocator-aware so you can control allocation strategies in hot paths.
 
-### Security Features
-- **Memory Safety**: Compile-time prevention of buffer overflows
-- **Cryptographic Standards**: RFC 6979, ISO RIPEMD160, NEP standards
-- **Input Validation**: Comprehensive validation throughout
-- **Secure Defaults**: Safe configurations by default
-- **Audit Logging**: Security event tracking and monitoring
+### Security
+- Avoid logging secrets (private keys, mnemonics, WIF, NEP-2 intermediate data).
+- Prefer HTTPS endpoints for RPC; timeouts are best-effort (see Networking notes above).
 
 ### Compatibility
 - **Neo Protocol**: N3 (latest)
 - **Standards**: NEP-6, NEP-17, NEP-11, BIP-39, BIP-32
 - **Networks**: MainNet, TestNet, private networks
-- **Migration**: 100% Swift SDK API compatibility
-
----
-
-**🚀 Ready to build on Neo with the power and safety of Zig!**
-
-*Developed with ❤️ by [R3E Network](https://r3e.network) for the Neo blockchain community.*

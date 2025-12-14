@@ -5,8 +5,6 @@
 
 const std = @import("std");
 
-
-
 /// Neo VM OpCodes (complete conversion from Swift OpCode enum)
 pub const OpCode = enum(u8) {
     // Constants
@@ -39,7 +37,7 @@ pub const OpCode = enum(u8) {
     PUSH14 = 0x1E,
     PUSH15 = 0x1F,
     PUSH16 = 0x20,
-    
+
     // Flow control
     NOP = 0x21,
     JMP = 0x22,
@@ -74,7 +72,7 @@ pub const OpCode = enum(u8) {
     ENDFINALLY = 0x3F,
     RET = 0x40,
     SYSCALL = 0x41,
-    
+
     // Stack operations
     DEPTH = 0x43,
     DROP = 0x45,
@@ -91,7 +89,7 @@ pub const OpCode = enum(u8) {
     REVERSE3 = 0x53,
     REVERSE4 = 0x54,
     REVERSEN = 0x55,
-    
+
     // Slot operations
     INITSSLOT = 0x56,
     INITSLOT = 0x57,
@@ -143,7 +141,7 @@ pub const OpCode = enum(u8) {
     STARG5 = 0x85,
     STARG6 = 0x86,
     STARG = 0x87,
-    
+
     // String operations
     NEWBUFFER = 0x88,
     MEMCPY = 0x89,
@@ -152,7 +150,7 @@ pub const OpCode = enum(u8) {
     LEFT = 0x8D,
     RIGHT = 0x8E,
     SIZE = 0xCA,
-    
+
     // Logical operations
     INVERT = 0x90,
     AND = 0x91,
@@ -160,7 +158,7 @@ pub const OpCode = enum(u8) {
     XOR = 0x93,
     EQUAL = 0x97,
     NOTEQUAL = 0x98,
-    
+
     // Arithmetic operations
     SIGN = 0x99,
     ABS = 0x9A,
@@ -189,7 +187,7 @@ pub const OpCode = enum(u8) {
     MIN = 0xB9,
     MAX = 0xBA,
     WITHIN = 0xBB,
-    
+
     // Compound-type operations
     PACKMAP = 0xBE,
     PACKSTRUCT = 0xBF,
@@ -211,17 +209,17 @@ pub const OpCode = enum(u8) {
     REVERSEITEMS = 0xD2,
     REMOVE = 0xD3,
     CLEARITEMS = 0xD4,
-    
+
     // Types
     ISNULL = 0xD8,
     ISTYPE = 0xD9,
     CONVERT = 0xDB,
-    
+
     /// Gets opcode value (equivalent to Swift .opcode property)
     pub fn getOpcode(self: OpCode) u8 {
         return @intFromEnum(self);
     }
-    
+
     /// Gets opcode name (equivalent to Swift description)
     pub fn getName(self: OpCode) []const u8 {
         return @tagName(self);
@@ -231,20 +229,20 @@ pub const OpCode = enum(u8) {
     pub fn fromByte(value: u8) ?OpCode {
         return std.meta.intToEnum(OpCode, value) catch null;
     }
-    
+
     /// Checks if opcode is a push operation
     pub fn isPush(self: OpCode) bool {
         const opcode_value = @intFromEnum(self);
         return (opcode_value >= @intFromEnum(OpCode.PUSHINT8) and opcode_value <= @intFromEnum(OpCode.PUSH16)) or
-               (opcode_value >= @intFromEnum(OpCode.PUSHDATA1) and opcode_value <= @intFromEnum(OpCode.PUSHDATA4));
+            (opcode_value >= @intFromEnum(OpCode.PUSHDATA1) and opcode_value <= @intFromEnum(OpCode.PUSHDATA4));
     }
-    
+
     /// Checks if opcode is a jump operation
     pub fn isJump(self: OpCode) bool {
         const opcode_value = @intFromEnum(self);
         return opcode_value >= @intFromEnum(OpCode.JMP) and opcode_value <= @intFromEnum(OpCode.JMPLE_L);
     }
-    
+
     /// Gets push value for PUSH opcodes
     pub fn getPushValue(self: OpCode) ?i32 {
         return switch (self) {
@@ -274,12 +272,12 @@ pub const OpCode = enum(u8) {
 // Tests (converted from Swift OpCode tests)
 test "OpCode basic properties" {
     const testing = std.testing;
-    
+
     // Test opcode values (equivalent to Swift opcode value tests)
     try testing.expectEqual(@as(u8, 0x10), OpCode.PUSH0.getOpcode());
     try testing.expectEqual(@as(u8, 0x11), OpCode.PUSH1.getOpcode());
     try testing.expectEqual(@as(u8, 0x41), OpCode.SYSCALL.getOpcode());
-    
+
     // Test opcode names
     try testing.expectEqualStrings("PUSH0", OpCode.PUSH0.getName());
     try testing.expectEqualStrings("PUSH1", OpCode.PUSH1.getName());
@@ -288,14 +286,14 @@ test "OpCode basic properties" {
 
 test "OpCode classification" {
     const testing = std.testing;
-    
+
     // Test push operation detection (equivalent to Swift isPush tests)
     try testing.expect(OpCode.PUSH0.isPush());
     try testing.expect(OpCode.PUSH16.isPush());
     try testing.expect(OpCode.PUSHDATA1.isPush());
     try testing.expect(!OpCode.ADD.isPush());
     try testing.expect(!OpCode.SYSCALL.isPush());
-    
+
     // Test jump operation detection
     try testing.expect(OpCode.JMP.isJump());
     try testing.expect(OpCode.JMPIF.isJump());
@@ -305,13 +303,13 @@ test "OpCode classification" {
 
 test "OpCode push values" {
     const testing = std.testing;
-    
+
     // Test push value extraction (equivalent to Swift push value tests)
     try testing.expectEqual(@as(i32, 0), OpCode.PUSH0.getPushValue().?);
     try testing.expectEqual(@as(i32, 1), OpCode.PUSH1.getPushValue().?);
     try testing.expectEqual(@as(i32, 16), OpCode.PUSH16.getPushValue().?);
     try testing.expectEqual(@as(i32, -1), OpCode.PUSHM1.getPushValue().?);
-    
+
     // Non-push opcodes should return null
     try testing.expectEqual(@as(?i32, null), OpCode.ADD.getPushValue());
     try testing.expectEqual(@as(?i32, null), OpCode.SYSCALL.getPushValue());

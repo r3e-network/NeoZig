@@ -5,6 +5,7 @@
 
 const std = @import("std");
 
+const constants = @import("../core/constants.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
 /// Request counter for RPC calls (converted from Swift Counter)
@@ -187,7 +188,7 @@ pub const NeoSwiftConfig = struct {
     /// Checks if configured for mainnet
     pub fn isMainnet(self: Self) bool {
         if (self.network_magic) |magic| {
-            return magic == 0x4e454f00; // MainNet magic
+            return magic == constants.NetworkMagic.MAINNET;
         }
         return false;
     }
@@ -195,7 +196,7 @@ pub const NeoSwiftConfig = struct {
     /// Checks if configured for testnet
     pub fn isTestnet(self: Self) bool {
         if (self.network_magic) |magic| {
-            return magic == 0x4e454f01; // TestNet magic
+            return magic == constants.NetworkMagic.TESTNET;
         }
         return false;
     }
@@ -213,7 +214,7 @@ pub const NeoSwiftConfig = struct {
     /// Creates MainNet configuration
     pub fn createMainNetConfig() Self {
         var config = Self.init();
-        config.network_magic = 0x4e454f00;
+        config.network_magic = constants.NetworkMagic.MAINNET;
         config.nns_resolver = MAINNET_NNS_CONTRACT_HASH;
         return config;
     }
@@ -221,7 +222,12 @@ pub const NeoSwiftConfig = struct {
     /// Creates TestNet configuration
     pub fn createTestNetConfig() Self {
         var config = Self.init();
-        config.network_magic = 0x4e454f01;
+        config.network_magic = constants.NetworkMagic.TESTNET;
+        // Neo N3 TestNet uses ~3s blocks by default (see `getversion`).
+        config.block_interval = 3000;
+        config.polling_interval = 3000;
+        // Protocol setting (blocks) is independent of `msperblock`.
+        config.max_valid_until_block_increment = 5760;
         // TestNet might have different NNS resolver
         return config;
     }
@@ -347,7 +353,7 @@ test "NeoSwiftConfig parameter configuration" {
     // Test configuration with parameters
     var config = NeoSwiftConfig.init();
 
-    _ = config.setNetworkMagic(0x4e454f00);
+    _ = config.setNetworkMagic(constants.NetworkMagic.MAINNET);
     try testing.expect(config.hasNetworkMagic());
     try testing.expect(config.isMainnet());
     try testing.expect(!config.isTestnet());
@@ -372,13 +378,13 @@ test "NeoSwiftConfig preset configurations" {
     const mainnet_config = NeoSwiftConfig.createMainNetConfig();
     try testing.expect(mainnet_config.isMainnet());
     try testing.expect(!mainnet_config.isTestnet());
-    try testing.expectEqual(@as(u32, 0x4e454f00), mainnet_config.network_magic.?);
+    try testing.expectEqual(constants.NetworkMagic.MAINNET, mainnet_config.network_magic.?);
 
     // Test TestNet configuration
     const testnet_config = NeoSwiftConfig.createTestNetConfig();
     try testing.expect(testnet_config.isTestnet());
     try testing.expect(!testnet_config.isMainnet());
-    try testing.expectEqual(@as(u32, 0x4e454f01), testnet_config.network_magic.?);
+    try testing.expectEqual(constants.NetworkMagic.TESTNET, testnet_config.network_magic.?);
 
     // Test development configuration
     const dev_config = NeoSwiftConfig.createDevConfig();

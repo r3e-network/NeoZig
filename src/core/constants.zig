@@ -26,8 +26,13 @@ pub const MAX_ITERATOR_ITEMS_DEFAULT: u32 = 100;
 
 /// Network magic numbers
 pub const NetworkMagic = struct {
-    pub const MAINNET: u32 = 0x4e454f00;
-    pub const TESTNET: u32 = 0x4e454f01;
+    // Neo N3 magic numbers as reported by `getversion`.
+    //
+    // Little-endian bytes:
+    // - MAINNET: 4e 45 4f 33 => "NEO3"
+    // - TESTNET: 4e 33 54 35 => "N3T5"
+    pub const MAINNET: u32 = 0x334f454e;
+    pub const TESTNET: u32 = 0x3554334e;
 };
 
 /// Default magic used when the RPC endpoint does not report protocol metadata

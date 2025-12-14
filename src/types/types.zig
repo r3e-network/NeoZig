@@ -4,8 +4,6 @@
 
 const std = @import("std");
 
-
-
 pub const Hash160 = @import("hash160.zig").Hash160;
 pub const Hash256 = @import("hash256.zig").Hash256;
 pub const Address = @import("address.zig").Address;

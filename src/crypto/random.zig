@@ -2,8 +2,6 @@
 
 const std = @import("std");
 
-
-
 /// Fills a buffer with cryptographically secure random bytes
 pub fn fillBytes(buffer: []u8) void {
     std.crypto.random.bytes(buffer);

@@ -5,7 +5,6 @@
 
 const std = @import("std");
 
-
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -16,9 +15,9 @@ const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 pub const WitnessRule = struct {
     action: WitnessAction,
     condition: WitnessCondition,
-    
+
     const Self = @This();
-    
+
     /// Creates witness rule (equivalent to Swift init)
     pub fn init(action: WitnessAction, condition: WitnessCondition) Self {
         return Self{
@@ -26,30 +25,30 @@ pub const WitnessRule = struct {
             .condition = condition,
         };
     }
-    
+
     /// Gets serialized size (equivalent to Swift .size property)
     pub fn size(self: Self) usize {
         return 1 + self.condition.size();
     }
-    
+
     /// Serializes witness rule (equivalent to Swift serialize(_ writer: BinaryWriter))
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         try writer.writeByte(@intFromEnum(self.action));
         try self.condition.serialize(writer);
     }
-    
+
     /// Deserializes witness rule (equivalent to Swift deserialize(_ reader: BinaryReader))
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const action_byte = try reader.readByte();
         const action = WitnessAction.fromByte(action_byte) orelse {
             return errors.throwIllegalArgument("Invalid witness action byte");
         };
-        
+
         const condition = try WitnessCondition.deserialize(reader, allocator);
-        
+
         return Self.init(action, condition);
     }
-    
+
     /// Validates witness rule
     pub fn validate(self: Self) !void {
         try self.condition.validate();
@@ -67,22 +66,22 @@ pub const WitnessRule = struct {
             .condition = try self.condition.cloneOwned(allocator),
         };
     }
-    
+
     /// Evaluates witness rule against context (additional utility)
     pub fn evaluate(self: Self, context: WitnessContext) bool {
         const condition_result = self.condition.evaluate(context);
-        
+
         return switch (self.action) {
             .Allow => condition_result,
             .Deny => !condition_result,
         };
     }
-    
+
     /// Compares witness rules for equality
     pub fn eql(self: Self, other: Self) bool {
         return self.action == other.action and self.condition.eql(other.condition);
     }
-    
+
     /// Hash function for HashMap usage
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
@@ -96,14 +95,14 @@ pub const WitnessRule = struct {
 pub const WitnessAction = enum(u8) {
     Deny = 0x00,
     Allow = 0x01,
-    
+
     const Self = @This();
-    
+
     /// Gets byte value (equivalent to Swift .byte property)
     pub fn getByte(self: Self) u8 {
         return @intFromEnum(self);
     }
-    
+
     /// Creates from byte value (equivalent to Swift throwingValueOf)
     pub fn fromByte(byte_value: u8) ?Self {
         return switch (byte_value) {
@@ -112,7 +111,7 @@ pub const WitnessAction = enum(u8) {
             else => null,
         };
     }
-    
+
     /// Gets JSON value (equivalent to Swift JSON encoding)
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
@@ -120,7 +119,7 @@ pub const WitnessAction = enum(u8) {
             .Allow => "Allow",
         };
     }
-    
+
     /// Creates from JSON value
     pub fn fromJsonValue(json_value: []const u8) ?Self {
         if (std.mem.eql(u8, json_value, "Deny")) return .Deny;
@@ -154,14 +153,14 @@ pub const WitnessCondition = union(enum(u8)) {
     CalledByEntry: void,
     CalledByContract: Hash160,
     CalledByGroup: [33]u8,
-    
+
     const Self = @This();
-    
+
     /// Creates boolean condition
     pub fn boolean(value: bool) Self {
         return Self{ .Boolean = value };
     }
-    
+
     /// Creates NOT condition
     pub fn not(condition: *WitnessCondition) Self {
         return Self{ .Not = .{ .condition = condition, .owns_condition = false } };
@@ -171,46 +170,46 @@ pub const WitnessCondition = union(enum(u8)) {
     pub fn notOwned(condition: *WitnessCondition) Self {
         return Self{ .Not = .{ .condition = condition, .owns_condition = true } };
     }
-    
+
     /// Creates AND condition
     pub fn and_condition(conditions: []WitnessCondition) Self {
         return Self{ .And = .{ .conditions = conditions, .owns_conditions = false } };
     }
-    
+
     /// Creates OR condition
     pub fn or_condition(conditions: []WitnessCondition) Self {
         return Self{ .Or = .{ .conditions = conditions, .owns_conditions = false } };
     }
-    
+
     /// Creates script hash condition
     pub fn scriptHash(hash: Hash160) Self {
         return Self{ .ScriptHash = hash };
     }
-    
+
     /// Creates group condition
     pub fn group(public_key: [33]u8) Self {
         return Self{ .Group = public_key };
     }
-    
+
     /// Creates called by entry condition
     pub fn calledByEntry() Self {
         return Self{ .CalledByEntry = {} };
     }
-    
+
     /// Creates called by contract condition
     pub fn calledByContract(contract: Hash160) Self {
         return Self{ .CalledByContract = contract };
     }
-    
+
     /// Creates called by group condition
     pub fn calledByGroup(group_key: [33]u8) Self {
         return Self{ .CalledByGroup = group_key };
     }
-    
+
     /// Gets serialized size (equivalent to Swift .size property)
     pub fn size(self: Self) usize {
         var total_size: usize = 1; // Type byte
-        
+
         switch (self) {
             .Boolean => total_size += 1,
             .Not => |not_condition| total_size += not_condition.condition.size(),
@@ -230,10 +229,10 @@ pub const WitnessCondition = union(enum(u8)) {
             .Group, .CalledByGroup => total_size += 33,
             .CalledByEntry => {}, // No additional data
         }
-        
+
         return total_size;
     }
-    
+
     /// Serializes condition (equivalent to Swift serialize)
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         const condition_type: u8 = switch (self) {
@@ -247,9 +246,9 @@ pub const WitnessCondition = union(enum(u8)) {
             .CalledByContract => 0x28,
             .CalledByGroup => 0x29,
         };
-        
+
         try writer.writeByte(condition_type);
-        
+
         switch (self) {
             .Boolean => |value| try writer.writeByte(if (value) 1 else 0),
             .Not => |not_condition| try not_condition.condition.serialize(writer),
@@ -272,11 +271,11 @@ pub const WitnessCondition = union(enum(u8)) {
             .CalledByGroup => |group_key| try writer.writeBytes(&group_key),
         }
     }
-    
+
     /// Deserializes condition (equivalent to Swift deserialize)
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const condition_type = try reader.readByte();
-        
+
         return switch (condition_type) {
             0x00 => {
                 const value = (try reader.readByte()) != 0;
@@ -427,7 +426,7 @@ pub const WitnessCondition = union(enum(u8)) {
             },
         };
     }
-    
+
     /// Validates condition
     pub fn validate(self: Self) !void {
         switch (self) {
@@ -451,7 +450,7 @@ pub const WitnessCondition = union(enum(u8)) {
             else => {}, // Other conditions are always valid
         }
     }
-    
+
     /// Evaluates condition against context
     pub fn evaluate(self: Self, context: WitnessContext) bool {
         return switch (self) {
@@ -476,14 +475,14 @@ pub const WitnessCondition = union(enum(u8)) {
             .CalledByGroup => |group_key| context.hasGroup(group_key),
         };
     }
-    
+
     /// Compares conditions for equality
     pub fn eql(self: Self, other: Self) bool {
         const self_type = @as(u8, @intFromEnum(self));
         const other_type = @as(u8, @intFromEnum(other));
-        
+
         if (self_type != other_type) return false;
-        
+
         return switch (self) {
             .Boolean => |a| a == other.Boolean,
             .Not => |a| a.condition.eql(other.Not.condition.*),
@@ -515,9 +514,9 @@ pub const WitnessContext = struct {
     calling_script_hash: ?Hash160,
     is_entry_script: bool,
     groups: []const [33]u8,
-    
+
     const Self = @This();
-    
+
     pub fn init() Self {
         return Self{
             .calling_script_hash = null,
@@ -525,7 +524,7 @@ pub const WitnessContext = struct {
             .groups = &[_][33]u8{},
         };
     }
-    
+
     /// Checks if context has specific group
     pub fn hasGroup(self: Self, group: [33]u8) bool {
         for (self.groups) |ctx_group| {
@@ -535,23 +534,23 @@ pub const WitnessContext = struct {
         }
         return false;
     }
-    
+
     /// Sets calling script hash
     pub fn setCallingScriptHash(self: *Self, hash: Hash160) void {
         self.calling_script_hash = hash;
     }
-    
+
     /// Sets entry script flag
     pub fn setIsEntryScript(self: *Self, is_entry: bool) void {
         self.is_entry_script = is_entry;
     }
-    
+
     /// Adds group to context
     pub fn addGroup(self: *Self, group: [33]u8, allocator: std.mem.Allocator) !void {
         var new_groups = try allocator.alloc([33]u8, self.groups.len + 1);
         @memcpy(new_groups[0..self.groups.len], self.groups);
         new_groups[self.groups.len] = group;
-        
+
         if (self.groups.len > 0) {
             allocator.free(self.groups);
         }
@@ -577,20 +576,20 @@ fn getVarIntSize(value: usize) usize {
 // Tests (converted from Swift WitnessRule, WitnessAction, WitnessCondition tests)
 test "WitnessAction operations" {
     const testing = std.testing;
-    
+
     // Test witness action values (equivalent to Swift WitnessAction tests)
     try testing.expectEqual(@as(u8, 0x00), WitnessAction.Deny.getByte());
     try testing.expectEqual(@as(u8, 0x01), WitnessAction.Allow.getByte());
-    
+
     // Test from byte conversion
     try testing.expectEqual(WitnessAction.Deny, WitnessAction.fromByte(0x00).?);
     try testing.expectEqual(WitnessAction.Allow, WitnessAction.fromByte(0x01).?);
     try testing.expectEqual(@as(?WitnessAction, null), WitnessAction.fromByte(0xFF));
-    
+
     // Test JSON values
     try testing.expectEqualStrings("Deny", WitnessAction.Deny.getJsonValue());
     try testing.expectEqualStrings("Allow", WitnessAction.Allow.getJsonValue());
-    
+
     // Test all cases
     const all_cases = WitnessAction.getAllCases();
     try testing.expectEqual(@as(usize, 2), all_cases.len);
@@ -599,17 +598,17 @@ test "WitnessAction operations" {
 test "WitnessCondition creation and basic operations" {
     const testing = std.testing;
     _ = testing.allocator;
-    
+
     // Test basic condition creation (equivalent to Swift WitnessCondition tests)
     const bool_condition = WitnessCondition.boolean(true);
     try testing.expectEqual(.Boolean, std.meta.activeTag(bool_condition));
-    
+
     const script_hash_condition = WitnessCondition.scriptHash(Hash160.ZERO);
     try testing.expectEqual(.ScriptHash, std.meta.activeTag(script_hash_condition));
-    
+
     const entry_condition = WitnessCondition.calledByEntry();
     try testing.expectEqual(.CalledByEntry, std.meta.activeTag(entry_condition));
-    
+
     // Test size calculation
     try testing.expect(bool_condition.size() >= 2); // Type + value
     try testing.expect(script_hash_condition.size() >= 21); // Type + hash
@@ -619,24 +618,24 @@ test "WitnessCondition creation and basic operations" {
 test "WitnessCondition compound operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test compound conditions (equivalent to Swift compound condition tests)
     const conditions = try allocator.alloc(WitnessCondition, 2);
     defer allocator.free(conditions);
-    
+
     conditions[0] = WitnessCondition.boolean(true);
     conditions[1] = WitnessCondition.calledByEntry();
-    
+
     const and_condition = WitnessCondition.and_condition(conditions);
     const or_condition = WitnessCondition.or_condition(conditions);
-    
+
     // Test size includes all sub-conditions
     const and_size = and_condition.size();
     const or_size = or_condition.size();
-    
+
     try testing.expect(and_size > conditions[0].size());
     try testing.expect(or_size > conditions[1].size());
-    
+
     // Test validation
     try and_condition.validate();
     try or_condition.validate();
@@ -678,24 +677,24 @@ test "WitnessCondition deserialize cleans up on error" {
 test "WitnessRule creation and operations" {
     const testing = std.testing;
     _ = testing.allocator;
-    
+
     // Test witness rule creation (equivalent to Swift WitnessRule tests)
     const condition = WitnessCondition.boolean(true);
     const rule = WitnessRule.init(WitnessAction.Allow, condition);
-    
+
     try testing.expectEqual(WitnessAction.Allow, rule.action);
-    
+
     // Test size calculation
     const rule_size = rule.size();
     try testing.expect(rule_size >= 2); // Action + condition
-    
+
     // Test validation
     try rule.validate();
-    
+
     // Test equality
     const same_rule = WitnessRule.init(WitnessAction.Allow, WitnessCondition.boolean(true));
     const different_rule = WitnessRule.init(WitnessAction.Deny, WitnessCondition.boolean(true));
-    
+
     try testing.expect(rule.eql(same_rule));
     try testing.expect(!rule.eql(different_rule));
 }
@@ -703,54 +702,54 @@ test "WitnessRule creation and operations" {
 test "WitnessRule serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test witness rule serialization (equivalent to Swift serialization tests)
     const condition = WitnessCondition.scriptHash(Hash160.ZERO);
     const rule = WitnessRule.init(WitnessAction.Allow, condition);
-    
+
     var writer = BinaryWriter.init(allocator);
     defer writer.deinit();
-    
+
     try rule.serialize(&writer);
-    
+
     const serialized_data = writer.toSlice();
     try testing.expect(serialized_data.len > 0);
     try testing.expectEqual(@as(u8, 0x01), serialized_data[0]); // Allow action
-    
+
     // Test deserialization
     var reader = BinaryReader.init(serialized_data);
     const deserialized_rule = try WitnessRule.deserialize(&reader, allocator);
-    
+
     try testing.expect(rule.eql(deserialized_rule));
 }
 
 test "WitnessCondition evaluation" {
     const testing = std.testing;
     _ = testing.allocator;
-    
+
     // Test condition evaluation (additional utility tests)
     var context = WitnessContext.init();
     context.setIsEntryScript(true);
     context.setCallingScriptHash(Hash160.ZERO);
-    
+
     // Test boolean condition
     const true_condition = WitnessCondition.boolean(true);
     try testing.expect(true_condition.evaluate(context));
-    
+
     const false_condition = WitnessCondition.boolean(false);
     try testing.expect(!false_condition.evaluate(context));
-    
+
     // Test called by entry condition
     const entry_condition = WitnessCondition.calledByEntry();
     try testing.expect(entry_condition.evaluate(context));
-    
+
     context.setIsEntryScript(false);
     try testing.expect(!entry_condition.evaluate(context));
-    
+
     // Test script hash condition
     const script_condition = WitnessCondition.scriptHash(Hash160.ZERO);
     try testing.expect(script_condition.evaluate(context));
-    
+
     const different_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const different_script_condition = WitnessCondition.scriptHash(different_hash);
     try testing.expect(!different_script_condition.evaluate(context));
@@ -759,19 +758,19 @@ test "WitnessCondition evaluation" {
 test "WitnessRule evaluation" {
     const testing = std.testing;
     _ = testing.allocator;
-    
+
     // Test rule evaluation (equivalent to Swift rule evaluation tests)
     var context = WitnessContext.init();
     context.setIsEntryScript(true);
-    
+
     // Test allow rule with true condition
     const allow_rule = WitnessRule.init(WitnessAction.Allow, WitnessCondition.calledByEntry());
     try testing.expect(allow_rule.evaluate(context));
-    
+
     // Test deny rule with true condition
     const deny_rule = WitnessRule.init(WitnessAction.Deny, WitnessCondition.calledByEntry());
     try testing.expect(!deny_rule.evaluate(context));
-    
+
     // Test with false condition
     context.setIsEntryScript(false);
     try testing.expect(!allow_rule.evaluate(context));

@@ -1146,7 +1146,7 @@ pub const NeoProtocol = struct {
         const prefix_base64 = try hexToBase64(key_prefix_hex, allocator);
         defer allocator.free(prefix_base64);
 
-            var params_list = ArrayList(std.json.Value).init(allocator);
+        var params_list = ArrayList(std.json.Value).init(allocator);
         defer params_list.deinit();
 
         try params_list.append(std.json.Value{ .string = root_hex });

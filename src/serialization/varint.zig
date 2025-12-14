@@ -4,8 +4,6 @@
 
 const std = @import("std");
 
-
-
 pub const VarInt = struct {
     /// Returns the number of bytes required to encode `value` as a VarInt.
     pub fn size(value: usize) usize {

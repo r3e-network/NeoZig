@@ -235,7 +235,7 @@ fn sendFetch(
         .payload = payload,
         .headers = .{
             .content_type = .{ .override = "application/json" },
-            .user_agent = .{ .override = "Neo-Zig-SDK/1.0" },
+            .user_agent = .{ .override = "Neo-Zig-SDK/1.0.1" },
         },
         .redirect_behavior = .not_allowed,
         .keep_alive = false,

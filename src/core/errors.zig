@@ -160,11 +160,11 @@ pub fn throwIllegalState(message: []const u8) NeoError {
 
 test "error types validation" {
     const testing = std.testing;
-    
+
     // Test error creation and handling
     const crypto_error: CryptoError = CryptoError.InvalidKey;
     const validation_error: ValidationError = ValidationError.InvalidAddress;
-    
+
     try testing.expect(crypto_error == CryptoError.InvalidKey);
     try testing.expect(validation_error == ValidationError.InvalidAddress);
 }

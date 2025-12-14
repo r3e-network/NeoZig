@@ -7,6 +7,25 @@ NeoSwift/
 zig-out/
 zig-cache/
 .zig-cache/
+.zig-global-cache/
+
+# Local tool caches/state (generated)
+.serena/memories/
+.serena/cache/
+.cache/
+.direnv/
+.venv/
+.zls-cache/
+.zigmod/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generic build output (generated)
+build/
+dist/
+out/
+target/
 
 # IDE and editor files
 .vscode/
@@ -76,10 +95,18 @@ private-keys/
 
 # Temporary build files
 *.o
+*.a
+*.lib
+*.obj
 *.so
 *.dylib
 *.dll
 *.exe
+*.pdb
+*.dSYM/
+
+# Tooling artifacts
+compile_commands.json
 
 # Root-level scratch binaries (no extension)
 /align_ptr

@@ -216,7 +216,8 @@ pub const NeoGetVersion = struct {
 
         return Self{
             .tcp_port = @intCast(obj.get("tcpport").?.integer),
-            .ws_port = @intCast(obj.get("wsport").?.integer),
+            // Some nodes omit `wsport` when WebSocket is disabled.
+            .ws_port = if (obj.get("wsport")) |port| @intCast(port.integer) else 0,
             .nonce = @intCast(obj.get("nonce").?.integer),
             .user_agent = try allocator.dupe(u8, obj.get("useragent").?.string),
             .protocol = if (obj.get("protocol")) |p| try ProtocolSettings.fromJson(p, allocator) else null,
@@ -227,19 +228,25 @@ pub const NeoGetVersion = struct {
     pub const ProtocolSettings = struct {
         network: u32,
         address_version: u8,
-        max_transactions_per_block: u32,
-        memory_pool_max_transactions: u32,
-        max_trace_size: u32,
-        initial_gas_distribution: u64,
+        validators_count: ?u32,
+        ms_per_block: ?u32,
+        max_valid_until_block_increment: ?u32,
+        max_traceable_blocks: ?u32,
+        max_transactions_per_block: ?u32,
+        memory_pool_max_transactions: ?u32,
+        initial_gas_distribution: ?u64,
 
         pub fn init() ProtocolSettings {
             return ProtocolSettings{
                 .network = 0,
                 .address_version = 0,
-                .max_transactions_per_block = 0,
-                .memory_pool_max_transactions = 0,
-                .max_trace_size = 0,
-                .initial_gas_distribution = 0,
+                .validators_count = null,
+                .ms_per_block = null,
+                .max_valid_until_block_increment = null,
+                .max_traceable_blocks = null,
+                .max_transactions_per_block = null,
+                .memory_pool_max_transactions = null,
+                .initial_gas_distribution = null,
             };
         }
 
@@ -250,10 +257,23 @@ pub const NeoGetVersion = struct {
             return ProtocolSettings{
                 .network = @intCast(obj.get("network").?.integer),
                 .address_version = @intCast(obj.get("addressversion").?.integer),
-                .max_transactions_per_block = @intCast(obj.get("maxtransactionsperblock").?.integer),
-                .memory_pool_max_transactions = @intCast(obj.get("memorypoolmaxtransactions").?.integer),
-                .max_trace_size = @intCast(obj.get("maxtracesize").?.integer),
-                .initial_gas_distribution = @intCast(obj.get("initialgasdistribution").?.integer),
+                .validators_count = try parseOptionalInt(u32, obj, "validatorscount"),
+                .ms_per_block = try parseOptionalInt(u32, obj, "msperblock"),
+                .max_valid_until_block_increment = try parseOptionalInt(u32, obj, "maxvaliduntilblockincrement"),
+                .max_traceable_blocks = try parseOptionalInt(u32, obj, "maxtraceableblocks"),
+                .max_transactions_per_block = try parseOptionalInt(u32, obj, "maxtransactionsperblock"),
+                .memory_pool_max_transactions = try parseOptionalInt(u32, obj, "memorypoolmaxtransactions"),
+                .initial_gas_distribution = try parseOptionalInt(u64, obj, "initialgasdistribution"),
+            };
+        }
+
+        fn parseOptionalInt(comptime T: type, obj: std.json.ObjectMap, key: []const u8) !?T {
+            const value = obj.get(key) orelse return null;
+            return switch (value) {
+                .integer => |i| @as(T, @intCast(i)),
+                .string => |s| std.fmt.parseInt(T, s, 10) catch errors.SerializationError.InvalidFormat,
+                .null => null,
+                else => errors.SerializationError.InvalidFormat,
             };
         }
     };

@@ -6,7 +6,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -28,14 +27,14 @@ pub const Bip39Account = struct {
     bip32_node: @import("../crypto/bip32.zig").Bip32ECKeyPair,
     /// Allocator for memory management
     allocator: std.mem.Allocator,
-    
+
     const Self = @This();
-    
+
     /// Creates BIP-39 account (equivalent to Swift private init)
     fn initPrivate(allocator: std.mem.Allocator, key_pair: KeyPair, mnemonic: []const u8, bip32_node: @import("../crypto/bip32.zig").Bip32ECKeyPair) !Self {
         const address = try key_pair.public_key.toAddress(constants.AddressConstants.ADDRESS_VERSION);
         const account = Account.fromKeyPair(key_pair, address);
-        
+
         return Self{
             .mnemonic = try allocator.dupe(u8, mnemonic),
             .account = account,
@@ -43,7 +42,7 @@ pub const Bip39Account = struct {
             .allocator = allocator,
         };
     }
-    
+
     /// Cleanup resources
     pub fn deinit(self: *Self) void {
         if (self.account.private_key) |*pk| {
@@ -54,25 +53,25 @@ pub const Bip39Account = struct {
         secure.secureZeroConstBytes(self.mnemonic);
         self.allocator.free(@constCast(self.mnemonic));
     }
-    
+
     /// Generates new BIP-39 account (equivalent to Swift create(_ password: String))
     pub fn create(allocator: std.mem.Allocator, password: []const u8) !Self {
         // Generate BIP-39 mnemonic
         const mnemonic_words = try generateMnemonic(allocator);
         defer secure.secureZeroFree(allocator, mnemonic_words);
-        
+
         // Create mnemonic with passphrase
         const seed = try mnemonicToSeed(mnemonic_words, password, allocator);
         defer secure.secureZeroFree(allocator, seed);
 
         var bip32_node = try @import("../crypto/bip32.zig").Bip32ECKeyPair.generateKeyPair(seed, allocator);
         errdefer bip32_node.deinit();
-        
+
         // Generate private key from seed (Key = SHA-256(BIP_39_SEED))
         const private_key_hash = Hash256.sha256(seed);
         var private_key = try PrivateKey.init(private_key_hash.toArray());
         errdefer private_key.zeroize();
-        
+
         // Create key pair
         const public_key = try private_key.getPublicKey(true);
         var key_pair = KeyPair.init(private_key, public_key);
@@ -80,14 +79,14 @@ pub const Bip39Account = struct {
 
         // `key_pair` now holds a copy of the private key; clear the temporary.
         private_key.zeroize();
-        
+
         const result = try Self.initPrivate(allocator, key_pair, mnemonic_words, bip32_node);
         // Clear local copies after successful construction.
         key_pair.zeroize();
         bip32_node.deinit();
         return result;
     }
-    
+
     /// Recovers account from BIP-39 mnemonic (equivalent to Swift fromBip39Mneumonic)
     pub fn fromBip39Mnemonic(
         allocator: std.mem.Allocator,
@@ -98,64 +97,64 @@ pub const Bip39Account = struct {
         if (!validateMnemonic(mnemonic)) {
             return errors.throwIllegalArgument("Invalid BIP-39 mnemonic");
         }
-        
+
         // Generate seed from mnemonic and passphrase
         const seed = try mnemonicToSeed(mnemonic, password, allocator);
         defer secure.secureZeroFree(allocator, seed);
 
         var bip32_node = try @import("../crypto/bip32.zig").Bip32ECKeyPair.generateKeyPair(seed, allocator);
         errdefer bip32_node.deinit();
-        
+
         // Generate private key from seed
         const private_key_hash = Hash256.sha256(seed);
         var private_key = try PrivateKey.init(private_key_hash.toArray());
         errdefer private_key.zeroize();
-        
+
         // Create key pair
         const public_key = try private_key.getPublicKey(true);
         var key_pair = KeyPair.init(private_key, public_key);
         errdefer key_pair.zeroize();
 
         private_key.zeroize();
-        
+
         const result = try Self.initPrivate(allocator, key_pair, mnemonic, bip32_node);
         key_pair.zeroize();
         bip32_node.deinit();
         return result;
     }
-    
+
     /// Gets mnemonic (equivalent to Swift .mnemonic property)
     pub fn getMnemonic(self: Self) []const u8 {
         return self.mnemonic;
     }
-    
+
     /// Gets account (equivalent to Swift base account access)
     pub fn getAccount(self: Self) Account {
         return self.account;
     }
-    
+
     /// Gets script hash (equivalent to Swift script hash access)
     pub fn getScriptHash(self: Self) Hash160 {
         return self.account.getScriptHash();
     }
-    
+
     /// Gets address (equivalent to Swift address access)
     pub fn getAddress(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const address = self.account.getAddress();
         return try address.toString(allocator);
     }
-    
+
     /// Gets private key (equivalent to Swift private key access)
     pub fn getPrivateKey(self: Self) !PrivateKey {
         return try self.account.getPrivateKey();
     }
-    
+
     /// Gets public key (equivalent to Swift public key access)
     pub fn getPublicKey(self: Self) !PublicKey {
         const private_key = try self.getPrivateKey();
         return try private_key.getPublicKey(true);
     }
-    
+
     /// Derives child account (using BIP-32 derivation)
     pub fn deriveChild(self: Self, child_index: u32, hardened: bool) !Bip39Account {
         var child_node = try self.bip32_node.deriveChild(child_index, hardened, self.allocator);
@@ -170,14 +169,14 @@ pub const Bip39Account = struct {
 /// BIP-39 mnemonic utilities
 const BIP39Utils = struct {
     const WORD_LIST = @import("bip39_word_list_en.zig").WORD_LIST;
-    
+
     /// Generates a 12-word BIP-39 mnemonic (128 bits entropy).
     pub fn generateMnemonic(allocator: std.mem.Allocator) ![]u8 {
         var entropy: [16]u8 = undefined;
         std.crypto.random.bytes(&entropy);
         return try entropyToMnemonic(&entropy, allocator);
     }
-    
+
     /// Converts entropy to BIP-39 mnemonic words.
     pub fn entropyToMnemonic(entropy: []const u8, allocator: std.mem.Allocator) ![]u8 {
         switch (entropy.len) {
@@ -213,7 +212,7 @@ const BIP39Utils = struct {
 
         return try output.toOwnedSlice();
     }
-    
+
     /// Validates mnemonic word list membership and checksum.
     pub fn validateMnemonic(mnemonic: []const u8) bool {
         var iter = std.mem.tokenizeScalar(u8, mnemonic, ' ');
@@ -262,7 +261,7 @@ const BIP39Utils = struct {
 
         return true;
     }
-    
+
     /// Converts mnemonic to seed
     pub fn mnemonicToSeed(mnemonic: []const u8, passphrase: []const u8, allocator: std.mem.Allocator) ![]u8 {
         if (!std.unicode.utf8ValidateSlice(mnemonic)) {
@@ -300,10 +299,10 @@ const BIP39Utils = struct {
             secure.secureZeroBytes(salt.items);
             salt.deinit();
         }
-        
+
         try salt.appendSlice("mnemonic");
         try salt.appendSlice(passphrase);
-        
+
         const hashing = @import("../crypto/hashing.zig");
         return try hashing.pbkdf2HmacSha512(normalized_mnemonic.items, salt.items, 2048, 64, allocator);
     }
@@ -351,20 +350,20 @@ pub const mnemonicToSeed = BIP39Utils.mnemonicToSeed;
 test "Bip39Account creation and mnemonic generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test account creation (equivalent to Swift create tests)
     var bip39_account = try Bip39Account.create(allocator, "test_password");
     defer bip39_account.deinit();
-    
+
     // Test mnemonic properties
     const mnemonic = bip39_account.getMnemonic();
     try testing.expect(mnemonic.len > 0);
     try testing.expect(validateMnemonic(mnemonic));
-    
+
     // Test account properties
     const script_hash = bip39_account.getScriptHash();
     try testing.expect(!script_hash.eql(Hash160.ZERO));
-    
+
     const address = try bip39_account.getAddress(allocator);
     defer allocator.free(address);
     try testing.expect(address.len > 0);
@@ -373,14 +372,14 @@ test "Bip39Account creation and mnemonic generation" {
 test "Bip39Account recovery from mnemonic" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Create account and get mnemonic
     var original_account = try Bip39Account.create(allocator, "recovery_password");
     defer original_account.deinit();
-    
+
     const original_mnemonic = original_account.getMnemonic();
     const original_script_hash = original_account.getScriptHash();
-    
+
     // Recover account from mnemonic (equivalent to Swift fromBip39Mnemonic tests)
     var recovered_account = try Bip39Account.fromBip39Mnemonic(
         allocator,
@@ -388,10 +387,10 @@ test "Bip39Account recovery from mnemonic" {
         original_mnemonic,
     );
     defer recovered_account.deinit();
-    
+
     // Should have same script hash
     try testing.expect(original_script_hash.eql(recovered_account.getScriptHash()));
-    
+
     // Should have same mnemonic
     try testing.expectEqualStrings(original_mnemonic, recovered_account.getMnemonic());
 }
@@ -399,17 +398,17 @@ test "Bip39Account recovery from mnemonic" {
 test "Bip39Account child derivation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var parent_account = try Bip39Account.create(allocator, "derivation_password");
     defer parent_account.deinit();
-    
+
     // Test child derivation (equivalent to Swift child derivation tests)
     var child_account = try parent_account.deriveChild(0, false);
     defer child_account.deinit();
-    
+
     // Child should be different from parent
     try testing.expect(!parent_account.getScriptHash().eql(child_account.getScriptHash()));
-    
+
     // Child should have same mnemonic (shares same seed)
     try testing.expectEqualStrings(parent_account.getMnemonic(), child_account.getMnemonic());
 }
@@ -417,20 +416,20 @@ test "Bip39Account child derivation" {
 test "BIP39 mnemonic utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test mnemonic generation (equivalent to Swift mnemonic tests)
     const mnemonic = try generateMnemonic(allocator);
     defer allocator.free(mnemonic);
-    
+
     try testing.expect(mnemonic.len > 0);
     try testing.expect(validateMnemonic(mnemonic));
-    
+
     // Test mnemonic validation
     try testing.expect(!validateMnemonic("invalid short mnemonic"));
     try testing.expect(!validateMnemonic(""));
 
     try testing.expectError(errors.NeoError.IllegalArgument, mnemonicToSeed("invalid short mnemonic", "", allocator));
-    
+
     // Test seed generation
     const test_mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
@@ -468,18 +467,18 @@ test "BIP39 mnemonic utilities" {
 test "Bip39Account private key operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     var bip39_account = try Bip39Account.create(allocator, "key_test_password");
     defer bip39_account.deinit();
-    
+
     // Test private key access (equivalent to Swift private key tests)
     const private_key = try bip39_account.getPrivateKey();
     try testing.expect(private_key.isValid());
-    
+
     // Test public key derivation
     const public_key = try bip39_account.getPublicKey();
     try testing.expect(public_key.isValid());
-    
+
     // Verify key pair consistency
     const derived_public = try private_key.getPublicKey(true);
     try testing.expect(public_key.eql(derived_public));

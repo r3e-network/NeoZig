@@ -5,26 +5,25 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-
 const constants = @import("../core/constants.zig");
 
 pub const BinaryWriter = struct {
     buffer: ArrayList(u8),
-    
+
     const Self = @This();
-    
+
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{ .buffer = ArrayList(u8).init(allocator) };
     }
-    
+
     pub fn deinit(self: *Self) void {
         self.buffer.deinit();
     }
-    
+
     pub fn writeBytes(self: *Self, bytes: []const u8) !void {
         try self.buffer.appendSlice(bytes);
     }
-    
+
     pub fn writeByte(self: *Self, byte: u8) !void {
         try self.buffer.append(byte);
     }
@@ -32,22 +31,22 @@ pub const BinaryWriter = struct {
     pub fn writeBool(self: *Self, value: bool) !void {
         try self.writeByte(if (value) 1 else 0);
     }
-    
+
     pub fn writeU16(self: *Self, value: u16) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, value));
         try self.writeBytes(&bytes);
     }
-    
+
     pub fn writeU32(self: *Self, value: u32) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, value));
         try self.writeBytes(&bytes);
     }
-    
+
     pub fn writeU64(self: *Self, value: u64) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, value));
         try self.writeBytes(&bytes);
     }
-    
+
     pub fn writeVarInt(self: *Self, value: u64) !void {
         if (value < 0xFD) {
             try self.writeByte(@intCast(value));
@@ -85,7 +84,7 @@ pub const BinaryWriter = struct {
     pub fn writeHash256(self: *Self, value: anytype) !void {
         try self.writeSerializable(value);
     }
-    
+
     pub fn toSlice(self: *Self) []const u8 {
         return self.buffer.items;
     }

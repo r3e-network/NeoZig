@@ -8,4 +8,3 @@ comptime {
     _ = @import("script/verification_script_tests.zig");
     _ = @import("script/invocation_script_tests.zig");
 }
-

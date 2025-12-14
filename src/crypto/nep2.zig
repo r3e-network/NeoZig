@@ -288,7 +288,7 @@ test "NEP2 format validation" {
 
     // Test invalid NEP-2 format (equivalent to Swift validation tests)
     const invalid_nep2 = "invalid_nep2_string";
-    try testing.expectError(errors.NeoError.IllegalArgument, NEP2.decrypt("password", invalid_nep2, ScryptParams.DEFAULT, allocator));
+    try testing.expectError(errors.CryptoError.InvalidKey, NEP2.decrypt("password", invalid_nep2, ScryptParams.DEFAULT, allocator));
 
     // Test wrong password (equivalent to Swift wrong password tests)
     const key_pair = try KeyPair.generate(true);
@@ -303,7 +303,7 @@ test "NEP2 format validation" {
     const encrypted = try NEP2.encrypt(correct_password, key_pair, ScryptParams.DEFAULT, allocator);
     defer allocator.free(encrypted);
 
-    try testing.expectError(errors.NeoError.IllegalArgument, NEP2.decrypt(wrong_password, encrypted, ScryptParams.DEFAULT, allocator));
+    try testing.expectError(errors.WalletError.InvalidPassword, NEP2.decrypt(wrong_password, encrypted, ScryptParams.DEFAULT, allocator));
 }
 
 test "NEP2 scrypt parameter variations" {

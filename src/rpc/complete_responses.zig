@@ -1022,7 +1022,7 @@ test "Complete response fromJson smoke tests" {
 
     var plugin_obj = std.json.ObjectMap.init(allocator);
     try json_utils.putOwnedKey(&plugin_obj, allocator, "name", std.json.Value{ .string = "RpcServer" });
-    try json_utils.putOwnedKey(&plugin_obj, allocator, "version", std.json.Value{ .string = "1.0.0" });
+    try json_utils.putOwnedKey(&plugin_obj, allocator, "version", std.json.Value{ .string = "1.0.1" });
     try json_utils.putOwnedKey(&plugin_obj, allocator, "interfaces", std.json.Value{ .array = interfaces_array });
 
     var plugins_array = std.json.Array.init(allocator);

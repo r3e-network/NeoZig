@@ -68,28 +68,30 @@ pub const Secp256r1 = struct {
 };
 
 pub const Point = struct {
-    x: u256, y: u256, is_infinity: bool = false,
-    
+    x: u256,
+    y: u256,
+    is_infinity: bool = false,
+
     pub fn init(x: u256, y: u256) Point {
         return Point{ .x = x, .y = y };
     }
-    
+
     pub fn infinity() Point {
         return Point{ .x = 0, .y = 0, .is_infinity = true };
     }
-    
+
     pub fn generator() Point {
         return Point.init(Secp256r1.GX, Secp256r1.GY);
     }
-    
+
     pub fn multiply(self: Point, scalar: u256) Point {
         if (scalar == 0 or self.is_infinity) return Point.infinity();
         if (scalar == 1) return self;
-        
+
         var result = Point.infinity();
         var addend = self;
         var k = scalar;
-        
+
         while (k > 0) {
             if (k & 1 == 1) result = result.add(addend);
             addend = addend.double();
@@ -97,35 +99,35 @@ pub const Point = struct {
         }
         return result;
     }
-    
+
     pub fn add(self: Point, other: Point) Point {
         if (self.is_infinity) return other;
         if (other.is_infinity) return self;
         if (self.x == other.x) {
             return if (self.y == other.y) self.double() else Point.infinity();
         }
-        
+
         const dx = modSub(other.x, self.x, Secp256r1.P);
         const dy = modSub(other.y, self.y, Secp256r1.P);
         const s = modDiv(dy, dx, Secp256r1.P);
-        
+
         const x3 = modSub(modSub(modMul(s, s, Secp256r1.P), self.x, Secp256r1.P), other.x, Secp256r1.P);
         const y3 = modSub(modMul(s, modSub(self.x, x3, Secp256r1.P), Secp256r1.P), self.y, Secp256r1.P);
-        
+
         return Point.init(x3, y3);
     }
-    
+
     pub fn double(self: Point) Point {
         if (self.is_infinity or self.y == 0) return Point.infinity();
-        
+
         const three_x_squared = modMul(3, modMul(self.x, self.x, Secp256r1.P), Secp256r1.P);
         const numerator = modAdd(three_x_squared, Secp256r1.A, Secp256r1.P);
         const denominator = modMul(2, self.y, Secp256r1.P);
         const s = modDiv(numerator, denominator, Secp256r1.P);
-        
+
         const x3 = modSub(modMul(s, s, Secp256r1.P), modMul(2, self.x, Secp256r1.P), Secp256r1.P);
         const y3 = modSub(modMul(s, modSub(self.x, x3, Secp256r1.P), Secp256r1.P), self.y, Secp256r1.P);
-        
+
         return Point.init(x3, y3);
     }
 };
@@ -233,23 +235,23 @@ pub fn pointFromCompressed(compressed: []const u8) !Point {
     if (compressed.len != 33 or (compressed[0] != 0x02 and compressed[0] != 0x03)) {
         return errors.CryptoError.InvalidKey;
     }
-    
+
     const x = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, compressed[1..33]));
     const y_is_even = compressed[0] == 0x02;
-    
+
     const y_squared = modAdd(modAdd(modMul(modMul(x, x, Secp256r1.P), x, Secp256r1.P), modMul(Secp256r1.A, x, Secp256r1.P), Secp256r1.P), Secp256r1.B, Secp256r1.P);
     const y = modSqrt(y_squared, Secp256r1.P);
     const final_y = if (((y & 1) == 0) == y_is_even) y else modSub(Secp256r1.P, y, Secp256r1.P);
-    
+
     return Point.init(x, final_y);
 }
 
 pub fn pointFromUncompressed(uncompressed: []const u8) !Point {
     if (uncompressed.len != 65 or uncompressed[0] != 0x04) return errors.CryptoError.InvalidKey;
-    
+
     const x = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, uncompressed[1..33]));
     const y = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, uncompressed[33..65]));
-    
+
     return Point.init(x, y);
 }
 
@@ -282,18 +284,18 @@ fn modInverse(a: u256, modulus: u256) u256 {
     var r = a % modulus;
     var old_s: i512 = 0;
     var s: i512 = 1;
-    
+
     while (r != 0) {
         const quotient = old_r / r;
         const temp_r = r;
         r = old_r - quotient * r;
         old_r = temp_r;
-        
+
         const temp_s = s;
         s = old_s - @as(i512, @intCast(quotient)) * s;
         old_s = temp_s;
     }
-    
+
     if (old_r > 1) return 0;
     if (old_s < 0) old_s += @as(i512, @intCast(modulus));
     return @intCast(old_s);
@@ -310,7 +312,7 @@ fn modPow(base: u256, exponent: u256, modulus: u256) u256 {
     var result: u256 = 1;
     var base_mod = base % modulus;
     var exp = exponent;
-    
+
     while (exp > 0) {
         if (exp & 1 == 1) {
             result = @intCast((@as(u512, result) * @as(u512, base_mod)) % @as(u512, modulus));

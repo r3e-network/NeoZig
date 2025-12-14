@@ -130,7 +130,7 @@ pub const HttpService = struct {
             .payload = payload,
             .headers = .{
                 .content_type = .{ .override = JSON_MEDIA_TYPE },
-                .user_agent = .{ .override = "Neo-Zig-SDK/1.0" },
+                .user_agent = .{ .override = "Neo-Zig-SDK/1.0.1" },
             },
             .extra_headers = extra_headers.items,
             .redirect_behavior = .not_allowed,

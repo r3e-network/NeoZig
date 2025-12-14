@@ -102,6 +102,13 @@ pub const NeoSwift = struct {
 
             if (version.protocol) |protocol| {
                 self.config.network_magic = protocol.network;
+                NeoSwiftConfig.setAddressVersion(protocol.address_version);
+                if (protocol.ms_per_block) |ms_per_block| {
+                    self.config.block_interval = ms_per_block;
+                }
+                if (protocol.max_valid_until_block_increment) |max_valid_until| {
+                    self.config.max_valid_until_block_increment = max_valid_until;
+                }
             } else {
                 // Fall back to mainnet magic if protocol configuration is unavailable.
                 self.config.network_magic = constants.DEFAULT_NETWORK_MAGIC;

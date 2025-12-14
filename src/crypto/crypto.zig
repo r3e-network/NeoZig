@@ -10,7 +10,6 @@
 
 const std = @import("std");
 
-
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -115,7 +114,7 @@ test "crypto module integration" {
     const message = "Hello Neo Blockchain";
     const sha_result = sha256(message);
     try testing.expect(!sha_result.isZero());
-    
+
     const hash160_result = try hash160(message);
     try testing.expect(!hash160_result.isZero());
 }

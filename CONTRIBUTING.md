@@ -1,14 +1,14 @@
 # Contributing to Neo Zig SDK
 
-Thank you for your interest in contributing to the Neo Zig SDK! This guide will help you get started with contributing to this enterprise-grade blockchain SDK.
+Thank you for your interest in contributing to the Neo Zig SDK! This guide helps you get started contributing to the Zig implementation of a Neo N3 SDK.
 
 ## 🎯 Project Overview
 
-The Neo Zig SDK is a complete, production-ready implementation of a Neo blockchain SDK in Zig, providing:
-- Complete Swift SDK API compatibility
-- Enterprise-grade security with memory safety
-- Superior performance with optimized algorithms
-- Comprehensive Neo blockchain functionality
+The Neo Zig SDK targets NeoSwift API familiarity while adopting Zig conventions:
+
+- explicit memory management (`deinit`, allocators)
+- explicit error propagation (`try`)
+- test coverage for core workflows
 
 ## 🚀 Getting Started
 
@@ -202,7 +202,7 @@ Clear description of what you expected to happen.
 ## Environment
 - OS: [e.g. Ubuntu 22.04]
 - Zig Version: [e.g. 0.12.0]
-- Neo Zig SDK Version: [e.g. 1.0.0]
+- Neo Zig SDK Version: [e.g. 1.0.1]
 
 ## Additional Context
 Add any other context about the problem here.

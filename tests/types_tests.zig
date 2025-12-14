@@ -8,4 +8,3 @@ comptime {
     _ = @import("types/hash256_tests.zig");
     _ = @import("types/contract_parameter_tests.zig");
 }
-

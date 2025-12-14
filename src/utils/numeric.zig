@@ -4,8 +4,6 @@
 
 const std = @import("std");
 
-
-
 pub fn toLittleEndianBytes(comptime T: type, value: T) [@sizeOf(T)]u8 {
     return std.mem.toBytes(std.mem.nativeToLittle(T, value));
 }

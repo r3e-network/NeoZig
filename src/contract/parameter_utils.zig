@@ -5,7 +5,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
@@ -16,7 +15,7 @@ const json_utils = @import("../utils/json_utils.zig");
 /// Converts ContractParameter to JSON for RPC calls
 pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !std.json.Value {
     var param_obj = std.json.ObjectMap.init(allocator);
-    
+
     switch (param) {
         .Boolean => |value| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Boolean") });
@@ -76,7 +75,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
         },
         .Array => |items| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Array") });
-            
+
             var array_values = std.json.Array.init(allocator);
             var cleanup_needed = true;
             errdefer if (cleanup_needed) array_values.deinit();
@@ -94,7 +93,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
             return errors.ContractError.InvalidParameters;
         },
     }
-    
+
     return std.json.Value{ .object = param_obj };
 }
 
@@ -103,11 +102,11 @@ pub fn parseStackItemValue(stack_item: std.json.Value, expected_type: []const u8
     const item_obj = stack_item.object;
     const item_type = item_obj.get("type").?.string;
     const item_value = item_obj.get("value").?.string;
-    
+
     if (!std.mem.eql(u8, item_type, expected_type)) {
         return errors.ContractError.InvalidParameters;
     }
-    
+
     return switch (std.hash_map.hashString(item_type)) {
         std.hash_map.hashString("ByteString") => try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(item_value, allocator),
         std.hash_map.hashString("Integer") => try allocator.dupe(u8, item_value),
@@ -121,13 +120,13 @@ pub fn parseStackItemInteger(stack_item: std.json.Value) !i64 {
     const item_obj = stack_item.object;
     const item_type = item_obj.get("type").?.string;
     const item_value = item_obj.get("value").?.string;
-    
+
     if (std.mem.eql(u8, item_type, "Integer")) {
         return std.fmt.parseInt(i64, item_value, 10) catch {
             return errors.ContractError.InvalidParameters;
         };
     }
-    
+
     return errors.ContractError.InvalidParameters;
 }
 
@@ -136,16 +135,16 @@ pub fn parseStackItemBoolean(stack_item: std.json.Value) !bool {
     const item_obj = stack_item.object;
     const item_type = item_obj.get("type").?.string;
     const item_value = item_obj.get("value").?.string;
-    
+
     if (std.mem.eql(u8, item_type, "Boolean")) {
         return std.mem.eql(u8, item_value, "true") or std.mem.eql(u8, item_value, "1");
     }
-    
+
     if (std.mem.eql(u8, item_type, "Integer")) {
         const int_val = std.fmt.parseInt(i64, item_value, 10) catch 0;
         return int_val != 0;
     }
-    
+
     return false;
 }
 
@@ -153,30 +152,30 @@ pub fn parseStackItemBoolean(stack_item: std.json.Value) !bool {
 test "parameterToJson conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test boolean parameter
     const bool_param = ContractParameter.boolean(true);
     const bool_json = try parameterToJson(bool_param, allocator);
     defer @import("../utils/json_utils.zig").freeValue(bool_json, allocator);
-    
+
     const bool_obj = bool_json.object;
     try testing.expectEqualStrings("Boolean", bool_obj.get("type").?.string);
     try testing.expect(bool_obj.get("value").?.bool);
-    
+
     // Test integer parameter
     const int_param = ContractParameter.integer(12345);
     const int_json = try parameterToJson(int_param, allocator);
     defer @import("../utils/json_utils.zig").freeValue(int_json, allocator);
-    
+
     const int_obj = int_json.object;
     try testing.expectEqualStrings("Integer", int_obj.get("type").?.string);
     try testing.expectEqual(@as(i64, 12345), int_obj.get("value").?.integer);
-    
+
     // Test string parameter
     const string_param = ContractParameter.string("Hello Neo");
     const string_json = try parameterToJson(string_param, allocator);
     defer @import("../utils/json_utils.zig").freeValue(string_json, allocator);
-    
+
     const string_obj = string_json.object;
     try testing.expectEqualStrings("String", string_obj.get("type").?.string);
     // Value should be base64 encoded

@@ -5,4 +5,3 @@
 comptime {
     _ = @import("witnessrule/witness_rule_tests.zig");
 }
-

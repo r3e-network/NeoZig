@@ -4,8 +4,6 @@
 
 const std = @import("std");
 
-
-
 pub const BinaryWriter = @import("binary_writer.zig").BinaryWriter;
 pub const BinaryReader = @import("binary_reader.zig").BinaryReader;
 pub const CompleteBinaryWriter = @import("binary_writer_complete.zig").CompleteBinaryWriter;

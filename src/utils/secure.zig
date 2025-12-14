@@ -18,4 +18,3 @@ pub fn secureZeroFree(allocator: std.mem.Allocator, buf: []u8) void {
     secureZeroBytes(buf);
     allocator.free(buf);
 }
-

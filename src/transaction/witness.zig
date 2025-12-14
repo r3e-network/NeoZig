@@ -5,7 +5,6 @@
 
 const std = @import("std");
 
-
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 const SignatureData = @import("../crypto/sign.zig").SignatureData;
@@ -14,14 +13,14 @@ const SignatureData = @import("../crypto/sign.zig").SignatureData;
 pub const InvocationScript = struct {
     script: []const u8,
     owns_script: bool = false,
-    
+
     const Self = @This();
-    
+
     /// Creates empty invocation script
     pub fn init() Self {
         return Self{ .script = &[_]u8{}, .owns_script = false };
     }
-    
+
     /// Creates invocation script from bytes
     pub fn initWithBytes(bytes: []const u8) Self {
         return Self{ .script = bytes, .owns_script = false };
@@ -31,47 +30,47 @@ pub const InvocationScript = struct {
     pub fn initFromBytes(bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
-    
+
     /// Creates invocation script from message and key pair (equivalent to Swift fromMessageAndKeyPair)
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const signature = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
-        
+
         // Create invocation script with signature
         var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
         defer script_builder.deinit();
-        
+
         const signature_bytes = signature.getSignatureBytes();
         _ = try script_builder.pushData(&signature_bytes);
-        
+
         const script = script_builder.toScript();
         return Self{ .script = try allocator.dupe(u8, script), .owns_script = true };
     }
-    
+
     /// Creates multi-sig invocation script from signatures
     pub fn fromSignatures(signatures: []const SignatureData, allocator: std.mem.Allocator) !Self {
         var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
         defer script_builder.deinit();
-        
+
         // Push signatures in order
         for (signatures) |signature| {
             const sig_bytes = signature.getSignatureBytes();
             _ = try script_builder.pushData(&sig_bytes);
         }
-        
+
         const script = script_builder.toScript();
         return Self{ .script = try allocator.dupe(u8, script), .owns_script = true };
     }
-    
+
     /// Gets script bytes
     pub fn getScript(self: Self) []const u8 {
         return self.script;
     }
-    
+
     /// Checks if script is empty
     pub fn isEmpty(self: Self) bool {
         return self.script.len == 0;
     }
-    
+
     /// Cleanup allocated resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         if (self.owns_script) {
@@ -85,14 +84,14 @@ pub const InvocationScript = struct {
 pub const VerificationScript = struct {
     script: []const u8,
     owns_script: bool = false,
-    
+
     const Self = @This();
-    
+
     /// Creates empty verification script
     pub fn init() Self {
         return Self{ .script = &[_]u8{}, .owns_script = false };
     }
-    
+
     /// Creates verification script from bytes
     pub fn initWithBytes(bytes: []const u8) Self {
         return Self{ .script = bytes, .owns_script = false };
@@ -102,7 +101,7 @@ pub const VerificationScript = struct {
     pub fn initFromBytes(bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
-    
+
     /// Creates verification script from public key (equivalent to Swift init(_ publicKey:))
     pub fn fromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
         const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
@@ -111,7 +110,7 @@ pub const VerificationScript = struct {
         );
         return Self{ .script = script, .owns_script = true };
     }
-    
+
     /// Creates multi-sig verification script (equivalent to Swift init(_ publicKeys:, _ signingThreshold:))
     pub fn fromMultiSig(public_keys: []const PublicKey, signing_threshold: u32, allocator: std.mem.Allocator) !Self {
         var key_slices = try allocator.alloc([]const u8, public_keys.len);
@@ -128,17 +127,17 @@ pub const VerificationScript = struct {
         );
         return Self{ .script = script, .owns_script = true };
     }
-    
+
     /// Gets script bytes
     pub fn getScript(self: Self) []const u8 {
         return self.script;
     }
-    
+
     /// Checks if script is empty
     pub fn isEmpty(self: Self) bool {
         return self.script.len == 0;
     }
-    
+
     /// Cleanup allocated resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         if (self.owns_script) {
@@ -152,9 +151,9 @@ pub const VerificationScript = struct {
 pub const Witness = struct {
     invocation_script: InvocationScript,
     verification_script: VerificationScript,
-    
+
     const Self = @This();
-    
+
     /// Creates empty witness (equivalent to Swift init())
     pub fn init() Self {
         return Self{
@@ -162,7 +161,7 @@ pub const Witness = struct {
             .verification_script = VerificationScript.init(),
         };
     }
-    
+
     /// Creates witness from bytes (equivalent to Swift init(_ invocationScript: Bytes, _ verificationScript: Bytes))
     pub fn initWithBytes(invocation_bytes: []const u8, verification_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
@@ -170,7 +169,7 @@ pub const Witness = struct {
             .verification_script = try VerificationScript.initFromBytes(verification_bytes, allocator),
         };
     }
-    
+
     /// Creates witness from scripts (equivalent to Swift init(_ invocationScript: InvocationScript, _ verificationScript: VerificationScript))
     pub fn initWithScripts(invocation_script: InvocationScript, verification_script: VerificationScript) Self {
         return Self{
@@ -178,18 +177,18 @@ pub const Witness = struct {
             .verification_script = verification_script,
         };
     }
-    
+
     /// Creates witness from message and key pair (equivalent to Swift create(_ messageToSign:, _ keyPair:))
     pub fn create(message_to_sign: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const invocation_script = try InvocationScript.fromMessageAndKeyPair(message_to_sign, key_pair, allocator);
         const verification_script = try VerificationScript.fromPublicKey(key_pair.getPublicKey(), allocator);
-        
+
         return Self{
             .invocation_script = invocation_script,
             .verification_script = verification_script,
         };
     }
-    
+
     /// Creates multi-sig witness (equivalent to Swift creatMultiSigWitness)
     pub fn createMultiSigWitness(
         signing_threshold: u32,
@@ -199,13 +198,13 @@ pub const Witness = struct {
     ) !Self {
         const invocation_script = try InvocationScript.fromSignatures(signatures, allocator);
         const verification_script = try VerificationScript.fromMultiSig(public_keys, signing_threshold, allocator);
-        
+
         return Self{
             .invocation_script = invocation_script,
             .verification_script = verification_script,
         };
     }
-    
+
     /// Creates multi-sig witness with verification script (equivalent to Swift creatMultiSigWitness(_ signatures:, _ verificationScript:))
     pub fn createMultiSigWitnessWithScript(
         signatures: []const SignatureData,
@@ -213,55 +212,55 @@ pub const Witness = struct {
         allocator: std.mem.Allocator,
     ) !Self {
         const invocation_script = try InvocationScript.fromSignatures(signatures, allocator);
-        
+
         return Self{
             .invocation_script = invocation_script,
             .verification_script = verification_script,
         };
     }
-    
+
     /// Gets invocation script
     pub fn getInvocationScript(self: Self) []const u8 {
         return self.invocation_script.getScript();
     }
-    
+
     /// Gets verification script
     pub fn getVerificationScript(self: Self) []const u8 {
         return self.verification_script.getScript();
     }
-    
+
     /// Checks if witness is empty
     pub fn isEmpty(self: Self) bool {
         return self.invocation_script.isEmpty() and self.verification_script.isEmpty();
     }
-    
+
     /// Gets witness size in bytes
     pub fn getSize(self: Self) usize {
         const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
         return BytesUtils.varSize(self.invocation_script.script) + BytesUtils.varSize(self.verification_script.script);
     }
-    
+
     /// Validates witness format
     pub fn validate(self: Self) !void {
         if (self.isEmpty()) {
             return; // Empty witness is valid
         }
-        
+
         if (self.invocation_script.isEmpty() and !self.verification_script.isEmpty()) {
             return error.InvalidWitness; // Should have both or neither
         }
-        
+
         if (!self.invocation_script.isEmpty() and self.verification_script.isEmpty()) {
             return error.InvalidWitness; // Should have both or neither
         }
     }
-    
+
     /// Equality comparison (equivalent to Swift Hashable)
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.invocation_script.script, other.invocation_script.script) and
-               std.mem.eql(u8, self.verification_script.script, other.verification_script.script);
+            std.mem.eql(u8, self.verification_script.script, other.verification_script.script);
     }
-    
+
     /// Hash function (equivalent to Swift Hashable)
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
@@ -269,38 +268,38 @@ pub const Witness = struct {
         hasher.update(self.verification_script.script);
         return hasher.final();
     }
-    
+
     /// Serializes witness to bytes
     pub fn serialize(self: Self, writer: *@import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter) !void {
         // Write invocation script
         try writer.writeVarBytes(self.invocation_script.script);
-        
+
         // Write verification script
         try writer.writeVarBytes(self.verification_script.script);
     }
-    
+
     /// Deserializes witness from bytes
     pub fn deserialize(reader: *@import("../serialization/binary_reader_complete.zig").CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
         // Read invocation script
         const invocation_bytes = try reader.readVarBytes(allocator);
         const invocation_script = InvocationScript{ .script = invocation_bytes, .owns_script = true };
-        
+
         // Read verification script
         const verification_bytes = try reader.readVarBytes(allocator);
         const verification_script = VerificationScript{ .script = verification_bytes, .owns_script = true };
-        
+
         return Self{
             .invocation_script = invocation_script,
             .verification_script = verification_script,
         };
     }
-    
+
     /// Cleanup allocated resources
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         self.invocation_script.deinit(allocator);
         self.verification_script.deinit(allocator);
     }
-    
+
     /// Clone with owned memory
     pub fn clone(self: Self, allocator: std.mem.Allocator) !Self {
         return Self{
@@ -308,14 +307,10 @@ pub const Witness = struct {
             .verification_script = VerificationScript{ .script = try allocator.dupe(u8, self.verification_script.script), .owns_script = true },
         };
     }
-    
+
     /// Format for display
     pub fn format(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(
-            allocator,
-            "Witness(invocation: {} bytes, verification: {} bytes, total: {} bytes)",
-            .{ self.invocation_script.script.len, self.verification_script.script.len, self.getSize() }
-        );
+        return try std.fmt.allocPrint(allocator, "Witness(invocation: {} bytes, verification: {} bytes, total: {} bytes)", .{ self.invocation_script.script.len, self.verification_script.script.len, self.getSize() });
     }
 };
 
@@ -323,24 +318,24 @@ pub const Witness = struct {
 test "Witness creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test empty witness creation (equivalent to Swift init() tests)
     var empty_witness = Witness.init();
     defer empty_witness.deinit(allocator);
     try testing.expect(empty_witness.isEmpty());
     try empty_witness.validate();
-    
+
     // Test witness from bytes
     const invocation_bytes = [_]u8{ 0x01, 0x02, 0x03 };
     const verification_bytes = [_]u8{ 0x04, 0x05, 0x06 };
-    
+
     var witness_from_bytes = try Witness.initWithBytes(&invocation_bytes, &verification_bytes, allocator);
     defer witness_from_bytes.deinit(allocator);
-    
+
     try testing.expect(!witness_from_bytes.isEmpty());
     try testing.expectEqualSlices(u8, &invocation_bytes, witness_from_bytes.getInvocationScript());
     try testing.expectEqualSlices(u8, &verification_bytes, witness_from_bytes.getVerificationScript());
-    
+
     // Test size calculation
     const expected_size = invocation_bytes.len + verification_bytes.len + 2; // VarBytes prefixes are 1 byte each here.
     try testing.expectEqual(expected_size, witness_from_bytes.getSize());
@@ -349,29 +344,29 @@ test "Witness creation and basic operations" {
 test "Witness equality and hashing" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test equality (equivalent to Swift Hashable tests)
     const invocation1 = [_]u8{ 0x01, 0x02 };
     const verification1 = [_]u8{ 0x03, 0x04 };
-    
+
     var witness1 = try Witness.initWithBytes(&invocation1, &verification1, allocator);
     defer witness1.deinit(allocator);
-    
+
     var witness2 = try Witness.initWithBytes(&invocation1, &verification1, allocator);
     defer witness2.deinit(allocator);
-    
+
     const invocation3 = [_]u8{ 0x05, 0x06 };
     var witness3 = try Witness.initWithBytes(&invocation3, &verification1, allocator);
     defer witness3.deinit(allocator);
-    
+
     try testing.expect(witness1.eql(witness2));
     try testing.expect(!witness1.eql(witness3));
-    
+
     // Test hashing
     const hash1 = witness1.hash();
     const hash2 = witness2.hash();
     const hash3 = witness3.hash();
-    
+
     try testing.expectEqual(hash1, hash2); // Same witnesses should have same hash
     try testing.expect(hash1 != hash3); // Different witnesses should have different hash
 }
@@ -379,16 +374,16 @@ test "Witness equality and hashing" {
 test "Witness validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test valid witness
     const invocation = [_]u8{ 0x01, 0x02 };
     const verification = [_]u8{ 0x03, 0x04 };
-    
+
     var valid_witness = try Witness.initWithBytes(&invocation, &verification, allocator);
     defer valid_witness.deinit(allocator);
-    
+
     try valid_witness.validate();
-    
+
     // Test empty witness (should be valid)
     const empty_witness = Witness.init();
     try empty_witness.validate();
@@ -397,25 +392,25 @@ test "Witness validation" {
 test "Witness utility methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    
+
     // Test formatting
     const invocation = [_]u8{ 0x01, 0x02, 0x03 };
     const verification = [_]u8{ 0x04, 0x05 };
-    
+
     var witness = try Witness.initWithBytes(&invocation, &verification, allocator);
     defer witness.deinit(allocator);
-    
+
     const formatted = try witness.format(allocator);
     defer allocator.free(formatted);
-    
+
     try testing.expect(std.mem.indexOf(u8, formatted, "Witness") != null);
     try testing.expect(std.mem.indexOf(u8, formatted, "3 bytes") != null); // invocation size
     try testing.expect(std.mem.indexOf(u8, formatted, "2 bytes") != null); // verification size
-    
+
     // Test cloning
     var cloned_witness = try witness.clone(allocator);
     defer cloned_witness.deinit(allocator);
-    
+
     try testing.expect(witness.eql(cloned_witness));
     try testing.expectEqualSlices(u8, witness.getInvocationScript(), cloned_witness.getInvocationScript());
     try testing.expectEqualSlices(u8, witness.getVerificationScript(), cloned_witness.getVerificationScript());

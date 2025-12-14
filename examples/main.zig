@@ -18,6 +18,10 @@ pub fn main() !void {
     std.log.info("All examples completed successfully.", .{});
 }
 
+fn ensure(ok: bool) !void {
+    if (!ok) return error.ExampleInvariantFailed;
+}
+
 fn demonstrateHashes(allocator: std.mem.Allocator) !void {
     const message = "Neo Zig SDK hash example";
 
@@ -50,7 +54,7 @@ fn demonstrateKeysAndAddresses(allocator: std.mem.Allocator) !void {
     std.log.info("Generated address: {s}", .{address_str});
 
     const parsed = try neo.Address.fromString(address_str, allocator);
-    try std.testing.expect(parsed.eql(address));
+    try ensure(parsed.eql(address));
 }
 
 fn demonstrateWifRoundtrip(allocator: std.mem.Allocator) !void {
@@ -62,11 +66,12 @@ fn demonstrateWifRoundtrip(allocator: std.mem.Allocator) !void {
 
     const wif = try neo.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
     defer allocator.free(wif);
-    std.log.info("WIF: {s}", .{wif});
+    const shown = @min(@as(usize, 10), wif.len);
+    std.log.info("WIF: {s}... (len {}, redacted)", .{ wif[0..shown], wif.len });
 
     var decoded = try neo.crypto.decodeWIF(wif, allocator);
     defer decoded.deinit();
 
-    try std.testing.expect(decoded.private_key.eql(key_pair.private_key));
-    try std.testing.expect(decoded.compressed);
+    try ensure(decoded.private_key.eql(key_pair.private_key));
+    try ensure(decoded.compressed);
 }
