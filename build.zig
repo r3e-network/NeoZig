@@ -18,12 +18,12 @@ pub fn build(b: *std.Build) void {
     });
 
     // Demo executable used as a minimal smoke-test during the build.
-    // Zig 0.15+: use root_module for root_source_file
+    // Zig 0.15+: removed .target/.optimize from ExecutableOptions
     const demo = b.addExecutable(.{
         .name = "neo-zig-demo",
-        .target = target,
-        .optimize = optimize,
     });
+    demo.root_module.target = target;
+    demo.root_module.optimize = optimize;
     demo.root_module.root_source_file = b.path("final_demo.zig");
     demo.root_module.addImport("neo-zig", sdk_module);
 
@@ -35,9 +35,9 @@ pub fn build(b: *std.Build) void {
 
     const examples_exe = b.addExecutable(.{
         .name = "neo-zig-examples",
-        .target = target,
-        .optimize = optimize,
     });
+    examples_exe.root_module.target = target;
+    examples_exe.root_module.optimize = optimize;
     examples_exe.root_module.root_source_file = b.path("examples/main.zig");
     examples_exe.root_module.addImport("neo-zig", sdk_module);
 
@@ -47,9 +47,9 @@ pub fn build(b: *std.Build) void {
 
     const complete_demo_exe = b.addExecutable(.{
         .name = "neo-zig-complete-demo",
-        .target = target,
-        .optimize = optimize,
     });
+    complete_demo_exe.root_module.target = target;
+    complete_demo_exe.root_module.optimize = optimize;
     complete_demo_exe.root_module.root_source_file = b.path("examples/complete_demo.zig");
     complete_demo_exe.root_module.addImport("neo-zig", sdk_module);
 
@@ -57,10 +57,9 @@ pub fn build(b: *std.Build) void {
     const complete_demo_step = b.step("complete-demo", "Run complete SDK demo");
     complete_demo_step.dependOn(&run_complete_demo.step);
 
-    const unit_tests = b.addTest(.{
-        .target = target,
-        .optimize = optimize,
-    });
+    const unit_tests = b.addTest(.{});
+    unit_tests.root_module.target = target;
+    unit_tests.root_module.optimize = optimize;
     unit_tests.root_module.root_source_file = b.path("src/neo.zig");
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run all Neo Zig SDK tests");
@@ -70,9 +69,9 @@ pub fn build(b: *std.Build) void {
     // primary module. Wire them into the build so `zig build test` runs both.
     const parity_tests = b.addTest(.{
         .name = "parity",
-        .target = target,
-        .optimize = optimize,
     });
+    parity_tests.root_module.target = target;
+    parity_tests.root_module.optimize = optimize;
     parity_tests.root_module.root_source_file = b.path("tests/all_swift_tests.zig");
     parity_tests.root_module.addImport("neo-zig", sdk_module);
     const run_parity_tests = b.addRunArtifact(parity_tests);
@@ -83,9 +82,9 @@ pub fn build(b: *std.Build) void {
 
     const rpc_tests = b.addTest(.{
         .name = "rpc-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    rpc_tests.root_module.target = target;
+    rpc_tests.root_module.optimize = optimize;
     rpc_tests.root_module.root_source_file = b.path("tests/rpc_tests.zig");
     rpc_tests.root_module.addImport("neo-zig", sdk_module);
     const run_rpc_tests = b.addRunArtifact(rpc_tests);
@@ -96,9 +95,9 @@ pub fn build(b: *std.Build) void {
 
     const integration_tests = b.addTest(.{
         .name = "integration",
-        .target = target,
-        .optimize = optimize,
     });
+    integration_tests.root_module.target = target;
+    integration_tests.root_module.optimize = optimize;
     integration_tests.root_module.root_source_file = b.path("tests/integration.zig");
     integration_tests.root_module.addImport("neo-zig", sdk_module);
     const run_integration_tests = b.addRunArtifact(integration_tests);
@@ -109,9 +108,9 @@ pub fn build(b: *std.Build) void {
 
     const crypto_tests = b.addTest(.{
         .name = "crypto-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    crypto_tests.root_module.target = target;
+    crypto_tests.root_module.optimize = optimize;
     crypto_tests.root_module.root_source_file = b.path("tests/crypto_tests.zig");
     crypto_tests.root_module.addImport("neo-zig", sdk_module);
     const run_crypto_tests = b.addRunArtifact(crypto_tests);
@@ -122,9 +121,9 @@ pub fn build(b: *std.Build) void {
 
     const contract_tests = b.addTest(.{
         .name = "contract-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    contract_tests.root_module.target = target;
+    contract_tests.root_module.optimize = optimize;
     contract_tests.root_module.root_source_file = b.path("tests/contract_tests.zig");
     contract_tests.root_module.addImport("neo-zig", sdk_module);
     const run_contract_tests = b.addRunArtifact(contract_tests);
@@ -135,9 +134,9 @@ pub fn build(b: *std.Build) void {
 
     const transaction_tests = b.addTest(.{
         .name = "transaction-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    transaction_tests.root_module.target = target;
+    transaction_tests.root_module.optimize = optimize;
     transaction_tests.root_module.root_source_file = b.path("tests/transaction_tests.zig");
     transaction_tests.root_module.addImport("neo-zig", sdk_module);
     const run_transaction_tests = b.addRunArtifact(transaction_tests);
@@ -148,9 +147,9 @@ pub fn build(b: *std.Build) void {
 
     const wallet_tests = b.addTest(.{
         .name = "wallet-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    wallet_tests.root_module.target = target;
+    wallet_tests.root_module.optimize = optimize;
     wallet_tests.root_module.root_source_file = b.path("tests/wallet_tests.zig");
     wallet_tests.root_module.addImport("neo-zig", sdk_module);
     const run_wallet_tests = b.addRunArtifact(wallet_tests);
@@ -161,9 +160,9 @@ pub fn build(b: *std.Build) void {
 
     const protocol_tests = b.addTest(.{
         .name = "protocol-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    protocol_tests.root_module.target = target;
+    protocol_tests.root_module.optimize = optimize;
     protocol_tests.root_module.root_source_file = b.path("tests/protocol_tests.zig");
     protocol_tests.root_module.addImport("neo-zig", sdk_module);
     const run_protocol_tests = b.addRunArtifact(protocol_tests);
@@ -174,9 +173,9 @@ pub fn build(b: *std.Build) void {
 
     const serialization_tests = b.addTest(.{
         .name = "serialization-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    serialization_tests.root_module.target = target;
+    serialization_tests.root_module.optimize = optimize;
     serialization_tests.root_module.root_source_file = b.path("tests/serialization_tests.zig");
     serialization_tests.root_module.addImport("neo-zig", sdk_module);
     const run_serialization_tests = b.addRunArtifact(serialization_tests);
@@ -187,9 +186,9 @@ pub fn build(b: *std.Build) void {
 
     const script_tests = b.addTest(.{
         .name = "script-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    script_tests.root_module.target = target;
+    script_tests.root_module.optimize = optimize;
     script_tests.root_module.root_source_file = b.path("tests/script_tests.zig");
     script_tests.root_module.addImport("neo-zig", sdk_module);
     const run_script_tests = b.addRunArtifact(script_tests);
@@ -200,9 +199,9 @@ pub fn build(b: *std.Build) void {
 
     const types_tests = b.addTest(.{
         .name = "types-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    types_tests.root_module.target = target;
+    types_tests.root_module.optimize = optimize;
     types_tests.root_module.root_source_file = b.path("tests/types_tests.zig");
     types_tests.root_module.addImport("neo-zig", sdk_module);
     const run_types_tests = b.addRunArtifact(types_tests);
@@ -213,9 +212,9 @@ pub fn build(b: *std.Build) void {
 
     const witnessrule_tests = b.addTest(.{
         .name = "witnessrule-tests",
-        .target = target,
-        .optimize = optimize,
     });
+    witnessrule_tests.root_module.target = target;
+    witnessrule_tests.root_module.optimize = optimize;
     witnessrule_tests.root_module.root_source_file = b.path("tests/witnessrule_tests.zig");
     witnessrule_tests.root_module.addImport("neo-zig", sdk_module);
     const run_witnessrule_tests = b.addRunArtifact(witnessrule_tests);
@@ -226,9 +225,9 @@ pub fn build(b: *std.Build) void {
 
     const docs_object = b.addObject(.{
         .name = "neo-zig-docs",
-        .target = target,
-        .optimize = optimize,
     });
+    docs_object.root_module.target = target;
+    docs_object.root_module.optimize = optimize;
     docs_object.root_module.root_source_file = b.path("src/neo.zig");
     const install_docs = b.addInstallDirectory(.{
         .source_dir = docs_object.getEmittedDocs(),
@@ -240,9 +239,9 @@ pub fn build(b: *std.Build) void {
 
     const bench_exe = b.addExecutable(.{
         .name = "neo-zig-bench",
-        .target = target,
-        .optimize = optimize,
     });
+    bench_exe.root_module.target = target;
+    bench_exe.root_module.optimize = optimize;
     bench_exe.root_module.root_source_file = b.path("benchmarks/main.zig");
     bench_exe.root_module.addImport("neo-zig", sdk_module);
     const run_bench = b.addRunArtifact(bench_exe);
