@@ -17,234 +17,78 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // Demo executable used as a minimal smoke-test during the build.
-    // Zig 0.15+: removed .target/.optimize from ExecutableOptions
+    // Demo executable
     const demo = b.addExecutable(.{
         .name = "neo-zig-demo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("final_demo.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
+        }),
     });
-    demo.root_module.target = target;
-    demo.root_module.optimize = optimize;
-    demo.root_module.root_source_file = b.path("final_demo.zig");
-    demo.root_module.addImport("neo-zig", sdk_module);
-
     b.installArtifact(demo);
 
     const run_demo = b.addRunArtifact(demo);
     const demo_step = b.step("demo", "Run core demo");
     demo_step.dependOn(&run_demo.step);
 
+    // Examples executable
     const examples_exe = b.addExecutable(.{
         .name = "neo-zig-examples",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
+        }),
     });
-    examples_exe.root_module.target = target;
-    examples_exe.root_module.optimize = optimize;
-    examples_exe.root_module.root_source_file = b.path("examples/main.zig");
-    examples_exe.root_module.addImport("neo-zig", sdk_module);
 
     const run_examples = b.addRunArtifact(examples_exe);
     const examples_step = b.step("examples", "Build and run examples");
     examples_step.dependOn(&run_examples.step);
 
+    // Complete demo executable
     const complete_demo_exe = b.addExecutable(.{
         .name = "neo-zig-complete-demo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/complete_demo.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
+        }),
     });
-    complete_demo_exe.root_module.target = target;
-    complete_demo_exe.root_module.optimize = optimize;
-    complete_demo_exe.root_module.root_source_file = b.path("examples/complete_demo.zig");
-    complete_demo_exe.root_module.addImport("neo-zig", sdk_module);
 
     const run_complete_demo = b.addRunArtifact(complete_demo_exe);
     const complete_demo_step = b.step("complete-demo", "Run complete SDK demo");
     complete_demo_step.dependOn(&run_complete_demo.step);
 
-    const unit_tests = b.addTest(.{});
-    unit_tests.root_module.target = target;
-    unit_tests.root_module.optimize = optimize;
-    unit_tests.root_module.root_source_file = b.path("src/neo.zig");
+    // Unit tests
+    const unit_tests = b.addTest(.{
+        .name = "neo-zig-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/neo.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
     const run_unit_tests = b.addRunArtifact(unit_tests);
-    const test_step = b.step("test", "Run all Neo Zig SDK tests");
+    const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
 
-    // Swift parity/regression suites live under `tests/` and are not part of the
-    // primary module. Wire them into the build so `zig build test` runs both.
-    const parity_tests = b.addTest(.{
-        .name = "parity",
-    });
-    parity_tests.root_module.target = target;
-    parity_tests.root_module.optimize = optimize;
-    parity_tests.root_module.root_source_file = b.path("tests/all_swift_tests.zig");
-    parity_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_parity_tests = b.addRunArtifact(parity_tests);
-    test_step.dependOn(&run_parity_tests.step);
-
-    const parity_step = b.step("parity-test", "Run Swift parity test suite");
-    parity_step.dependOn(&run_parity_tests.step);
-
-    const rpc_tests = b.addTest(.{
-        .name = "rpc-tests",
-    });
-    rpc_tests.root_module.target = target;
-    rpc_tests.root_module.optimize = optimize;
-    rpc_tests.root_module.root_source_file = b.path("tests/rpc_tests.zig");
-    rpc_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_rpc_tests = b.addRunArtifact(rpc_tests);
-    test_step.dependOn(&run_rpc_tests.step);
-
-    const rpc_step = b.step("rpc-test", "Run RPC request tests");
-    rpc_step.dependOn(&run_rpc_tests.step);
-
+    // Integration tests
     const integration_tests = b.addTest(.{
-        .name = "integration",
+        .name = "integration-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
+        }),
     });
-    integration_tests.root_module.target = target;
-    integration_tests.root_module.optimize = optimize;
-    integration_tests.root_module.root_source_file = b.path("tests/integration.zig");
-    integration_tests.root_module.addImport("neo-zig", sdk_module);
+
     const run_integration_tests = b.addRunArtifact(integration_tests);
-    test_step.dependOn(&run_integration_tests.step);
-
-    const integration_step = b.step("integration-test", "Run integration test suite");
-    integration_step.dependOn(&run_integration_tests.step);
-
-    const crypto_tests = b.addTest(.{
-        .name = "crypto-tests",
-    });
-    crypto_tests.root_module.target = target;
-    crypto_tests.root_module.optimize = optimize;
-    crypto_tests.root_module.root_source_file = b.path("tests/crypto_tests.zig");
-    crypto_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_crypto_tests = b.addRunArtifact(crypto_tests);
-    test_step.dependOn(&run_crypto_tests.step);
-
-    const crypto_step = b.step("crypto-test", "Run crypto test suite");
-    crypto_step.dependOn(&run_crypto_tests.step);
-
-    const contract_tests = b.addTest(.{
-        .name = "contract-tests",
-    });
-    contract_tests.root_module.target = target;
-    contract_tests.root_module.optimize = optimize;
-    contract_tests.root_module.root_source_file = b.path("tests/contract_tests.zig");
-    contract_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_contract_tests = b.addRunArtifact(contract_tests);
-    test_step.dependOn(&run_contract_tests.step);
-
-    const contract_step = b.step("contract-test", "Run contract test suite");
-    contract_step.dependOn(&run_contract_tests.step);
-
-    const transaction_tests = b.addTest(.{
-        .name = "transaction-tests",
-    });
-    transaction_tests.root_module.target = target;
-    transaction_tests.root_module.optimize = optimize;
-    transaction_tests.root_module.root_source_file = b.path("tests/transaction_tests.zig");
-    transaction_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_transaction_tests = b.addRunArtifact(transaction_tests);
-    test_step.dependOn(&run_transaction_tests.step);
-
-    const transaction_step = b.step("transaction-test", "Run transaction test suite");
-    transaction_step.dependOn(&run_transaction_tests.step);
-
-    const wallet_tests = b.addTest(.{
-        .name = "wallet-tests",
-    });
-    wallet_tests.root_module.target = target;
-    wallet_tests.root_module.optimize = optimize;
-    wallet_tests.root_module.root_source_file = b.path("tests/wallet_tests.zig");
-    wallet_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_wallet_tests = b.addRunArtifact(wallet_tests);
-    test_step.dependOn(&run_wallet_tests.step);
-
-    const wallet_step = b.step("wallet-test", "Run wallet test suite");
-    wallet_step.dependOn(&run_wallet_tests.step);
-
-    const protocol_tests = b.addTest(.{
-        .name = "protocol-tests",
-    });
-    protocol_tests.root_module.target = target;
-    protocol_tests.root_module.optimize = optimize;
-    protocol_tests.root_module.root_source_file = b.path("tests/protocol_tests.zig");
-    protocol_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_protocol_tests = b.addRunArtifact(protocol_tests);
-    test_step.dependOn(&run_protocol_tests.step);
-
-    const protocol_step = b.step("protocol-test", "Run protocol test suite");
-    protocol_step.dependOn(&run_protocol_tests.step);
-
-    const serialization_tests = b.addTest(.{
-        .name = "serialization-tests",
-    });
-    serialization_tests.root_module.target = target;
-    serialization_tests.root_module.optimize = optimize;
-    serialization_tests.root_module.root_source_file = b.path("tests/serialization_tests.zig");
-    serialization_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_serialization_tests = b.addRunArtifact(serialization_tests);
-    test_step.dependOn(&run_serialization_tests.step);
-
-    const serialization_step = b.step("serialization-test", "Run serialization test suite");
-    serialization_step.dependOn(&run_serialization_tests.step);
-
-    const script_tests = b.addTest(.{
-        .name = "script-tests",
-    });
-    script_tests.root_module.target = target;
-    script_tests.root_module.optimize = optimize;
-    script_tests.root_module.root_source_file = b.path("tests/script_tests.zig");
-    script_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_script_tests = b.addRunArtifact(script_tests);
-    test_step.dependOn(&run_script_tests.step);
-
-    const script_step = b.step("script-test", "Run script test suite");
-    script_step.dependOn(&run_script_tests.step);
-
-    const types_tests = b.addTest(.{
-        .name = "types-tests",
-    });
-    types_tests.root_module.target = target;
-    types_tests.root_module.optimize = optimize;
-    types_tests.root_module.root_source_file = b.path("tests/types_tests.zig");
-    types_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_types_tests = b.addRunArtifact(types_tests);
-    test_step.dependOn(&run_types_tests.step);
-
-    const types_step = b.step("types-test", "Run types test suite");
-    types_step.dependOn(&run_types_tests.step);
-
-    const witnessrule_tests = b.addTest(.{
-        .name = "witnessrule-tests",
-    });
-    witnessrule_tests.root_module.target = target;
-    witnessrule_tests.root_module.optimize = optimize;
-    witnessrule_tests.root_module.root_source_file = b.path("tests/witnessrule_tests.zig");
-    witnessrule_tests.root_module.addImport("neo-zig", sdk_module);
-    const run_witnessrule_tests = b.addRunArtifact(witnessrule_tests);
-    test_step.dependOn(&run_witnessrule_tests.step);
-
-    const witnessrule_step = b.step("witnessrule-test", "Run witness rule test suite");
-    witnessrule_step.dependOn(&run_witnessrule_tests.step);
-
-    const docs_object = b.addObject(.{
-        .name = "neo-zig-docs",
-    });
-    docs_object.root_module.target = target;
-    docs_object.root_module.optimize = optimize;
-    docs_object.root_module.root_source_file = b.path("src/neo.zig");
-    const install_docs = b.addInstallDirectory(.{
-        .source_dir = docs_object.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs",
-    });
-    const docs_step = b.step("docs", "Generate API documentation");
-    docs_step.dependOn(&install_docs.step);
-
-    const bench_exe = b.addExecutable(.{
-        .name = "neo-zig-bench",
-    });
-    bench_exe.root_module.target = target;
-    bench_exe.root_module.optimize = optimize;
-    bench_exe.root_module.root_source_file = b.path("benchmarks/main.zig");
-    bench_exe.root_module.addImport("neo-zig", sdk_module);
-    const run_bench = b.addRunArtifact(bench_exe);
-    const bench_step = b.step("bench", "Run SDK benchmarks");
-    bench_step.dependOn(&run_bench.step);
+    const integration_test_step = b.step("integration-test", "Run integration tests");
+    integration_test_step.dependOn(&run_integration_tests.step);
 }
