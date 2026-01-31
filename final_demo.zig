@@ -24,8 +24,8 @@ pub fn main() !void {
 
     // Demonstrate native contracts
     std.debug.print("\nNative Contracts (script hashes):\n", .{});
-    std.debug.print("  NEO Token: 0x{s}\n", .{std.fmt.fmtSliceHexLower(constants.NativeContracts.NEO_TOKEN[0..])});
-    std.debug.print("  GAS Token: 0x{s}\n", .{std.fmt.fmtSliceHexLower(constants.NativeContracts.GAS_TOKEN[0..])});
+    std.debug.print("  NEO Token: 0x{x}\n", .{constants.NativeContracts.NEO_TOKEN[0..]});
+    std.debug.print("  GAS Token: 0x{x}\n", .{constants.NativeContracts.GAS_TOKEN[0..]});
 
     // Demonstrate basic crypto
     std.debug.print("\nCryptographic Test:\n", .{});
