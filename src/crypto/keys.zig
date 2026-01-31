@@ -182,7 +182,11 @@ pub const PublicKey = struct {
     }
 
     pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try std.fmt.allocPrint(allocator, "{x}", .{self.toSlice()});
+        const slice = self.toSlice();
+        const hex_len = slice.len * 2;
+        const result = try allocator.alloc(u8, hex_len);
+        _ = std.fmt.bufPrint(result, "{}", .{std.fmt.fmtSliceHexLower(slice)}) catch unreachable;
+        return result;
     }
 
     pub fn toCompressed(self: Self) !Self {
