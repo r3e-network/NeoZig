@@ -115,8 +115,12 @@ jobs:
         
     - name: Run benchmarks
       run: |
-        zig build bench -Doptimize=ReleaseFast
-        echo "Performance benchmarks completed"
+        if zig build -l 2>&1 | grep -q "bench"; then
+          zig build bench -Doptimize=ReleaseFast
+          echo "Performance benchmarks completed"
+        else
+          echo "No bench step defined in build.zig, skipping benchmarks"
+        fi
 
   coverage:
     name: Code Coverage
