@@ -238,7 +238,7 @@ pub const ContextItem = struct {
         try json_utils.putOwnedKey(&item_obj, allocator, "script", std.json.Value{ .string = try allocator.dupe(u8, self.script) });
 
         if (self.parameters) |params| {
-            var params_array = ArrayList(std.json.Value).init(allocator);
+            var params_array : ArrayList(std.json.Value) = .{ .allocator = allocator };
             for (params) |param| {
                 try params_array.append(try @import("../contract/parameter_utils.zig").parameterToJson(param, allocator));
             }
@@ -267,7 +267,7 @@ pub const ContextItem = struct {
         var parameters_owned = false;
         if (obj.get("parameters")) |params_array| {
             if (params_array != .array) return errors.SerializationError.InvalidFormat;
-            var params_list = ArrayList(ContractParameter).init(allocator);
+            var params_list : ArrayList(ContractParameter) = .{ .allocator = allocator };
             errdefer params_list.deinit();
             for (params_array.array.items) |param_json| {
                 try params_list.append(try @import("../contract/parameter_utils.zig").parameterFromJson(param_json, allocator));

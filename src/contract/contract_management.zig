@@ -139,7 +139,7 @@ pub const ContractManagement = struct {
         manifest: []const u8,
         data: ?[]const u8,
     ) !TransactionBuilder {
-        var params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var params : ArrayList(ContractParameter) = .{ .allocator = self.smart_contract.allocator };
         defer params.deinit();
 
         try params.append(ContractParameter.byteArray(nef_file));
@@ -159,7 +159,7 @@ pub const ContractManagement = struct {
         manifest: []const u8,
         data: ?[]const u8,
     ) !TransactionBuilder {
-        var params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var params : ArrayList(ContractParameter) = .{ .allocator = self.smart_contract.allocator };
         defer params.deinit();
 
         try params.append(ContractParameter.byteArray(nef_file));
@@ -261,7 +261,7 @@ pub const ContractManagement = struct {
         var iter = iterator;
         defer iter.deinit();
 
-        var items = ArrayList(ContractIdentifiers).init(self.smart_contract.allocator);
+        var items : ArrayList(ContractIdentifiers) = .{ .allocator = self.smart_contract.allocator };
         defer items.deinit();
 
         var retrieved: u32 = 0;
@@ -298,7 +298,7 @@ pub const ContractIterator = struct {
             .iterator_id = "",
             .allocator = allocator,
             .inner = null,
-            .buffer = ArrayList(ContractIdentifiers).init(allocator),
+            .buffer = .{ .allocator = allocator },
             .exhausted = true,
         };
     }
@@ -328,7 +328,7 @@ pub const ContractIterator = struct {
             .iterator_id = inner_iter.iterator_id,
             .allocator = allocator,
             .inner = inner_iter,
-            .buffer = ArrayList(ContractIdentifiers).init(allocator),
+            .buffer = .{ .allocator = allocator },
             .exhausted = false,
         };
     }

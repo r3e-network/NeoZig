@@ -122,7 +122,7 @@ pub const Bip32ECKeyPair = struct {
             @as(i32, @intCast(child_number));
 
         // Prepare derivation data
-        var derivation_data = ArrayList(u8).init(allocator);
+        var derivation_data : ArrayList(u8) = .{ .allocator = allocator };
         defer {
             secure.secureZeroBytes(derivation_data.items);
             derivation_data.deinit();
@@ -192,7 +192,7 @@ pub const Bip32ECKeyPair = struct {
 
     /// Gets extended private key (equivalent to Swift extended key serialization)
     pub fn getExtendedPrivateKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var extended_key = ArrayList(u8).init(allocator);
+        var extended_key : ArrayList(u8) = .{ .allocator = allocator };
         defer {
             secure.secureZeroBytes(extended_key.items);
             extended_key.deinit();
@@ -226,7 +226,7 @@ pub const Bip32ECKeyPair = struct {
 
     /// Gets extended public key (equivalent to Swift extended public key serialization)
     pub fn getExtendedPublicKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var extended_key = ArrayList(u8).init(allocator);
+        var extended_key : ArrayList(u8) = .{ .allocator = allocator };
         defer {
             secure.secureZeroBytes(extended_key.items);
             extended_key.deinit();

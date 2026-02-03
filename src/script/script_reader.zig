@@ -44,7 +44,7 @@ pub const ScriptReader = struct {
     /// Converts script bytes to OpCode string (equivalent to Swift convertToOpCodeString(_ script: Bytes))
     pub fn convertToOpCodeStringFromBytes(script: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var reader = BinaryReader.init(script);
-        var result = ArrayList(u8).init(allocator);
+        var result : ArrayList(u8) = .{ .allocator = allocator };
         defer result.deinit();
 
         while (reader.hasMore()) {
@@ -96,7 +96,7 @@ pub const ScriptReader = struct {
     pub fn analyzeScript(script: []const u8, allocator: std.mem.Allocator) !ScriptAnalysis {
         var analysis = ScriptAnalysis{
             .total_bytes = script.len,
-            .opcodes = ArrayList(OpCodeInfo).init(allocator),
+            .opcodes = .{ .allocator = allocator },
             .push_operations = 0,
             .syscall_operations = 0,
             .jump_operations = 0,
@@ -158,7 +158,7 @@ pub const ScriptReader = struct {
 
     /// Extracts public keys from verification script (utility method)
     pub fn extractPublicKeys(script: []const u8, allocator: std.mem.Allocator) ![]PublicKey {
-        var public_keys = ArrayList(PublicKey).init(allocator);
+        var public_keys : ArrayList(PublicKey) = .{ .allocator = allocator };
         defer public_keys.deinit();
 
         var reader = BinaryReader.init(script);

@@ -181,7 +181,7 @@ pub const ArrayDecodeUtils = struct {
     ) ![]T {
         return switch (json_value) {
             .array => |array| {
-                var result = ArrayList(T).init(allocator);
+                var result : ArrayList(T) = .{ .allocator = allocator };
                 for (array.items) |item| {
                     try result.append(try decode_fn(item, allocator));
                 }
@@ -266,7 +266,7 @@ test "Array decoding utilities" {
     const allocator = testing.allocator;
 
     // Test string array decoding (equivalent to Swift array decoding tests)
-    var string_array = ArrayList(std.json.Value).init(allocator);
+    var string_array : ArrayList(std.json.Value) = .{ .allocator = allocator };
     defer string_array.deinit();
 
     try string_array.append(std.json.Value{ .string = "first" });

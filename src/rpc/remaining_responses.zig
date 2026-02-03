@@ -77,7 +77,7 @@ pub fn TokenBalances(comptime BalanceType: type) type {
             const address = try allocator.dupe(u8, address_value.string);
             errdefer allocator.free(address);
 
-            var balance_list = ArrayList(BalanceType).init(allocator);
+            var balance_list : ArrayList(BalanceType) = .{ .allocator = allocator };
             errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
                 if (balance_array != .array) return errors.SerializationError.InvalidFormat;
@@ -139,7 +139,7 @@ pub const NeoGetTokenTransfers = struct {
         const address = try allocator.dupe(u8, address_value.string);
         errdefer allocator.free(address);
 
-        var sent_list = ArrayList(TokenTransfer).init(allocator);
+        var sent_list : ArrayList(TokenTransfer) = .{ .allocator = allocator };
         errdefer sent_list.deinit();
         if (obj.get("sent")) |sent_array| {
             if (sent_array != .array) return errors.SerializationError.InvalidFormat;
@@ -148,7 +148,7 @@ pub const NeoGetTokenTransfers = struct {
             }
         }
 
-        var received_list = ArrayList(TokenTransfer).init(allocator);
+        var received_list : ArrayList(TokenTransfer) = .{ .allocator = allocator };
         errdefer received_list.deinit();
         if (obj.get("received")) |received_array| {
             if (received_array != .array) return errors.SerializationError.InvalidFormat;
@@ -302,7 +302,7 @@ pub const NeoGetVersion = struct {
             };
             if (obj.get("hardforks")) |hardforks_value| {
                 if (hardforks_value != .array) return errors.SerializationError.InvalidFormat;
-                var hardforks = ArrayList(HardforkInfo).init(allocator);
+                var hardforks : ArrayList(HardforkInfo) = .{ .allocator = allocator };
                 errdefer hardforks.deinit();
                 for (hardforks_value.array.items) |item| {
                     try hardforks.append(try HardforkInfo.fromJson(item, allocator));
@@ -314,7 +314,7 @@ pub const NeoGetVersion = struct {
             errdefer if (standby_committee_list) |items| allocator.free(items);
             if (obj.get("standbycommittee")) |committee_value| {
                 if (committee_value != .array) return errors.SerializationError.InvalidFormat;
-                var committee = ArrayList(PublicKey).init(allocator);
+                var committee : ArrayList(PublicKey) = .{ .allocator = allocator };
                 errdefer committee.deinit();
                 for (committee_value.array.items) |item| {
                     if (item != .string) return errors.SerializationError.InvalidFormat;
@@ -332,7 +332,7 @@ pub const NeoGetVersion = struct {
             };
             if (obj.get("seedlist")) |seed_value| {
                 if (seed_value != .array) return errors.SerializationError.InvalidFormat;
-                var seeds = ArrayList([]const u8).init(allocator);
+                var seeds : ArrayList([]const u8) = .{ .allocator = allocator };
                 errdefer seeds.deinit();
                 for (seed_value.array.items) |item| {
                     if (item != .string) return errors.SerializationError.InvalidFormat;
@@ -444,7 +444,7 @@ pub const NeoFindStates = struct {
         if (truncated_value != .bool) return errors.SerializationError.InvalidFormat;
         const truncated = truncated_value.bool;
 
-        var results = ArrayList(StateResult).init(allocator);
+        var results : ArrayList(StateResult) = .{ .allocator = allocator };
         errdefer results.deinit();
         if (obj.get("results")) |results_array| {
             if (results_array != .array) return errors.SerializationError.InvalidFormat;
@@ -497,7 +497,7 @@ pub const NeoGetUnspents = struct {
         const address = try allocator.dupe(u8, address_value.string);
         errdefer allocator.free(address);
 
-        var balance_list = ArrayList(UnspentOutput).init(allocator);
+        var balance_list : ArrayList(UnspentOutput) = .{ .allocator = allocator };
         errdefer balance_list.deinit();
         if (obj.get("balance")) |balance_array| {
             if (balance_array != .array) return errors.SerializationError.InvalidFormat;
@@ -559,7 +559,7 @@ pub const NotificationResponse = struct {
         const event_name = try allocator.dupe(u8, obj.get("eventname").?.string);
         errdefer allocator.free(event_name);
 
-        var state_list = ArrayList(StackItem).init(allocator);
+        var state_list : ArrayList(StackItem) = .{ .allocator = allocator };
         errdefer {
             for (state_list.items) |*item| item.deinit(allocator);
             state_list.deinit();

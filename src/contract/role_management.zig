@@ -121,13 +121,13 @@ pub const RoleManagement = struct {
             return errors.throwIllegalArgument("At least one public key required for designation");
         }
 
-        var params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var params : ArrayList(ContractParameter) = .{ .allocator = self.smart_contract.allocator };
         defer params.deinit();
 
         try params.append(ContractParameter.integer(@intFromEnum(role)));
 
         // Convert public keys to parameters
-        var pub_key_params = ArrayList(ContractParameter).init(self.smart_contract.allocator);
+        var pub_key_params : ArrayList(ContractParameter) = .{ .allocator = self.smart_contract.allocator };
         defer pub_key_params.deinit();
 
         for (public_keys) |pub_key| {

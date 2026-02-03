@@ -271,7 +271,7 @@ pub const NeoProtocol = struct {
         };
         if (json_obj.get("hardforks")) |hardforks_value| {
             if (hardforks_value != .array) return errors.SerializationError.InvalidFormat;
-            var hardforks = ArrayList(HardforkInfo).init(allocator);
+            var hardforks : ArrayList(HardforkInfo) = .{ .allocator = allocator };
             errdefer hardforks.deinit();
             for (hardforks_value.array.items) |item| {
                 try hardforks.append(try HardforkInfo.fromJson(item, allocator));
@@ -283,7 +283,7 @@ pub const NeoProtocol = struct {
         errdefer if (standby_committee_list) |items| allocator.free(items);
         if (json_obj.get("standbycommittee")) |committee_value| {
             if (committee_value != .array) return errors.SerializationError.InvalidFormat;
-            var committee = ArrayList(PublicKey).init(allocator);
+            var committee : ArrayList(PublicKey) = .{ .allocator = allocator };
             errdefer committee.deinit();
             for (committee_value.array.items) |item| {
                 if (item != .string) return errors.SerializationError.InvalidFormat;
@@ -301,7 +301,7 @@ pub const NeoProtocol = struct {
         };
         if (json_obj.get("seedlist")) |seed_value| {
             if (seed_value != .array) return errors.SerializationError.InvalidFormat;
-            var seeds = ArrayList([]const u8).init(allocator);
+            var seeds : ArrayList([]const u8) = .{ .allocator = allocator };
             errdefer seeds.deinit();
             for (seed_value.array.items) |item| {
                 if (item != .string) return errors.SerializationError.InvalidFormat;

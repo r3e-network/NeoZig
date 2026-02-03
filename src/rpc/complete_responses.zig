@@ -236,7 +236,7 @@ pub const NeoListPlugins = struct {
             const version = try allocator.dupe(u8, version_value.string);
             errdefer allocator.free(version);
 
-            var interfaces = ArrayList([]const u8).init(allocator);
+            var interfaces : ArrayList([]const u8) = .{ .allocator = allocator };
             errdefer {
                 for (interfaces.items) |iface| allocator.free(@constCast(iface));
                 interfaces.deinit();
@@ -283,7 +283,7 @@ pub const NeoListPlugins = struct {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
         const array = json_value.array;
 
-        var plugins = ArrayList(Plugin).init(allocator);
+        var plugins : ArrayList(Plugin) = .{ .allocator = allocator };
         errdefer {
             for (plugins.items) |*plugin| plugin.deinit(allocator);
             plugins.deinit();
@@ -420,7 +420,7 @@ pub const NeoGetNextBlockValidators = struct {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
         const array = json_value.array;
 
-        var validators = ArrayList(Validator).init(allocator);
+        var validators : ArrayList(Validator) = .{ .allocator = allocator };
         errdefer {
             for (validators.items) |*validator| validator.deinit(allocator);
             validators.deinit();
@@ -488,7 +488,7 @@ pub const NeoGetStateRoot = struct {
         if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var witnesses = ArrayList(NeoWitness).init(allocator);
+        var witnesses : ArrayList(NeoWitness) = .{ .allocator = allocator };
         errdefer {
             for (witnesses.items) |*witness| witness.deinit(allocator);
             witnesses.deinit();
@@ -708,7 +708,7 @@ pub const PopulatedBlocks = struct {
         if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var blocks = ArrayList(u32).init(allocator);
+        var blocks : ArrayList(u32) = .{ .allocator = allocator };
         errdefer blocks.deinit();
         if (obj.get("blocks")) |blocks_array| {
             if (blocks_array != .array) return errors.SerializationError.InvalidFormat;
@@ -783,7 +783,7 @@ pub const NativeContractState = struct {
         if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
 
-        var update_history = ArrayList(u32).init(allocator);
+        var update_history : ArrayList(u32) = .{ .allocator = allocator };
         errdefer update_history.deinit();
         if (obj.get("updatehistory")) |history_array| {
             if (history_array != .array) return errors.SerializationError.InvalidFormat;

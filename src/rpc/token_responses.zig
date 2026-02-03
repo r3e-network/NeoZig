@@ -48,7 +48,7 @@ pub const NeoGetNep17Balances = struct {
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             errdefer allocator.free(address);
 
-            var balance_list = ArrayList(Nep17Balance).init(allocator);
+            var balance_list : ArrayList(Nep17Balance) = .{ .allocator = allocator };
             errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
                 if (balance_array != .array) return errors.SerializationError.InvalidFormat;
@@ -161,7 +161,7 @@ pub const NeoGetNep17Transfers = struct {
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             errdefer allocator.free(address);
 
-            var sent_list = ArrayList(Nep17Transfer).init(allocator);
+            var sent_list : ArrayList(Nep17Transfer) = .{ .allocator = allocator };
             errdefer sent_list.deinit();
             if (obj.get("sent")) |sent_array| {
                 if (sent_array != .array) return errors.SerializationError.InvalidFormat;
@@ -170,7 +170,7 @@ pub const NeoGetNep17Transfers = struct {
                 }
             }
 
-            var received_list = ArrayList(Nep17Transfer).init(allocator);
+            var received_list : ArrayList(Nep17Transfer) = .{ .allocator = allocator };
             errdefer received_list.deinit();
             if (obj.get("received")) |received_array| {
                 if (received_array != .array) return errors.SerializationError.InvalidFormat;
@@ -302,7 +302,7 @@ pub const NeoGetNep11Balances = struct {
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             errdefer allocator.free(address);
 
-            var balance_list = ArrayList(Nep11Balance).init(allocator);
+            var balance_list : ArrayList(Nep11Balance) = .{ .allocator = allocator };
             errdefer balance_list.deinit();
             if (obj.get("balance")) |balance_array| {
                 if (balance_array != .array) return errors.SerializationError.InvalidFormat;
@@ -348,7 +348,7 @@ pub const NeoGetNep11Balances = struct {
             const decimals = if (obj.get("decimals")) |d| try allocator.dupe(u8, d.string) else null;
             const asset_hash = try Hash160.initWithString(obj.get("assethash").?.string);
 
-            var token_list = ArrayList([]const u8).init(allocator);
+            var token_list : ArrayList([]const u8) = .{ .allocator = allocator };
             errdefer {
                 for (token_list.items) |token| allocator.free(@constCast(token));
                 token_list.deinit();
@@ -418,7 +418,7 @@ pub const NeoGetNep11Transfers = struct {
             const address = try allocator.dupe(u8, obj.get("address").?.string);
             errdefer allocator.free(address);
 
-            var sent_list = ArrayList(Nep11Transfer).init(allocator);
+            var sent_list : ArrayList(Nep11Transfer) = .{ .allocator = allocator };
             errdefer sent_list.deinit();
             if (obj.get("sent")) |sent_array| {
                 if (sent_array != .array) return errors.SerializationError.InvalidFormat;
@@ -427,7 +427,7 @@ pub const NeoGetNep11Transfers = struct {
                 }
             }
 
-            var received_list = ArrayList(Nep11Transfer).init(allocator);
+            var received_list : ArrayList(Nep11Transfer) = .{ .allocator = allocator };
             errdefer received_list.deinit();
             if (obj.get("received")) |received_array| {
                 if (received_array != .array) return errors.SerializationError.InvalidFormat;

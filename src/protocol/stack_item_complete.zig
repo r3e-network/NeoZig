@@ -401,7 +401,7 @@ pub const StackItemUtils = struct {
                 try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .string = base64_value });
             },
             .Array => |items| {
-                var array_json = ArrayList(std.json.Value).init(allocator);
+                var array_json : ArrayList(std.json.Value) = .{ .allocator = allocator };
                 for (items) |array_item| {
                     try array_json.append(try toJson(array_item, allocator));
                 }

@@ -70,7 +70,7 @@ fn encodeSigners(signers: []const Signer, allocator: std.mem.Allocator) !JsonArr
 fn encodeScriptBase64(script_hex: []const u8, allocator: std.mem.Allocator) ![]u8 {
     const script_bytes = try StringUtils.bytesFromHex(script_hex, allocator);
     defer allocator.free(script_bytes);
-    var buffer = ArrayList(u8).init(allocator);
+    var buffer : ArrayList(u8) = .{ .allocator = allocator };
     defer buffer.deinit();
     try base64.standard.Encoder.encodeWriter(buffer.writer(), script_bytes);
     return try buffer.toOwnedSlice();
@@ -1146,7 +1146,7 @@ pub const NeoProtocol = struct {
         const prefix_base64 = try hexToBase64(key_prefix_hex, allocator);
         defer allocator.free(prefix_base64);
 
-        var params_list = ArrayList(std.json.Value).init(allocator);
+        var params_list : ArrayList(std.json.Value) = .{ .allocator = allocator };
         defer params_list.deinit();
 
         try params_list.append(std.json.Value{ .string = root_hex });

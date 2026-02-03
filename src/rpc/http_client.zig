@@ -226,7 +226,7 @@ fn sendFetch(
 
     const uri = std.Uri.parse(endpoint) catch return errors.NetworkError.InvalidEndpoint;
 
-    var response_body = ArrayList(u8).init(allocator);
+    var response_body : ArrayList(u8) = .{ .allocator = allocator };
     defer response_body.deinit();
 
     const result = client.fetch(.{
@@ -323,7 +323,7 @@ test "HttpClient custom sender" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var captured = ArrayList(u8).init(allocator);
+    var captured : ArrayList(u8) = .{ .allocator = allocator };
     defer captured.deinit();
 
     var context = StubContext{ .storage = &captured };

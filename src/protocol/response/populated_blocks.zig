@@ -122,7 +122,7 @@ pub const PopulatedBlocks = struct {
 
     /// JSON encoding (equivalent to Swift Codable)
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var blocks_json = ArrayList(u8).init(allocator);
+        var blocks_json : ArrayList(u8) = .{ .allocator = allocator };
         defer blocks_json.deinit();
 
         try blocks_json.appendSlice("[");
@@ -193,7 +193,7 @@ pub const PopulatedBlocks = struct {
 
     /// Gets blocks in a specific range
     pub fn getBlocksInRange(self: Self, min_block: u32, max_block: u32, allocator: std.mem.Allocator) ![]u32 {
-        var filtered_blocks = ArrayList(u32).init(allocator);
+        var filtered_blocks : ArrayList(u32) = .{ .allocator = allocator };
         defer filtered_blocks.deinit();
 
         for (self.blocks) |block| {

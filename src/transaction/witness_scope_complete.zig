@@ -95,7 +95,7 @@ pub const CompleteWitnessScope = enum(u8) {
             return result;
         }
 
-        var scopes = ArrayList(Self).init(allocator);
+        var scopes : ArrayList(Self) = .{ .allocator = allocator };
         defer scopes.deinit();
 
         const all_cases = getAllCases();
@@ -206,7 +206,7 @@ pub const WitnessScopesFromString = struct {
     /// Parses from string (equivalent to Swift property wrapper decoding)
     pub fn fromString(string_value: []const u8, allocator: std.mem.Allocator) !Self {
         // Remove spaces and split by commas
-        var cleaned = ArrayList(u8).init(allocator);
+        var cleaned : ArrayList(u8) = .{ .allocator = allocator };
         defer cleaned.deinit();
 
         for (string_value) |char| {
@@ -215,7 +215,7 @@ pub const WitnessScopesFromString = struct {
             }
         }
 
-        var scopes = ArrayList(CompleteWitnessScope).init(allocator);
+        var scopes : ArrayList(CompleteWitnessScope) = .{ .allocator = allocator };
         defer scopes.deinit();
 
         var scope_iterator = std.mem.splitScalar(u8, cleaned.items, ',');
@@ -234,7 +234,7 @@ pub const WitnessScopesFromString = struct {
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         if (self.scopes.len == 0) return try allocator.dupe(u8, "");
 
-        var result = ArrayList(u8).init(allocator);
+        var result : ArrayList(u8) = .{ .allocator = allocator };
         defer result.deinit();
 
         for (self.scopes, 0..) |scope, i| {

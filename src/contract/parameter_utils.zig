@@ -176,7 +176,7 @@ pub fn parameterFromJson(param_json: std.json.Value, allocator: std.mem.Allocato
 
     if (std.mem.eql(u8, type_str, "Array")) {
         if (value != .array) return errors.SerializationError.InvalidFormat;
-        var items = ArrayList(ContractParameter).init(allocator);
+        var items : ArrayList(ContractParameter) = .{ .allocator = allocator };
         errdefer {
             for (items.items) |item| {
                 item.deinit(allocator);

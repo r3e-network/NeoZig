@@ -114,7 +114,7 @@ pub const Role = enum(u8) {
 
     /// Extracts roles from combined byte value
     pub fn extractRoles(combined_value: u8, allocator: std.mem.Allocator) ![]Role {
-        var roles = ArrayList(Role).init(allocator);
+        var roles : ArrayList(Role) = .{ .allocator = allocator };
         defer roles.deinit();
 
         const all_roles = getAllRoles();

@@ -394,7 +394,7 @@ pub const ServiceCategory = enum {
 pub const InteropServiceUtils = struct {
     /// Gets services by category
     pub fn getServicesByCategory(category: ServiceCategory, allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var services = ArrayList(CompleteInteropService).init(allocator);
+        var services : ArrayList(CompleteInteropService) = .{ .allocator = allocator };
         defer services.deinit();
 
         const all_services = CompleteInteropService.getAllCases();
@@ -469,7 +469,7 @@ pub const InteropServiceUtils = struct {
 
     /// Gets services requiring witness
     pub fn getServicesRequiringWitness(allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var witness_services = ArrayList(CompleteInteropService).init(allocator);
+        var witness_services : ArrayList(CompleteInteropService) = .{ .allocator = allocator };
         defer witness_services.deinit();
 
         const all_services = CompleteInteropService.getAllCases();
@@ -484,7 +484,7 @@ pub const InteropServiceUtils = struct {
 
     /// Gets read-only services
     pub fn getReadOnlyServices(allocator: std.mem.Allocator) ![]CompleteInteropService {
-        var readonly_services = ArrayList(CompleteInteropService).init(allocator);
+        var readonly_services : ArrayList(CompleteInteropService) = .{ .allocator = allocator };
         defer readonly_services.deinit();
 
         const all_services = CompleteInteropService.getAllCases();

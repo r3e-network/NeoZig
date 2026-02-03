@@ -59,10 +59,10 @@ pub const TransactionBuilder = struct {
             .version_field = constants.CURRENT_TX_VERSION,
             .nonce_field = std.crypto.random.int(u32), // Random nonce like Swift
             .valid_until_block_field = null,
-            .signers_list = ArrayList(Signer).init(allocator),
+            .signers_list = .{ .allocator = allocator },
             .additional_network_fee = 0,
             .additional_system_fee = 0,
-            .attributes_list = ArrayList(TransactionAttribute).init(allocator),
+            .attributes_list = .{ .allocator = allocator },
             .script_field = null,
             .consumer = null,
             .fee_error = null,
@@ -140,7 +140,7 @@ pub const TransactionBuilder = struct {
     /// Adds signers to the transaction (equivalent to Swift signers(_ signers: [Signer]))
     /// Note: signers are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn signers(self: *Self, new_signers: []const Signer) !*Self {
-        var cloned_signers = ArrayList(Signer).init(self.allocator);
+        var cloned_signers : ArrayList(Signer) = .{ .allocator = self.allocator };
         errdefer {
             for (cloned_signers.items) |*signer_entry| {
                 signer_entry.deinit(self.allocator);
@@ -200,7 +200,7 @@ pub const TransactionBuilder = struct {
             return errors.throwIllegalArgument("Too many transaction attributes");
         }
 
-        var cloned_attributes = ArrayList(TransactionAttribute).init(self.allocator);
+        var cloned_attributes : ArrayList(TransactionAttribute) = .{ .allocator = self.allocator };
         errdefer {
             for (cloned_attributes.items) |*attribute_entry| {
                 attribute_entry.deinit(self.allocator);
@@ -250,7 +250,7 @@ pub const TransactionBuilder = struct {
     /// Sets the transaction script (equivalent to Swift script(_ script: Bytes))
     pub fn script(self: *Self, transaction_script: []const u8) !*Self {
         if (self.script_field == null) {
-            self.script_field = ArrayList(u8).init(self.allocator);
+            self.script_field : ArrayList(u8) = .{ .allocator = self.allocator };
         }
 
         self.script_field.?.clearRetainingCapacity();
@@ -286,7 +286,7 @@ pub const TransactionBuilder = struct {
         parameters: []const ContractParameter,
     ) !*Self {
         if (self.script_field == null) {
-            self.script_field = ArrayList(u8).init(self.allocator);
+            self.script_field : ArrayList(u8) = .{ .allocator = self.allocator };
         }
 
         // Build invocation script
@@ -361,7 +361,7 @@ pub const TransactionBuilder = struct {
             const public_key = try account.getPublicKey();
 
             // Build invocation script (signature)
-            var invocation_script = ArrayList(u8).init(self.allocator);
+            var invocation_script : ArrayList(u8) = .{ .allocator = self.allocator };
             defer invocation_script.deinit();
 
             try invocation_script.append(0x0C); // PUSHDATA1
@@ -369,7 +369,7 @@ pub const TransactionBuilder = struct {
             try invocation_script.appendSlice(signature.toSlice());
 
             // Build verification script (public key + CheckSig)
-            var verification_script = ArrayList(u8).init(self.allocator);
+            var verification_script : ArrayList(u8) = .{ .allocator = self.allocator };
             defer verification_script.deinit();
 
             try verification_script.append(0x0C); // PUSHDATA1

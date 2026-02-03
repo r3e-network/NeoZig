@@ -207,7 +207,7 @@ pub const Nep17Balances = struct {
 
     /// Gets non-zero balances
     pub fn getNonZeroBalances(self: Self, allocator: std.mem.Allocator) ![]Nep17Balance {
-        var non_zero = ArrayList(Nep17Balance).init(allocator);
+        var non_zero : ArrayList(Nep17Balance) = .{ .allocator = allocator };
         defer non_zero.deinit();
 
         for (self.balances) |balance| {

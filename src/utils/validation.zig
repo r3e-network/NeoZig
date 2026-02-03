@@ -280,7 +280,7 @@ pub const Sanitizer = struct {
     /// Sanitizes error messages (removes sensitive information)
     pub fn sanitizeErrorMessage(error_msg: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // Remove file paths and sensitive data from error messages
-        var sanitized = ArrayList(u8).init(allocator);
+        var sanitized : ArrayList(u8) = .{ .allocator = allocator };
         defer sanitized.deinit();
 
         var i: usize = 0;

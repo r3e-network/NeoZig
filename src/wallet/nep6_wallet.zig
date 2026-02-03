@@ -55,7 +55,7 @@ pub const NEP6Wallet = struct {
         try json_utils.putOwnedKey(&wallet_obj, allocator, "scrypt", try self.scrypt.toJson(allocator));
 
         // Convert accounts array
-        var accounts_array = ArrayList(std.json.Value).init(allocator);
+        var accounts_array : ArrayList(std.json.Value) = .{ .allocator = allocator };
         for (self.accounts) |account| {
             try accounts_array.append(try account.toJson(allocator));
         }
@@ -87,7 +87,7 @@ pub const NEP6Wallet = struct {
         const scrypt = try ScryptParams.fromJson(scrypt_value, allocator);
 
         // Parse accounts
-        var accounts = ArrayList(NEP6Account).init(allocator);
+        var accounts : ArrayList(NEP6Account) = .{ .allocator = allocator };
         errdefer {
             for (accounts.items) |*account| deinitOwnedAccount(account, allocator);
             accounts.deinit();
@@ -296,7 +296,7 @@ pub const NEP6Contract = struct {
         try json_utils.putOwnedKey(&contract_obj, allocator, "deployed", std.json.Value{ .bool = self.deployed });
 
         // Convert parameters
-        var params_array = ArrayList(std.json.Value).init(allocator);
+        var params_array : ArrayList(std.json.Value) = .{ .allocator = allocator };
         for (self.parameters) |param| {
             try params_array.append(try param.toJson(allocator));
         }
@@ -319,7 +319,7 @@ pub const NEP6Contract = struct {
         const deployed = deployed_value.bool;
 
         // Parse parameters
-        var parameters = ArrayList(ContractParameterInfo).init(allocator);
+        var parameters : ArrayList(ContractParameterInfo) = .{ .allocator = allocator };
         errdefer {
             for (parameters.items) |*param| deinitOwnedContractParameterInfo(param, allocator);
             parameters.deinit();

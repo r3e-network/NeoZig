@@ -175,7 +175,7 @@ pub const JsonRpc2_0Rx = struct {
             .fetch_fn = fetch_block,
             .callback = callback,
             .full_transactions = full_transaction_objects,
-            .owned_blocks = ArrayList(*response_aliases.NeoGetBlock).init(self.allocator),
+            .owned_blocks = .{ .allocator = self.allocator },
         };
 
         const index_subscription = try self.blockIndexPublisher(

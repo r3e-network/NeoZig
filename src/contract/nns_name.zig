@@ -131,7 +131,7 @@ pub const NNSName = struct {
 
     /// Gets subdomain parts (equivalent to Swift subdomain extraction)
     pub fn getSubdomains(self: Self, allocator: std.mem.Allocator) ![][]u8 {
-        var subdomains = ArrayList([]u8).init(allocator);
+        var subdomains : ArrayList([]u8) = .{ .allocator = allocator };
         errdefer {
             for (subdomains.items) |fragment| {
                 allocator.free(fragment);
@@ -188,7 +188,7 @@ pub const NNSUtils = struct {
     /// Suggests valid NNS name (utility function)
     pub fn suggestValidName(invalid_name: []const u8, allocator: std.mem.Allocator) ![]u8 {
         // Basic suggestion: lowercase, remove invalid chars, add .neo if needed
-        var suggested = ArrayList(u8).init(allocator);
+        var suggested : ArrayList(u8) = .{ .allocator = allocator };
         defer suggested.deinit();
 
         for (invalid_name) |char| {
