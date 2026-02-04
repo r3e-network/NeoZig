@@ -250,7 +250,7 @@ pub const TransactionBuilder = struct {
     /// Sets the transaction script (equivalent to Swift script(_ script: Bytes))
     pub fn script(self: *Self, transaction_script: []const u8) !*Self {
         if (self.script_field == null) {
-            self.script_field : ArrayList(u8) = .{ .allocator = self.allocator };
+            self.script_field = ArrayList(u8){ .allocator = self.allocator };
         }
 
         self.script_field.?.clearRetainingCapacity();
@@ -286,7 +286,7 @@ pub const TransactionBuilder = struct {
         parameters: []const ContractParameter,
     ) !*Self {
         if (self.script_field == null) {
-            self.script_field : ArrayList(u8) = .{ .allocator = self.allocator };
+            self.script_field = ArrayList(u8){ .allocator = self.allocator };
         }
 
         // Build invocation script
