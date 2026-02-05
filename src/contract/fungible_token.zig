@@ -85,7 +85,7 @@ pub const FungibleToken = struct {
         amount: i64,
         data: ?ContractParameter,
     ) !TransactionBuilder {
-        var params : ArrayList(ContractParameter) = .{ .allocator = self.token.smart_contract.allocator };
+        var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
 
         try params.append(ContractParameter.hash160(from));
@@ -109,11 +109,11 @@ pub const FungibleToken = struct {
             return errors.TransactionError.InvalidTransaction;
         }
 
-        var aggregated_script : ArrayList(u8) = .{ .allocator = self.token.smart_contract.allocator };
+        var aggregated_script = ArrayList(u8).init(self.token.smart_contract.allocator);
         defer aggregated_script.deinit();
 
         for (recipients) |recipient| {
-            var params : ArrayList(ContractParameter) = .{ .allocator = self.token.smart_contract.allocator };
+            var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
             defer params.deinit();
 
             try params.append(ContractParameter.hash160(from));

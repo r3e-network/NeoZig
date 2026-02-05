@@ -363,7 +363,7 @@ test "CompleteBinaryReader hash operations" {
         0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
     };
 
-    var test_data : ArrayList(u8) = .{ .allocator = allocator };
+    var test_data = ArrayList(u8).init(allocator);
     defer test_data.deinit();
 
     var hash160_le = hash160_be;

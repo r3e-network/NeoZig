@@ -282,7 +282,7 @@ pub const ContractParameter = union(ContractParameterType) {
                 return JsonValue{ .string = try allocator.dupe(u8, &hex) };
             },
             .Array => |items| {
-                var list : ArrayList(JsonValue) = .{ .allocator = allocator };
+                var list = ArrayList(JsonValue).init(allocator);
                 for (items) |item| {
                     const json_value = try item.toJsonValue(allocator);
                     try list.append(json_value);

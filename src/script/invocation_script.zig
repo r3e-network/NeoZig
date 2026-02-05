@@ -154,7 +154,7 @@ pub const InvocationScript = struct {
     /// Extracts signatures from script (utility method)
     pub fn extractSignatures(self: Self, allocator: std.mem.Allocator) ![]SignatureData {
         // Parse script to extract pushed signatures
-        var signatures : ArrayList(SignatureData) = .{ .allocator = allocator };
+        var signatures = ArrayList(SignatureData).init(allocator);
         defer signatures.deinit();
 
         var pos: usize = 0;

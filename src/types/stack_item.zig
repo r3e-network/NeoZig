@@ -425,7 +425,7 @@ pub const StackItem = union(enum) {
             const value_json = obj.get("value") orelse return errors.SerializationError.InvalidFormat;
             if (value_json != .array) return errors.SerializationError.InvalidFormat;
 
-            var items : ArrayList(Self) = .{ .allocator = allocator };
+            var items = ArrayList(Self).init(allocator);
             defer items.deinit();
 
             for (value_json.array.items) |child| {
@@ -569,7 +569,7 @@ pub const StackItem = union(enum) {
             .ByteString => |value| try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"value\":\"{s}\"}}", .{ BYTE_STRING_VALUE, value }),
             .Buffer => |value| try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"value\":\"{s}\"}}", .{ BUFFER_VALUE, value }),
             .Array => |items| blk: {
-                var array_json : ArrayList(u8) = .{ .allocator = allocator };
+                var array_json = ArrayList(u8).init(allocator);
                 defer array_json.deinit();
 
                 try array_json.appendSlice("[");
@@ -584,7 +584,7 @@ pub const StackItem = union(enum) {
                 break :blk try std.fmt.allocPrint(allocator, "{{\"type\":\"{s}\",\"value\":{s}}}", .{ ARRAY_VALUE, array_json.items });
             },
             .Struct => |items| blk: {
-                var struct_json : ArrayList(u8) = .{ .allocator = allocator };
+                var struct_json = ArrayList(u8).init(allocator);
                 defer struct_json.deinit();
 
                 try struct_json.appendSlice("[");

@@ -123,7 +123,7 @@ pub const NeoTransaction = struct {
 
     /// Calculates transaction hash (equivalent to Swift getHash)
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
-        var buffer : ArrayList(u8) = .{ .allocator = allocator };
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
 
         try self.serializeUnsigned(&buffer);
@@ -163,7 +163,7 @@ pub const NeoTransaction = struct {
 
     /// Serializes complete transaction (equivalent to Swift full serialization)
     pub fn serialize(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var buffer : ArrayList(u8) = .{ .allocator = allocator };
+        var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
 
         // Serialize unsigned part

@@ -27,7 +27,7 @@ pub fn encode(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
         leading_zeros += 1;
     }
 
-    var digits : ArrayList(u8) = .{ .allocator = allocator };
+    var digits = ArrayList(u8).init(allocator);
     defer digits.deinit();
 
     const bytes_iter = data[leading_zeros..];
@@ -70,7 +70,7 @@ pub fn decode(encoded: []const u8, allocator: std.mem.Allocator) ![]u8 {
         leading_ones += 1;
     }
 
-    var bytes : ArrayList(u8) = .{ .allocator = allocator };
+    var bytes = ArrayList(u8).init(allocator);
     defer bytes.deinit();
 
     for (encoded[leading_ones..]) |char| {

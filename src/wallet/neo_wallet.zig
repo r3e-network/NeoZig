@@ -119,7 +119,7 @@ pub const Wallet = struct {
 
     /// Gets all accounts sorted by script hash (equivalent to Swift accounts property)
     pub fn getAccounts(self: Self, allocator: std.mem.Allocator) ![]Account {
-        var accounts : ArrayList(Account) = .{ .allocator = allocator };
+        var accounts = ArrayList(Account).init(allocator);
         defer accounts.deinit();
 
         var iterator = self.accounts_map.iterator();
@@ -446,7 +446,7 @@ pub const Account = struct {
         const private_key = try self.getPrivateKeyUnsafe();
         const public_key = try private_key.getPublicKey(true);
 
-        var script : ArrayList(u8) = .{ .allocator = allocator };
+        var script = ArrayList(u8).init(allocator);
         defer script.deinit();
 
         // PUSHDATA public_key

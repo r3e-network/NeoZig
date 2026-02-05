@@ -13,7 +13,7 @@ pub const BinaryWriter = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
-        return Self{ .buffer = .{ .allocator = allocator } };
+        return Self{ .buffer = ArrayList(u8).init(allocator) };
     }
 
     pub fn deinit(self: *Self) void {

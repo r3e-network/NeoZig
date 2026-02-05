@@ -297,7 +297,7 @@ fn hexToBytes(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
 
 /// Build verification script for single public key (matches Swift ScriptBuilder.buildVerificationScript)
 fn buildVerificationScript(encoded_public_key: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    var script : ArrayList(u8) = .{ .allocator = allocator };
+    var script = ArrayList(u8).init(allocator);
     defer script.deinit();
 
     // PUSHDATA public_key

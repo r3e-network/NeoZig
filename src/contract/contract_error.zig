@@ -57,7 +57,7 @@ pub const ContractError = union(enum) {
             },
             .UnexpectedReturnType => |data| {
                 if (data.expected_types) |expected| {
-                    var expected_str : ArrayList(u8) = .{ .allocator = allocator };
+                    var expected_str = ArrayList(u8).init(allocator);
                     defer expected_str.deinit();
 
                     for (expected, 0..) |exp_type, i| {

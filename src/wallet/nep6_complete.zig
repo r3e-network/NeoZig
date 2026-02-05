@@ -39,7 +39,7 @@ pub const CompleteNEP6Wallet = struct {
             .version = "3.0",
             .owns_version = false,
             .scrypt = ScryptParams.init(16384, 8, 8), // NEP-6 standard
-            .accounts = .{ .allocator = allocator },
+            .accounts = ArrayList(CompleteNEP6Account).init(allocator),
             .extra = null,
             .allocator = allocator,
         };
@@ -140,7 +140,7 @@ pub const CompleteNEP6Wallet = struct {
         };
 
         // Export accounts
-        var accounts_array : ArrayList(std.json.Value) = .{ .allocator = self.allocator };
+        var accounts_array = ArrayList(std.json.Value).init(self.allocator);
         var accounts_cleanup = true;
         defer if (accounts_cleanup) {
             for (accounts_array.items) |item| json_utils.freeValue(item, self.allocator);
@@ -189,7 +189,7 @@ pub const CompleteNEP6Wallet = struct {
             .version = version,
             .owns_version = true,
             .scrypt = scrypt,
-            .accounts = .{ .allocator = allocator },
+            .accounts = ArrayList(CompleteNEP6Account).init(allocator),
             .extra = null,
             .allocator = allocator,
         };
@@ -471,7 +471,7 @@ pub const NEP6Contract = struct {
         };
         try json_utils.putOwnedKey(&contract_obj, allocator, "deployed", std.json.Value{ .bool = self.deployed });
 
-        var params_array : ArrayList(std.json.Value) = .{ .allocator = allocator };
+        var params_array = ArrayList(std.json.Value).init(allocator);
         var params_cleanup = true;
         defer if (params_cleanup) {
             for (params_array.items) |item| json_utils.freeValue(item, allocator);
@@ -499,7 +499,7 @@ pub const NEP6Contract = struct {
         if (deployed_value != .bool) return errors.SerializationError.InvalidFormat;
         const deployed = deployed_value.bool;
 
-        var parameters : ArrayList(NEP6ParameterInfo) = .{ .allocator = allocator };
+        var parameters = ArrayList(NEP6ParameterInfo).init(allocator);
         errdefer {
             for (parameters.items) |param| param.deinit(allocator);
             parameters.deinit();
@@ -576,7 +576,7 @@ pub const NEP6ParameterInfo = struct {
 
 /// Creates verification script for account
 fn createVerificationScript(public_key: PublicKey, allocator: std.mem.Allocator) ![]u8 {
-    var script : ArrayList(u8) = .{ .allocator = allocator };
+    var script = ArrayList(u8).init(allocator);
     defer script.deinit();
 
     // PUSHDATA public_key

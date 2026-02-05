@@ -109,7 +109,7 @@ pub const ContractManifest = struct {
 
         if (obj.get("groups")) |groups_array| {
             if (groups_array != .array) return errors.SerializationError.InvalidFormat;
-            var groups : ArrayList(ContractGroup) = .{ .allocator = allocator };
+            var groups = ArrayList(ContractGroup).init(allocator);
             errdefer {
                 for (groups.items) |*group| group.deinit(allocator);
                 groups.deinit();
@@ -128,7 +128,7 @@ pub const ContractManifest = struct {
 
         if (obj.get("supportedstandards")) |standards_array| {
             if (standards_array != .array) return errors.SerializationError.InvalidFormat;
-            var standards : ArrayList([]const u8) = .{ .allocator = allocator };
+            var standards = ArrayList([]const u8).init(allocator);
             errdefer {
                 for (standards.items) |standard| allocator.free(@constCast(standard));
                 standards.deinit();
@@ -148,7 +148,7 @@ pub const ContractManifest = struct {
 
         if (obj.get("permissions")) |perms_array| {
             if (perms_array != .array) return errors.SerializationError.InvalidFormat;
-            var permissions : ArrayList(ContractPermission) = .{ .allocator = allocator };
+            var permissions = ArrayList(ContractPermission).init(allocator);
             errdefer {
                 for (permissions.items) |*permission| permission.deinit(allocator);
                 permissions.deinit();
@@ -163,7 +163,7 @@ pub const ContractManifest = struct {
 
         if (obj.get("trusts")) |trusts_array| {
             if (trusts_array != .array) return errors.SerializationError.InvalidFormat;
-            var trusts : ArrayList([]const u8) = .{ .allocator = allocator };
+            var trusts = ArrayList([]const u8).init(allocator);
             errdefer {
                 for (trusts.items) |trust| allocator.free(@constCast(trust));
                 trusts.deinit();
@@ -315,7 +315,7 @@ pub const ContractABI = struct {
 
         if (obj.get("methods")) |methods_array| {
             if (methods_array != .array) return errors.SerializationError.InvalidFormat;
-            var methods : ArrayList(ContractMethodInfo) = .{ .allocator = allocator };
+            var methods = ArrayList(ContractMethodInfo).init(allocator);
             errdefer {
                 for (methods.items) |*method| method.deinit(allocator);
                 methods.deinit();
@@ -330,7 +330,7 @@ pub const ContractABI = struct {
 
         if (obj.get("events")) |events_array| {
             if (events_array != .array) return errors.SerializationError.InvalidFormat;
-            var events : ArrayList(ContractEventInfo) = .{ .allocator = allocator };
+            var events = ArrayList(ContractEventInfo).init(allocator);
             errdefer {
                 for (events.items) |*event| event.deinit(allocator);
                 events.deinit();
@@ -408,7 +408,7 @@ pub const ContractMethodInfo = struct {
 
         if (obj.get("parameters")) |params_array| {
             if (params_array != .array) return errors.SerializationError.InvalidFormat;
-            var parameters : ArrayList(ContractParameterDefinition) = .{ .allocator = allocator };
+            var parameters = ArrayList(ContractParameterDefinition).init(allocator);
             errdefer {
                 for (parameters.items) |*param| param.deinit(allocator);
                 parameters.deinit();
@@ -490,7 +490,7 @@ pub const ContractEventInfo = struct {
 
         if (obj.get("parameters")) |params_array| {
             if (params_array != .array) return errors.SerializationError.InvalidFormat;
-            var parameters : ArrayList(ContractParameterDefinition) = .{ .allocator = allocator };
+            var parameters = ArrayList(ContractParameterDefinition).init(allocator);
             errdefer {
                 for (parameters.items) |*param| param.deinit(allocator);
                 parameters.deinit();
@@ -542,7 +542,7 @@ pub const ContractPermission = struct {
 
         if (obj.get("methods")) |methods_array| {
             if (methods_array != .array) return errors.SerializationError.InvalidFormat;
-            var methods : ArrayList([]const u8) = .{ .allocator = allocator };
+            var methods = ArrayList([]const u8).init(allocator);
             errdefer {
                 for (methods.items) |method| allocator.free(@constCast(method));
                 methods.deinit();
@@ -597,7 +597,7 @@ pub const NeoGetMemPool = struct {
 
         if (obj.get("verified")) |verified_array| {
             if (verified_array != .array) return errors.SerializationError.InvalidFormat;
-            var verified : ArrayList([]const u8) = .{ .allocator = allocator };
+            var verified = ArrayList([]const u8).init(allocator);
             errdefer {
                 for (verified.items) |entry| allocator.free(@constCast(entry));
                 verified.deinit();
@@ -613,7 +613,7 @@ pub const NeoGetMemPool = struct {
 
         if (obj.get("unverified")) |unverified_array| {
             if (unverified_array != .array) return errors.SerializationError.InvalidFormat;
-            var unverified : ArrayList([]const u8) = .{ .allocator = allocator };
+            var unverified = ArrayList([]const u8).init(allocator);
             errdefer {
                 for (unverified.items) |entry| allocator.free(@constCast(entry));
                 unverified.deinit();
@@ -672,7 +672,7 @@ pub const NeoGetPeers = struct {
 
         if (obj.get("unconnected")) |unconnected_value| {
             if (unconnected_value != .array) return errors.SerializationError.InvalidFormat;
-            var unconnected : ArrayList(Peer) = .{ .allocator = allocator };
+            var unconnected = ArrayList(Peer).init(allocator);
             errdefer {
                 for (unconnected.items) |*peer| peer.deinit(allocator);
                 unconnected.deinit();
@@ -687,7 +687,7 @@ pub const NeoGetPeers = struct {
 
         if (obj.get("bad")) |bad_value| {
             if (bad_value != .array) return errors.SerializationError.InvalidFormat;
-            var bad : ArrayList(Peer) = .{ .allocator = allocator };
+            var bad = ArrayList(Peer).init(allocator);
             errdefer {
                 for (bad.items) |*peer| peer.deinit(allocator);
                 bad.deinit();
@@ -702,7 +702,7 @@ pub const NeoGetPeers = struct {
 
         if (obj.get("connected")) |connected_value| {
             if (connected_value != .array) return errors.SerializationError.InvalidFormat;
-            var connected : ArrayList(Peer) = .{ .allocator = allocator };
+            var connected = ArrayList(Peer).init(allocator);
             errdefer {
                 for (connected.items) |*peer| peer.deinit(allocator);
                 connected.deinit();
@@ -835,7 +835,7 @@ pub const NeoGetClaimable = struct {
 
         if (obj.get("claimable")) |claimable_array| {
             if (claimable_array != .array) return errors.SerializationError.InvalidFormat;
-            var claimable : ArrayList(ClaimableTransaction) = .{ .allocator = allocator };
+            var claimable = ArrayList(ClaimableTransaction).init(allocator);
             errdefer claimable.deinit();
             for (claimable_array.array.items) |item| {
                 try claimable.append(try ClaimableTransaction.fromJson(item, allocator));

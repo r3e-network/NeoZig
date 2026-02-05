@@ -196,7 +196,7 @@ const BIP39Utils = struct {
         var digest: [32]u8 = undefined;
         sha.final(&digest);
 
-        var output : ArrayList(u8) = .{ .allocator = allocator };
+        var output = ArrayList(u8).init(allocator);
         defer output.deinit();
 
         for (0..word_count) |word_idx| {
@@ -299,7 +299,7 @@ const BIP39Utils = struct {
 
         // Match NeoSwift behavior: split/join words so extra whitespace doesn't change the seed.
         // (NeoSwift uses `mnemonic.split(separator: " ")` before deriving the seed.)
-        var normalized_mnemonic_rejoined : ArrayList(u8) = .{ .allocator = allocator };
+        var normalized_mnemonic_rejoined = ArrayList(u8).init(allocator);
         defer {
             secure.secureZeroBytes(normalized_mnemonic_rejoined.items);
             normalized_mnemonic_rejoined.deinit();
@@ -317,7 +317,7 @@ const BIP39Utils = struct {
         if (!@This().validateMnemonic(normalized_mnemonic_rejoined.items)) return errors.throwIllegalArgument("Invalid BIP-39 mnemonic");
 
         // PBKDF2 with mnemonic as password and "mnemonic" + passphrase as salt
-        var salt : ArrayList(u8) = .{ .allocator = allocator };
+        var salt = ArrayList(u8).init(allocator);
         defer {
             secure.secureZeroBytes(salt.items);
             salt.deinit();
@@ -341,7 +341,7 @@ const BIP39Utils = struct {
     /// Performs NFKD (Normalization Form Compatibility Decomposition) normalization.
     /// This implementation handles Latin-1 Supplement and Latin Extended-A characters.
     fn nfkdNormalize(input: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        var result : ArrayList(u8) = .{ .allocator = allocator };
+        var result = ArrayList(u8).init(allocator);
         errdefer result.deinit();
 
         var i: usize = 0;

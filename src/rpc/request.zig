@@ -151,7 +151,7 @@ pub fn Request(comptime T: type, comptime U: type) type {
             errdefer allocator.free(method);
             const id = @as(u32, @intCast(obj.get("id").?.integer));
 
-            var params : ArrayList(std.json.Value) = .{ .allocator = allocator };
+            var params = ArrayList(std.json.Value).init(allocator);
             errdefer params.deinit();
             if (obj.get("params")) |params_array| {
                 if (params_array != .array) return errors.SerializationError.InvalidFormat;

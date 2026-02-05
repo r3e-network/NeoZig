@@ -113,7 +113,7 @@ pub const HttpService = struct {
 
         const uri = std.Uri.parse(endpoint) catch return errors.NetworkError.InvalidEndpoint;
 
-        var extra_headers : ArrayList(std.http.Header) = .{ .allocator = allocator };
+        var extra_headers = ArrayList(std.http.Header).init(allocator);
         defer extra_headers.deinit();
 
         var header_iterator = service.headers.iterator();
@@ -121,7 +121,7 @@ pub const HttpService = struct {
             extra_headers.append(.{ .name = entry.key_ptr.*, .value = entry.value_ptr.* }) catch return errors.NetworkError.RequestFailed;
         }
 
-        var response_body : ArrayList(u8) = .{ .allocator = allocator };
+        var response_body = ArrayList(u8).init(allocator);
         defer response_body.deinit();
 
         const result = client.fetch(.{

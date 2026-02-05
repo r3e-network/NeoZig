@@ -59,7 +59,7 @@ pub const ArrayUtils = struct {
         predicate: *const fn (T) bool,
         allocator: std.mem.Allocator,
     ) ![]T {
-        var result : ArrayList(T) = .{ .allocator = allocator };
+        var result = ArrayList(T).init(allocator);
         defer result.deinit();
 
         for (array) |item| {

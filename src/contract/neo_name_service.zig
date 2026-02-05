@@ -134,7 +134,7 @@ pub const NeoNameService = struct {
         owner: Hash160,
         admin: ?Hash160,
     ) !TransactionBuilder {
-        var params : ArrayList(ContractParameter) = .{ .allocator = self.non_fungible_token.token.smart_contract.allocator };
+        var params = ArrayList(ContractParameter).init(self.non_fungible_token.token.smart_contract.allocator);
         defer params.deinit();
 
         try params.append(ContractParameter.string(domain_name));
@@ -528,7 +528,7 @@ pub const NNSDomainManager = struct {
         admin: ?Hash160,
         records: []const DomainRecord,
     ) ![]TransactionBuilder {
-        var transactions : ArrayList(TransactionBuilder) = .{ .allocator = self.allocator };
+        var transactions = ArrayList(TransactionBuilder).init(self.allocator);
         defer transactions.deinit();
 
         // First, register the domain
@@ -564,7 +564,7 @@ pub const NNSDomainManager = struct {
         to: Hash160,
         transfer_admin: bool,
     ) ![]TransactionBuilder {
-        var transactions : ArrayList(TransactionBuilder) = .{ .allocator = self.allocator };
+        var transactions = ArrayList(TransactionBuilder).init(self.allocator);
         defer transactions.deinit();
 
         // Transfer the NFT

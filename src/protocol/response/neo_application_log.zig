@@ -63,7 +63,7 @@ pub const ApplicationExecution = struct {
             else => try stringifyJsonValue(value, allocator),
         } else null;
 
-        var stack_items : ArrayList(StackItem) = .{ .allocator = allocator };
+        var stack_items = ArrayList(StackItem).init(allocator);
         defer stack_items.deinit();
         if (obj.get("stack")) |stack_value| {
             if (stack_value != .array) return errors.SerializationError.InvalidFormat;
@@ -76,7 +76,7 @@ pub const ApplicationExecution = struct {
             }
         }
 
-        var notifications : ArrayList(Notification) = .{ .allocator = allocator };
+        var notifications = ArrayList(Notification).init(allocator);
         defer notifications.deinit();
         if (obj.get("notifications")) |notifications_value| {
             if (notifications_value != .array) return errors.SerializationError.InvalidFormat;
@@ -159,7 +159,7 @@ pub const NeoApplicationLog = struct {
 
         const tx_id = try Hash256.initWithString(obj.get("txid").?.string);
 
-        var executions : ArrayList(ApplicationExecution) = .{ .allocator = allocator };
+        var executions = ArrayList(ApplicationExecution).init(allocator);
         defer executions.deinit();
         if (obj.get("executions")) |exec_array| {
             if (exec_array != .array) return errors.SerializationError.InvalidFormat;

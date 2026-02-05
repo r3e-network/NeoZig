@@ -168,7 +168,7 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
 
         /// Traverses all remaining items (utility method)
         pub fn traverseAll(self: *Self, max_items: u32) ![]T {
-            var all_items : ArrayList(T) = .{ .allocator = self.allocator };
+            var all_items = ArrayList(T).init(self.allocator);
             errdefer {
                 for (all_items.items) |entry| {
                     deinitMappedItem(entry, self.allocator);

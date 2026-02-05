@@ -274,7 +274,7 @@ pub const NeoSwift = struct {
         const address = try script_hash.toAddress(self.allocator);
         defer self.allocator.free(address);
 
-        var params : ArrayList(RpcParam) = .{ .allocator = self.allocator };
+        var params = ArrayList(RpcParam).init(self.allocator);
         defer params.deinit();
 
         try params.append(RpcParam.initString(address));
@@ -348,7 +348,7 @@ pub fn RpcRequest(comptime T: type) type {
         pub fn send(self: Self) !T {
             const allocator = self.client.allocator;
 
-            var params_list : ArrayList(std.json.Value) = .{ .allocator = allocator };
+            var params_list = ArrayList(std.json.Value).init(allocator);
             defer params_list.deinit();
 
             for (self.params) |param| {

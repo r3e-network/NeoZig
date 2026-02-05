@@ -22,7 +22,7 @@ pub const CompleteBinaryWriter = struct {
     /// Creates binary writer (equivalent to Swift init())
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
-            .array = .{ .allocator = allocator },
+            .array = ArrayList(u8).init(allocator),
         };
     }
 

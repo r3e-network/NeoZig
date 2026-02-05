@@ -129,7 +129,7 @@ pub const NeoGetRawMemPool = struct {
             return errors.ValidationError.InvalidFormat;
         }
 
-        var hashes : ArrayList(Hash256) = .{ .allocator = allocator };
+        var hashes = ArrayList(Hash256).init(allocator);
         defer hashes.deinit();
 
         for (json_value.array.items) |entry| {
@@ -386,7 +386,7 @@ pub const NeoExpressGetContractStorage = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetContractStorage {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var storage_list = ArrayList(@import("complete_responses.zig").ContractStorageEntry){ .allocator = allocator };
+        var storage_list = ArrayList(@import("complete_responses.zig").ContractStorageEntry).init(allocator);
         errdefer {
             for (storage_list.items) |*entry| entry.deinit(allocator);
             storage_list.deinit();
@@ -427,7 +427,7 @@ pub const NeoExpressGetNep17Contracts = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetNep17Contracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var contracts_list = ArrayList(@import("complete_responses.zig").Nep17Contract){ .allocator = allocator };
+        var contracts_list = ArrayList(@import("complete_responses.zig").Nep17Contract).init(allocator);
         errdefer {
             for (contracts_list.items) |*contract| contract.deinit(allocator);
             contracts_list.deinit();
@@ -468,7 +468,7 @@ pub const NeoExpressListContracts = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListContracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var list = ArrayList(@import("complete_responses.zig").ExpressContractState){ .allocator = allocator };
+        var list = ArrayList(@import("complete_responses.zig").ExpressContractState).init(allocator);
         errdefer {
             for (list.items) |*contract| contract.deinit(allocator);
             list.deinit();
@@ -509,7 +509,7 @@ pub const NeoExpressListOracleRequests = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListOracleRequests {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var list = ArrayList(@import("complete_responses.zig").OracleRequest){ .allocator = allocator };
+        var list = ArrayList(@import("complete_responses.zig").OracleRequest).init(allocator);
         errdefer {
             for (list.items) |*request| request.deinit(allocator);
             list.deinit();
@@ -640,7 +640,7 @@ pub const NeoListAddress = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListAddress {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var addresses_list = ArrayList(@import("complete_responses.zig").NeoAddress){ .allocator = allocator };
+        var addresses_list = ArrayList(@import("complete_responses.zig").NeoAddress).init(allocator);
         errdefer {
             for (addresses_list.items) |*address| address.deinit(allocator);
             addresses_list.deinit();
@@ -789,7 +789,7 @@ pub const NeoGetNativeContracts = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNativeContracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var contracts_list = ArrayList(@import("complete_responses.zig").NativeContractState){ .allocator = allocator };
+        var contracts_list = ArrayList(@import("complete_responses.zig").NativeContractState).init(allocator);
         errdefer {
             for (contracts_list.items) |*contract| contract.deinit(allocator);
             contracts_list.deinit();
@@ -902,7 +902,7 @@ pub const NeoTraverseIterator = struct {
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoTraverseIterator {
-        var items_list : ArrayList(StackItem) = .{ .allocator = allocator };
+        var items_list = ArrayList(StackItem).init(allocator);
         defer items_list.deinit();
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
         for (json_value.array.items) |item| {

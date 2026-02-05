@@ -73,7 +73,7 @@ pub const ECDSASignature = struct {
 
     /// Converts to DER encoding (equivalent to Swift DER serialization)
     pub fn toDER(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var der : ArrayList(u8) = .{ .allocator = allocator };
+        var der = ArrayList(u8).init(allocator);
         defer der.deinit();
 
         // SEQUENCE tag

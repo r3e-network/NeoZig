@@ -115,7 +115,7 @@ pub const ScryptParams = struct {
 
         const json_value = std.json.Value{ .object = json_obj };
 
-        var json_string : ArrayList(u8) = .{ .allocator = allocator };
+        var json_string = ArrayList(u8).init(allocator);
         defer json_string.deinit();
 
         try std.json.stringify(json_value, .{}, json_string.writer());

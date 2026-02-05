@@ -231,7 +231,7 @@ pub const ContractNef = struct {
         defer allocator.free(source_str);
 
         // Encode tokens array
-        var tokens_json : ArrayList(u8) = .{ .allocator = allocator };
+        var tokens_json = ArrayList(u8).init(allocator);
         defer tokens_json.deinit();
 
         try tokens_json.appendSlice("[");

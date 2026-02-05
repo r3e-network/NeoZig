@@ -94,7 +94,7 @@ pub const NonFungibleToken = struct {
         token_id: []const u8,
         data: ?ContractParameter,
     ) !TransactionBuilder {
-        var params : ArrayList(ContractParameter) = .{ .allocator = self.token.smart_contract.allocator };
+        var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
 
         try params.append(ContractParameter.hash160(from));
@@ -117,7 +117,7 @@ pub const NonFungibleToken = struct {
         token_id: []const u8,
         data: ?ContractParameter,
     ) !TransactionBuilder {
-        var params : ArrayList(ContractParameter) = .{ .allocator = self.token.smart_contract.allocator };
+        var params = ArrayList(ContractParameter).init(self.token.smart_contract.allocator);
         defer params.deinit();
 
         try params.append(ContractParameter.hash160(from));
@@ -261,7 +261,7 @@ pub const TokenIterator = struct {
             .iterator_id = "",
             .allocator = allocator,
             .inner = null,
-            .buffer = .{ .allocator = allocator },
+            .buffer = ArrayList([]u8).init(allocator),
             .exhausted = true,
         };
     }
@@ -291,7 +291,7 @@ pub const TokenIterator = struct {
             .iterator_id = inner_iter.iterator_id,
             .allocator = allocator,
             .inner = inner_iter,
-            .buffer = .{ .allocator = allocator },
+            .buffer = ArrayList([]u8).init(allocator),
             .exhausted = false,
         };
     }

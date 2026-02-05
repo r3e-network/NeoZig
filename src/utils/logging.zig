@@ -87,7 +87,7 @@ pub const Logger = struct {
         const allocator = fba.allocator();
 
         // Build log message
-        var log_msg : ArrayList(u8) = .{ .allocator = allocator };
+        var log_msg = ArrayList(u8).init(allocator);
         defer log_msg.deinit();
 
         // Timestamp

@@ -173,7 +173,7 @@ pub const NeoToken = struct {
 
     /// Votes for candidate (equivalent to Swift vote)
     pub fn vote(self: Self, voter: Hash160, candidate: ?[33]u8) !TransactionBuilder {
-        var params : ArrayList(ContractParameter) = .{ .allocator = self.fungible_token.token.smart_contract.allocator };
+        var params = ArrayList(ContractParameter).init(self.fungible_token.token.smart_contract.allocator);
         defer params.deinit();
 
         try params.append(ContractParameter.hash160(voter));

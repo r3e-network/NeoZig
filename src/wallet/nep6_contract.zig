@@ -186,7 +186,7 @@ pub const NEP6Contract = struct {
         defer allocator.free(script_str);
 
         // Encode parameters array
-        var params_json : ArrayList(u8) = .{ .allocator = allocator };
+        var params_json = ArrayList(u8).init(allocator);
         defer params_json.deinit();
 
         try params_json.appendSlice("[");

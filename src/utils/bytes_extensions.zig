@@ -27,7 +27,7 @@ pub const BytesUtils = struct {
     pub fn fromBigInt(value: u256, allocator: std.mem.Allocator) ![]u8 {
         if (value == 0) return try allocator.dupe(u8, &[_]u8{0});
 
-        var bytes : ArrayList(u8) = .{ .allocator = allocator };
+        var bytes = ArrayList(u8).init(allocator);
         defer bytes.deinit();
 
         var temp_value = value;

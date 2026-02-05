@@ -146,7 +146,7 @@ pub const NeoBlock = struct {
 
         var witnesses_slice: ?[]NeoWitness = null;
         if (obj.get("witnesses")) |witnesses_value| {
-            var witnesses_list : ArrayList(NeoWitness) = .{ .allocator = allocator };
+            var witnesses_list = ArrayList(NeoWitness).init(allocator);
             defer witnesses_list.deinit();
 
             for (witnesses_value.array.items) |witness_json| {
@@ -158,7 +158,7 @@ pub const NeoBlock = struct {
 
         var transactions_slice: ?[]Transaction = null;
         if (obj.get("tx")) |tx_value| {
-            var tx_list : ArrayList(Transaction) = .{ .allocator = allocator };
+            var tx_list = ArrayList(Transaction).init(allocator);
             defer tx_list.deinit();
 
             for (tx_value.array.items) |tx_json| {
@@ -167,7 +167,7 @@ pub const NeoBlock = struct {
 
             transactions_slice = try tx_list.toOwnedSlice();
         } else if (obj.get("transactions")) |tx_value| {
-            var tx_list : ArrayList(Transaction) = .{ .allocator = allocator };
+            var tx_list = ArrayList(Transaction).init(allocator);
             defer tx_list.deinit();
 
             for (tx_value.array.items) |tx_json| {
@@ -282,7 +282,7 @@ pub const Transaction = struct {
         const net_fee = try allocator.dupe(u8, obj.get("netfee").?.string);
         const valid_until_block = @as(u32, @intCast(obj.get("validuntilblock").?.integer));
 
-        var signers_list : ArrayList(TransactionSigner) = .{ .allocator = allocator };
+        var signers_list = ArrayList(TransactionSigner).init(allocator);
         defer signers_list.deinit();
         if (obj.get("signers")) |signers_json| {
             for (signers_json.array.items) |signer_json| {
@@ -290,7 +290,7 @@ pub const Transaction = struct {
             }
         }
 
-        var attributes_list : ArrayList(TransactionAttribute) = .{ .allocator = allocator };
+        var attributes_list = ArrayList(TransactionAttribute).init(allocator);
         defer attributes_list.deinit();
         if (obj.get("attributes")) |attributes_json| {
             for (attributes_json.array.items) |attr_json| {
@@ -300,7 +300,7 @@ pub const Transaction = struct {
 
         const script = try allocator.dupe(u8, obj.get("script").?.string);
 
-        var witnesses_list : ArrayList(NeoWitness) = .{ .allocator = allocator };
+        var witnesses_list = ArrayList(NeoWitness).init(allocator);
         defer witnesses_list.deinit();
         if (obj.get("witnesses")) |witnesses_json| {
             for (witnesses_json.array.items) |witness_json| {
@@ -411,7 +411,7 @@ pub const TransactionSigner = struct {
 
         var allowed_contracts_slice: ?[]Hash160 = null;
         if (obj.get("allowedcontracts")) |contracts_json| {
-            var contracts_list : ArrayList(Hash160) = .{ .allocator = allocator };
+            var contracts_list = ArrayList(Hash160).init(allocator);
             defer contracts_list.deinit();
 
             for (contracts_json.array.items) |contract_json| {
@@ -423,7 +423,7 @@ pub const TransactionSigner = struct {
 
         var allowed_groups_slice: ?[][33]u8 = null;
         if (obj.get("allowedgroups")) |groups_json| {
-            var groups_list : ArrayList([33]u8) = .{ .allocator = allocator };
+            var groups_list = ArrayList([33]u8).init(allocator);
             defer groups_list.deinit();
 
             for (groups_json.array.items) |group_json| {
@@ -439,7 +439,7 @@ pub const TransactionSigner = struct {
 
         var rules_slice: ?[]WitnessRule = null;
         if (obj.get("rules")) |rules_json| {
-            var rules_list : ArrayList(WitnessRule) = .{ .allocator = allocator };
+            var rules_list = ArrayList(WitnessRule).init(allocator);
             defer rules_list.deinit();
 
             for (rules_json.array.items) |rule_json| {
@@ -575,7 +575,7 @@ pub const InvocationResult = struct {
         const exception = if (obj.get("exception")) |ex| try allocator.dupe(u8, ex.string) else null;
 
         // Parse stack items
-        var stack_items : ArrayList(StackItem) = .{ .allocator = allocator };
+        var stack_items = ArrayList(StackItem).init(allocator);
         defer stack_items.deinit();
         if (obj.get("stack")) |stack_array| {
             if (stack_array != .array) return errors.SerializationError.InvalidFormat;
@@ -735,7 +735,7 @@ pub const ProtocolConfiguration = struct {
         };
         if (obj.get("hardforks")) |hardforks_value| {
             if (hardforks_value != .array) return errors.SerializationError.InvalidFormat;
-            var hardforks : ArrayList(HardforkInfo) = .{ .allocator = allocator };
+            var hardforks = ArrayList(HardforkInfo).init(allocator);
             errdefer hardforks.deinit();
             for (hardforks_value.array.items) |item| {
                 try hardforks.append(try HardforkInfo.fromJson(item, allocator));
@@ -747,7 +747,7 @@ pub const ProtocolConfiguration = struct {
         errdefer if (standby_committee_list) |items| allocator.free(items);
         if (obj.get("standbycommittee")) |committee_value| {
             if (committee_value != .array) return errors.SerializationError.InvalidFormat;
-            var committee : ArrayList(PublicKey) = .{ .allocator = allocator };
+            var committee = ArrayList(PublicKey).init(allocator);
             errdefer committee.deinit();
             for (committee_value.array.items) |item| {
                 if (item != .string) return errors.SerializationError.InvalidFormat;
@@ -765,7 +765,7 @@ pub const ProtocolConfiguration = struct {
         };
         if (obj.get("seedlist")) |seed_value| {
             if (seed_value != .array) return errors.SerializationError.InvalidFormat;
-            var seeds : ArrayList([]const u8) = .{ .allocator = allocator };
+            var seeds = ArrayList([]const u8).init(allocator);
             errdefer seeds.deinit();
             for (seed_value.array.items) |item| {
                 if (item != .string) return errors.SerializationError.InvalidFormat;
@@ -829,7 +829,7 @@ pub const Nep17Balances = struct {
 
         const address = try allocator.dupe(u8, obj.get("address").?.string);
 
-        var balances : ArrayList(TokenBalance) = .{ .allocator = allocator };
+        var balances = ArrayList(TokenBalance).init(allocator);
         if (obj.get("balance")) |balance_array| {
             for (balance_array.array.items) |balance_item| {
                 try balances.append(try TokenBalance.fromJson(balance_item, allocator));
@@ -887,14 +887,14 @@ pub const Nep17Transfers = struct {
 
         const address = try allocator.dupe(u8, obj.get("address").?.string);
 
-        var sent : ArrayList(TokenTransfer) = .{ .allocator = allocator };
+        var sent = ArrayList(TokenTransfer).init(allocator);
         if (obj.get("sent")) |sent_array| {
             for (sent_array.array.items) |item| {
                 try sent.append(try TokenTransfer.fromJson(item, allocator));
             }
         }
 
-        var received : ArrayList(TokenTransfer) = .{ .allocator = allocator };
+        var received = ArrayList(TokenTransfer).init(allocator);
         if (obj.get("received")) |received_array| {
             for (received_array.array.items) |item| {
                 try received.append(try TokenTransfer.fromJson(item, allocator));
@@ -955,7 +955,7 @@ pub const NeoApplicationLog = struct {
 
         const tx_id = try Hash256.initWithString(obj.get("txid").?.string);
 
-        var executions : ArrayList(Execution) = .{ .allocator = allocator };
+        var executions = ArrayList(Execution).init(allocator);
         defer executions.deinit();
         if (obj.get("executions")) |exec_array| {
             if (exec_array != .array) return errors.SerializationError.InvalidFormat;
@@ -1021,7 +1021,7 @@ pub const Execution = struct {
         else
             null;
 
-        var stack_items : ArrayList(StackItem) = .{ .allocator = allocator };
+        var stack_items = ArrayList(StackItem).init(allocator);
         defer stack_items.deinit();
         if (obj.get("stack")) |stack_value| {
             if (stack_value != .array) return errors.SerializationError.InvalidFormat;
@@ -1034,7 +1034,7 @@ pub const Execution = struct {
             }
         }
 
-        var notifications_list : ArrayList(Notification) = .{ .allocator = allocator };
+        var notifications_list = ArrayList(Notification).init(allocator);
         defer notifications_list.deinit();
         if (obj.get("notifications")) |notifications_value| {
             if (notifications_value != .array) return errors.SerializationError.InvalidFormat;
@@ -1279,7 +1279,7 @@ pub const ContractManifest = struct {
         else
             null;
 
-        var groups : ArrayList(ContractGroup) = .{ .allocator = allocator };
+        var groups = ArrayList(ContractGroup).init(allocator);
         var groups_cleanup = TrueFlag{};
         defer if (groups_cleanup.value) {
             for (groups.items) |*group| group.deinit(allocator);
@@ -1297,7 +1297,7 @@ pub const ContractManifest = struct {
             features = try ContractFeatures.fromJson(features_value);
         }
 
-        var standards : ArrayList([]const u8) = .{ .allocator = allocator };
+        var standards = ArrayList([]const u8).init(allocator);
         var standards_cleanup = TrueFlag{};
         defer if (standards_cleanup.value) {
             for (standards.items) |standard| {
@@ -1315,7 +1315,7 @@ pub const ContractManifest = struct {
             }
         }
 
-        var permissions : ArrayList(ContractPermission) = .{ .allocator = allocator };
+        var permissions = ArrayList(ContractPermission).init(allocator);
         var permissions_cleanup = TrueFlag{};
         defer if (permissions_cleanup.value) {
             for (permissions.items) |*permission| permission.deinit(allocator);
@@ -1328,7 +1328,7 @@ pub const ContractManifest = struct {
             }
         }
 
-        var trusts : ArrayList([]const u8) = .{ .allocator = allocator };
+        var trusts = ArrayList([]const u8).init(allocator);
         var trusts_cleanup = TrueFlag{};
         defer if (trusts_cleanup.value) {
             for (trusts.items) |trust| {
@@ -1531,7 +1531,7 @@ pub const ContractMethod = struct {
         else
             false;
 
-        var parameters : ArrayList(ContractParameterDefinition) = .{ .allocator = allocator };
+        var parameters = ArrayList(ContractParameterDefinition).init(allocator);
         var params_cleanup = TrueFlag{};
         defer if (params_cleanup.value) {
             for (parameters.items) |*param| param.deinit(allocator);
@@ -1582,7 +1582,7 @@ pub const ContractEvent = struct {
 
         const name = try allocator.dupe(u8, obj.get("name").?.string);
 
-        var parameters : ArrayList(ContractParameterDefinition) = .{ .allocator = allocator };
+        var parameters = ArrayList(ContractParameterDefinition).init(allocator);
         var params_cleanup = TrueFlag{};
         defer if (params_cleanup.value) {
             for (parameters.items) |*param| param.deinit(allocator);
@@ -1627,7 +1627,7 @@ pub const ContractABI = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractABI {
         const obj = json_value.object;
 
-        var methods : ArrayList(ContractMethod) = .{ .allocator = allocator };
+        var methods = ArrayList(ContractMethod).init(allocator);
         var methods_cleanup = TrueFlag{};
         defer if (methods_cleanup.value) {
             for (methods.items) |*method| method.deinit(allocator);
@@ -1640,7 +1640,7 @@ pub const ContractABI = struct {
             }
         }
 
-        var events : ArrayList(ContractEvent) = .{ .allocator = allocator };
+        var events = ArrayList(ContractEvent).init(allocator);
         var events_cleanup = TrueFlag{};
         defer if (events_cleanup.value) {
             for (events.items) |*event| event.deinit(allocator);
@@ -1695,7 +1695,7 @@ pub const ContractPermission = struct {
         const contract_value = obj.get("contract") orelse return errors.SerializationError.InvalidFormat;
         const contract = try jsonValueToOwnedString(contract_value, allocator);
 
-        var methods : ArrayList([]const u8) = .{ .allocator = allocator };
+        var methods = ArrayList([]const u8).init(allocator);
         var methods_cleanup = TrueFlag{};
         defer if (methods_cleanup.value) {
             for (methods.items) |method| {

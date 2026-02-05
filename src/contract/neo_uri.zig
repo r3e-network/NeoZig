@@ -165,7 +165,7 @@ pub const NeoURI = struct {
     fn buildUri(self: *Self) !void {
         if (self.recipient == null) return;
 
-        var uri_builder : ArrayList(u8) = .{ .allocator = self.allocator };
+        var uri_builder = ArrayList(u8).init(self.allocator);
         defer uri_builder.deinit();
 
         // Start with scheme
