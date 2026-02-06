@@ -22,7 +22,7 @@ A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory managemen
 ## ✅ Status
 
 - **Zig**: `0.14.0+` (see `build.zig.zon`)
-- **Neo protocol**: aligned with Neo N3 v3.9.2 (VM opcodes, interop pricing, native contract hashes, `getversion` metadata)
+- **Neo protocol**: aligned with Neo N3 v3.9.1 (VM opcodes, interop pricing, native contract hashes, `getversion` metadata)
 - **Test coverage**: `zig build test` runs unit + parity suites
 - **Networking**: RPC transport uses `std.http.Client`; timeouts are best-effort (no socket deadlines in stdlib)
 - **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.NeoSwift` for live calls

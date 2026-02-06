@@ -5,7 +5,7 @@
 //!
 //! ## Neo N3 Version Compatibility
 //!
-//! This SDK is compatible with Neo N3 v3.9.x including v3.9.2.
+//! This SDK is compatible with Neo N3 v3.9.x including v3.9.1.
 //!
 //! Key compatibility points:
 //! - VM opcodes include PUSHT (0x08), PUSHF (0x09), MODMUL (0xA5), MODPOW (0xA6), ABORTMSG (0xE0), ASSERTMSG (0xE1)
@@ -53,10 +53,10 @@ pub const NeoVersion = struct {
     pub const MAJOR: u32 = 3;
     /// Minor version number
     pub const MINOR: u32 = 9;
-    /// Patch version number (v3.9.2)
-    pub const PATCH: u32 = 2;
+    /// Patch version number (v3.9.1)
+    pub const PATCH: u32 = 1;
     /// Full version string
-    pub const STRING: []const u8 = "3.9.2";
+    pub const STRING: []const u8 = "3.9.1";
     /// Protocol version for getversion RPC
     pub const PROTOCOL_VERSION: u32 = 0;
 };
@@ -92,7 +92,7 @@ pub const AddressConstants = struct {
 
 /// Native contract script hashes
 ///
-/// These hashes are aligned with Neo N3 v3.9.2.
+/// These hashes are aligned with Neo N3 v3.9.1.
 /// See: https://docs.neo.org/docs/en-us/develop/write/native.html
 pub const NativeContracts = struct {
     /// ContractManagement contract (updated in v3.9.0)
@@ -127,10 +127,10 @@ pub const FeeConstants = struct {
     pub const SYSTEM_FEE_FACTOR: u32 = 30;
 };
 
-/// Neo N3 v3.9.2 Interop Services
+/// Neo N3 v3.9.1 Interop Services
 ///
 /// Interop service hashes are defined as the little-endian u32 value of the
-/// first 4 bytes of SHA256(<ascii method name>), matching Neo N3 v3.9.2.
+/// first 4 bytes of SHA256(<ascii method name>), matching Neo N3 v3.9.1.
 ///
 /// See: https://docs.neo.org/docs/en-us/develop/write/interop.html
 pub const InteropServices = struct {
@@ -180,6 +180,12 @@ test "constants validation" {
     try testing.expectEqual(@as(u8, 0), CURRENT_TX_VERSION);
     try testing.expectEqual(@as(u32, 102400), MAX_TRANSACTION_SIZE);
     try testing.expectEqual(@as(u8, 16), MAX_TRANSACTION_ATTRIBUTES);
+
+    // Validate exposed Neo version metadata
+    try testing.expectEqual(@as(u32, 3), NeoVersion.MAJOR);
+    try testing.expectEqual(@as(u32, 9), NeoVersion.MINOR);
+    try testing.expectEqual(@as(u32, 1), NeoVersion.PATCH);
+    try testing.expectEqualStrings("3.9.1", NeoVersion.STRING);
 
     // Validate selected interop service hashes (SHA256 prefix bytes)
     var digest: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;

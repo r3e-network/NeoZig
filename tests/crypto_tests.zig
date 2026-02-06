@@ -336,7 +336,11 @@ test "NeoSwift default account vectors" {
     const verification_script = try neo.script.ScriptBuilder.buildVerificationScript(public_key.toSlice(), allocator);
     defer allocator.free(verification_script);
 
-    const verification_script_hex = try std.fmt.allocPrint(allocator, "{x}", .{verification_script});
+    const verification_script_hex = try std.fmt.allocPrint(
+        allocator,
+        "{}",
+        .{std.fmt.fmtSliceHexLower(verification_script)},
+    );
     defer allocator.free(verification_script_hex);
     try testing.expectEqualStrings(expected_verification_script, verification_script_hex);
 

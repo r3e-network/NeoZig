@@ -1,5 +1,30 @@
 const std = @import("std");
 
+fn addSuiteTestStep(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    sdk_module: *std.Build.Module,
+    artifact_name: []const u8,
+    step_name: []const u8,
+    description: []const u8,
+    root_source: []const u8,
+) void {
+    const suite_tests = b.addTest(.{
+        .name = artifact_name,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(root_source),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
+        }),
+    });
+
+    const run_suite_tests = b.addRunArtifact(suite_tests);
+    const suite_step = b.step(step_name, description);
+    suite_step.dependOn(&run_suite_tests.step);
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -77,18 +102,135 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
 
-    // Integration tests
-    const integration_tests = b.addTest(.{
-        .name = "integration-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/integration_tests.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
-        }),
-    });
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "integration-tests",
+        "integration-test",
+        "Run integration tests",
+        "tests/integration.zig",
+    );
 
-    const run_integration_tests = b.addRunArtifact(integration_tests);
-    const integration_test_step = b.step("integration-test", "Run integration tests");
-    integration_test_step.dependOn(&run_integration_tests.step);
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "parity-tests",
+        "parity-test",
+        "Run Swift parity tests",
+        "tests/all_swift_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "rpc-tests",
+        "rpc-test",
+        "Run RPC tests",
+        "tests/rpc_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "crypto-tests",
+        "crypto-test",
+        "Run crypto tests",
+        "tests/crypto_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "contract-tests",
+        "contract-test",
+        "Run contract tests",
+        "tests/contract_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "transaction-tests",
+        "transaction-test",
+        "Run transaction tests",
+        "tests/transaction_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "wallet-tests",
+        "wallet-test",
+        "Run wallet tests",
+        "tests/wallet_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "protocol-tests",
+        "protocol-test",
+        "Run protocol tests",
+        "tests/protocol_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "serialization-tests",
+        "serialization-test",
+        "Run serialization tests",
+        "tests/serialization_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "script-tests",
+        "script-test",
+        "Run script tests",
+        "tests/script_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "types-tests",
+        "types-test",
+        "Run types tests",
+        "tests/types_tests.zig",
+    );
+
+    addSuiteTestStep(
+        b,
+        target,
+        optimize,
+        sdk_module,
+        "witnessrule-tests",
+        "witnessrule-test",
+        "Run witness rule tests",
+        "tests/witnessrule_tests.zig",
+    );
 }

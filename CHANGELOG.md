@@ -6,19 +6,19 @@
 
 ## 1.1.1 - 2026-01-25
 
-### Neo N3 v3.9.2 Compatibility
+### Neo N3 v3.9.1 Compatibility
 
-- **Version Constants**: Added `neo.constants.NeoVersion` with full version info (3.9.2)
-- **Native Contracts**: Added explicit v3.9.2 documentation and version markers
-- **Interop Services**: Expanded with v3.9.2 interop methods (Contract, Crypto, Runtime)
-- **Documentation**: Updated architecture docs with v3.9.2 compatibility section
+- **Version Constants**: Added `neo.constants.NeoVersion` with full version info (3.9.1)
+- **Native Contracts**: Added explicit v3.9.1 documentation and version markers
+- **Interop Services**: Expanded with v3.9.1 interop methods (Contract, Crypto, Runtime)
+- **Documentation**: Updated architecture docs with v3.9.1 compatibility section
 - **Native Contracts Listed**: ContractManagement, StdLib, CryptoLib, LedgerContract, NeoToken, GasToken, PolicyContract, RoleManagement, OracleContract, Notary, Treasury
 
 ## 1.1.0 - 2026-01-22
 
 ### Major Improvements
 
-- **Neo v3.9.2 Compatibility** - Full alignment with Neo N3 v3.9.2 protocol
+- **Neo v3.9.1 Compatibility** - Full alignment with Neo N3 v3.9.1 protocol
   - VM opcodes: PUSHT (0x08), PUSHF (0x09), MODMUL (0xA5), MODPOW (0xA6), ABORTMSG (0xE0), ASSERTMSG (0xE1)
   - Interop services and pricing matching v3.9.x
   - `getversion` parsing includes hardfork metadata

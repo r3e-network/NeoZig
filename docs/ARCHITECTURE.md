@@ -10,7 +10,7 @@ This document describes the Neo Zig SDK architecture, module organization, desig
 - [Data Flow](#data-flow)
 - [Adding New RPC Methods](#adding-new-rpc-methods)
 - [Version and Protocol Parsing](#version-and-protocol-parsing)
-- [Neo v3.9.2 Compatibility](#neo-v392-compatibility)
+- [Neo v3.9.1 Compatibility](#neo-v391-compatibility)
 - [Design Patterns](#design-patterns)
 
 ## Module Organization
@@ -402,11 +402,11 @@ if (json.object.get("optional_field")) |value| {
 2. If field is optional: use default, don't fail
 3. If field format varies: handle common variants
 
-## Neo v3.9.2 Compatibility
+## Neo v3.9.1 Compatibility
 
-This SDK is fully compatible with Neo N3 v3.9.2.
+This SDK is fully compatible with Neo N3 v3.9.1.
 
-Key v3.9.2 compatibility points in this SDK:
+Key v3.9.1 compatibility points in this SDK:
 
 ### VM Opcodes
 
@@ -420,7 +420,7 @@ See [src/script/op_code.zig](src/script/op_code.zig) for complete opcode list.
 
 ### Interop Services
 
-Neo 3.9.2 interop pricing and services:
+Neo 3.9.1 interop pricing and services:
 
 - `Runtime.GetAddressVersion`
 - `Runtime.LoadScript`
@@ -432,7 +432,7 @@ See [src/core/constants.zig](src/core/constants.zig) for interop service hashes.
 
 ### Native Contract Hashes
 
-Native contract addresses match Neo v3.9.2:
+Native contract addresses match Neo v3.9.1:
 
 | Contract | Hash |
 |----------|------|
@@ -449,7 +449,7 @@ See [src/core/constants.zig](src/core/constants.zig) for complete list.
 
 ### getversion Parsing
 
-Includes v3.9.2 hardfork metadata:
+Includes v3.9.1 hardfork metadata:
 
 - `hardforks`: Array of hardfork information
 - `standbycommittee`: Committee members
@@ -458,10 +458,10 @@ Includes v3.9.2 hardfork metadata:
 ### Version Information
 
 ```zig
-neo.constants.NeoVersion.STRING;  // "3.9.2"
+neo.constants.NeoVersion.STRING;  // "3.9.1"
 neo.constants.NeoVersion.MAJOR;   // 3
 neo.constants.NeoVersion.MINOR;   // 9
-neo.constants.NeoVersion.PATCH;   // 2
+neo.constants.NeoVersion.PATCH;   // 1
 ```
 
 ## Design Patterns

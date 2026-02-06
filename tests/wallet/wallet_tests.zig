@@ -5,7 +5,6 @@
 
 const std = @import("std");
 
-
 const testing = std.testing;
 const Wallet = @import("../../src/wallet/neo_wallet.zig").Wallet;
 const CompleteNEP6Wallet = @import("../../src/wallet/nep6_complete.zig").CompleteNEP6Wallet;
@@ -16,17 +15,17 @@ const json_utils = @import("../../src/utils/json_utils.zig");
 // /// Test creating default wallet (converted from Swift testCreateDefaultWallet)
 test "Create default wallet" {
     const allocator = testing.allocator;
-    
+
     // Create wallet and default account
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
     _ = try wallet.createAccount("Default Account");
-    
+
     // Verify wallet properties (equivalent to Swift XCTAssertEqual checks)
     try testing.expectEqualStrings("NeoSwiftWallet", wallet.getName());
     try testing.expectEqualStrings(Wallet.CURRENT_VERSION, wallet.getVersion());
     try testing.expect(wallet.getAccountCount() > 0);
-    
+
     // Should have a default account
     try testing.expect(wallet.getDefaultAccount() != null);
 }
@@ -34,7 +33,7 @@ test "Create default wallet" {
 // /// Test creating wallet with accounts (converted from Swift testCreateWalletWithAccounts)
 test "Create wallet with accounts" {
     const allocator = testing.allocator;
-    
+
     // Create wallet and accounts
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
@@ -54,7 +53,7 @@ test "Create wallet with accounts" {
 // /// Test creating wallet with no accounts (converted from Swift testCreateWalletWithAccounts_noAccounts)
 test "Create wallet with no accounts should fail" {
     const allocator = testing.allocator;
-    
+
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -66,7 +65,7 @@ test "Create wallet with no accounts should fail" {
 // /// Test checking if account is default (converted from Swift testIsDefault_account)
 test "Check if account is default" {
     const allocator = testing.allocator;
-    
+
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -83,7 +82,7 @@ test "Check if account is default" {
 // /// Test wallet holds account (converted from Swift testHoldsAccount)
 test "Wallet holds account verification" {
     const allocator = testing.allocator;
-    
+
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -101,7 +100,7 @@ test "Wallet holds account verification" {
 // /// Test wallet account management
 test "Wallet account management" {
     const allocator = testing.allocator;
-    
+
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -120,7 +119,7 @@ test "Wallet account management" {
 // /// Test wallet account retrieval
 test "Wallet account retrieval" {
     const allocator = testing.allocator;
-    
+
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -142,7 +141,7 @@ test "Wallet account retrieval" {
 // /// Test wallet validation
 test "Wallet validation" {
     const allocator = testing.allocator;
-    
+
     var valid_wallet = Wallet.init(allocator);
     defer valid_wallet.deinit();
     _ = try valid_wallet.createAccount("Default");
@@ -158,7 +157,7 @@ test "Wallet validation" {
 // /// Test wallet encryption and decryption
 test "Wallet encryption and decryption" {
     const allocator = testing.allocator;
-    
+
     var wallet = CompleteNEP6Wallet.init(allocator, "Encrypted Wallet");
     defer wallet.deinit();
 
@@ -173,7 +172,7 @@ test "Wallet encryption and decryption" {
 // /// Test wallet NEP-6 operations
 test "Wallet NEP-6 operations" {
     const allocator = testing.allocator;
-    
+
     var wallet = CompleteNEP6Wallet.init(allocator, "NEP6 Wallet");
     defer wallet.deinit();
 
