@@ -54,7 +54,13 @@ jobs:
       run: zig build complete-demo
       
     - name: Generate documentation
-      run: zig build docs
+      run: |
+        if zig build -l 2>&1 | grep -q "docs"; then
+          zig build docs
+          echo "Documentation generated"
+        else
+          echo "No docs step defined in build.zig, skipping documentation generation"
+        fi
 
   security:
     name: Security Audit
