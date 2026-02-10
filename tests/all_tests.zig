@@ -1,20 +1,20 @@
-//! Complete Swift Test Conversion
+//! Complete Test Suite
 //!
-//! ALL Swift test files converted to comprehensive Zig test suite
-//! Validates 100% Swift functionality in Zig implementation.
+//! Comprehensive Zig test suite
+//! Validates Neo N3 SDK functionality.
 
 const std = @import("std");
 
 const neo = @import("neo-zig");
 
-// Witness system tests (converted from WitnessTests.swift, WitnessScopeTests.swift)
+// Witness system tests
 test "complete witness system tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("⚖️ Testing Complete Witness System...", .{});
 
-    // Test WitnessRule (converted from WitnessTests.swift)
+    // Test WitnessRule
     const bool_condition = neo.transaction.WitnessCondition.boolean(true);
     const allow_rule = neo.transaction.WitnessRule.init(neo.transaction.WitnessAction.Allow, bool_condition);
 
@@ -52,7 +52,7 @@ test "complete witness system tests" {
     try testing.expect(and_condition.size() > bool_condition.size());
     try testing.expect(or_condition.size() > bool_condition.size());
 
-    // Test WitnessScope (converted from WitnessScopeTests.swift)
+    // Test WitnessScope
     try testing.expectEqual(@as(u8, 0x00), @intFromEnum(neo.transaction.WitnessScope.None));
     try testing.expectEqual(@as(u8, 0x01), @intFromEnum(neo.transaction.WitnessScope.CalledByEntry));
     try testing.expectEqual(@as(u8, 0x80), @intFromEnum(neo.transaction.WitnessScope.Global));
@@ -67,13 +67,13 @@ test "complete contract system tests" {
 
     std.log.info("📝 Testing Complete Contract System...", .{});
 
-    // Test SmartContract (converted from SmartContractTests.swift)
+    // Test SmartContract
     const contract_hash = try neo.Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf");
     const smart_contract = neo.contract.SmartContract.init(allocator, contract_hash, null);
 
     try testing.expect(smart_contract.getScriptHash().eql(contract_hash));
 
-    // Test ContractManagement (converted from ContractManagementTests.swift)
+    // Test ContractManagement
     const contract_mgmt = neo.contract.ContractManagement.init(allocator, null);
 
     try testing.expectEqualStrings("ContractManagement", neo.contract.ContractManagement.NAME);
@@ -87,14 +87,14 @@ test "complete contract system tests" {
 
     try testing.expect(deploy_tx.getScript() != null);
 
-    // Test GasToken (converted from GasTokenTests.swift)
+    // Test GasToken
     const gas_token = neo.contract.GasToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getDecimals());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getTotalSupply());
 
-    // Test NeoToken (converted from NeoTokenTests.swift)
+    // Test NeoToken
     const neo_token = neo.contract.NeoToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, neo_token.getSymbol());
@@ -106,7 +106,7 @@ test "complete contract system tests" {
 
     try testing.expect(register_tx.getScript() != null);
 
-    // Test FungibleToken (converted from FungibleTokenTests.swift)
+    // Test FungibleToken
     const fungible_token = neo.contract.FungibleToken.init(allocator, contract_hash, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, fungible_token.getBalanceOf(neo.Hash160.ZERO));
@@ -116,7 +116,7 @@ test "complete contract system tests" {
 
     try testing.expect(transfer_tx.getScript() != null);
 
-    // Test NonFungibleToken (converted from NonFungibleTokenTests.swift)
+    // Test NonFungibleToken
     const nft = neo.contract.NonFungibleToken.init(allocator, contract_hash, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, nft.balanceOf(neo.Hash160.ZERO));
@@ -127,7 +127,7 @@ test "complete contract system tests" {
 
     try testing.expect(nft_transfer_tx.getScript() != null);
 
-    // Test PolicyContract (converted from PolicyContractTests.swift)
+    // Test PolicyContract
     const policy_contract = neo.contract.PolicyContract.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, policy_contract.getFeePerByte());
@@ -138,7 +138,7 @@ test "complete contract system tests" {
 
     try testing.expect(block_tx.getScript() != null);
 
-    // Test RoleManagement (converted from RoleManagementTests.swift)
+    // Test RoleManagement
     _ = neo.contract.RoleManagement.init(allocator, null);
 
     try testing.expectEqualStrings("RoleManagement", neo.contract.RoleManagement.NAME);
@@ -147,7 +147,7 @@ test "complete contract system tests" {
     try testing.expectEqual(@as(u8, 4), state_validator_role.getByte());
     try testing.expectEqualStrings("StateValidator", state_validator_role.getName());
 
-    // Test Token base class (converted from TokenTests.swift)
+    // Test Token base class
     const token = neo.contract.Token.init(allocator, contract_hash, null);
 
     try testing.expect(token.getScriptHash().eql(contract_hash));
@@ -164,12 +164,12 @@ test "complete wallet system tests" {
 
     std.log.info("💼 Testing Complete Wallet System...", .{});
 
-    // Test Account (converted from AccountTests.swift)
+    // Test Account
     var test_account = try neo.transaction.Account.fromScriptHash(allocator, neo.Hash160.ZERO);
     defer test_account.deinit();
     try testing.expect((try test_account.getScriptHash()).eql(neo.Hash160.ZERO));
 
-    // Test Bip39Account (converted from Bip39AccountTests.swift)
+    // Test Bip39Account
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "bip39_test_password");
     defer bip39_account.deinit();
 
@@ -193,7 +193,7 @@ test "complete wallet system tests" {
 
     try testing.expect(!(try bip39_account.getScriptHash()).eql(try child_account.getScriptHash()));
 
-    // Test Wallet (converted from WalletTests.swift)
+    // Test Wallet
     var wallet = neo.wallet.Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -226,7 +226,7 @@ test "complete transaction system tests" {
 
     std.log.info("💰 Testing Complete Transaction System...", .{});
 
-    // Test TransactionBuilder (converted from TransactionBuilderTests.swift)
+    // Test TransactionBuilder
     var builder = neo.transaction.TransactionBuilder.init(allocator);
     defer builder.deinit();
 
@@ -259,7 +259,7 @@ test "complete transaction system tests" {
 
     try transaction.validate();
 
-    // Test NeoTransaction (converted from SerializableTransactionTest.swift)
+    // Test NeoTransaction
     const neo_transaction = neo.transaction.NeoTransaction.init(
         null,
         transaction.version,
@@ -282,7 +282,7 @@ test "complete transaction system tests" {
     const tx_size = neo_transaction.getSize();
     try testing.expect(tx_size >= neo.transaction.NeoTransaction.HEADER_SIZE);
 
-    // Test AccountSigner (converted from SignerTests.swift)
+    // Test AccountSigner
     var test_account = try neo.transaction.Account.fromScriptHash(allocator, neo.Hash160.ZERO);
     defer test_account.deinit();
 
@@ -305,7 +305,7 @@ test "complete crypto system tests" {
 
     std.log.info("🔐 Testing Complete Crypto System...", .{});
 
-    // Test ECKeyPair functionality (converted from ECKeyPairTests.swift)
+    // Test ECKeyPair functionality
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const public_key = try neo.crypto.PublicKey.fromHex(encoded_point);
 
@@ -346,7 +346,7 @@ test "complete crypto system tests" {
     const mult_by_2 = generator.multiply(2);
     try testing.expect(doubled.eql(mult_by_2));
 
-    // Test WIF operations (converted from WIFTests.swift)
+    // Test WIF operations
     const wif_string = try neo.crypto.encodeWIF(private_key, true, .mainnet, allocator);
     defer allocator.free(wif_string);
 
@@ -355,7 +355,7 @@ test "complete crypto system tests" {
     try testing.expect(decoded_wif.compressed);
     try testing.expect(decoded_wif.network == .mainnet);
 
-    // Test NEP-2 operations (converted from NEP2Tests.swift)
+    // Test NEP-2 operations
     const password = "nep2_test_password";
     const key_pair = try neo.crypto.KeyPair.fromPrivateKey(private_key, true);
 
@@ -370,7 +370,7 @@ test "complete crypto system tests" {
 
     try testing.expect(key_pair.private_key.eql(decrypted_key_pair.private_key));
 
-    // Test BIP32 operations (converted from Bip32ECKeyPairTests.swift)
+    // Test BIP32 operations
     const bip32_seed = "test seed for BIP32 operations";
     const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed);
 
@@ -390,10 +390,10 @@ test "complete protocol system tests" {
 
     std.log.info("🌐 Testing Complete Protocol System...", .{});
 
-    // Test Request creation (converted from RequestTests.swift)
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    // Test Request creation
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     // Test all major RPC requests
@@ -414,7 +414,7 @@ test "complete protocol system tests" {
     const block_request = try client.getBlock(test_hash, true);
     try testing.expectEqualStrings("getblock", block_request.method);
 
-    // Test Response parsing (converted from ResponseTests.swift)
+    // Test Response parsing
     const neo_block = neo.rpc.NeoBlock.initDefault();
     try testing.expect(neo_block.hash.eql(neo.Hash256.ZERO));
     try testing.expectEqual(@as(u32, 0), neo_block.size);
@@ -446,7 +446,7 @@ test "complete serialization system tests" {
 
     std.log.info("🔧 Testing Complete Serialization System...", .{});
 
-    // Test BinaryWriter operations (converted from BinaryWriterTests.swift)
+    // Test BinaryWriter operations
     var writer = neo.serialization.BinaryWriter.init(allocator);
     defer writer.deinit();
 
@@ -459,7 +459,7 @@ test "complete serialization system tests" {
     try testing.expect(written_data.len > 0);
     try testing.expectEqual(@as(u8, 0x42), written_data[0]);
 
-    // Test BinaryReader operations (converted from BinaryReaderTests.swift)
+    // Test BinaryReader operations
     var reader = neo.serialization.BinaryReader.init(written_data);
 
     const read_byte = try reader.readByte();
@@ -502,7 +502,7 @@ test "complete type system tests" {
 
     std.log.info("📋 Testing Complete Type System...", .{});
 
-    // Test Hash160 (converted from Hash160Tests.swift)
+    // Test Hash160
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const hash160_string = try hash160.string(allocator);
     defer allocator.free(hash160_string);
@@ -510,14 +510,14 @@ test "complete type system tests" {
     try testing.expectEqualStrings("1234567890abcdef1234567890abcdef12345678", hash160_string);
     try testing.expect(!hash160.eql(neo.Hash160.init()));
 
-    // Test Hash256 (converted from Hash256Tests.swift)
+    // Test Hash256
     const hash256 = try neo.Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     const hash256_string = try hash256.string(allocator);
     defer allocator.free(hash256_string);
 
     try testing.expectEqualStrings("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", hash256_string);
 
-    // Test ContractParameter (converted from ContractParameterTests.swift)
+    // Test ContractParameter
     const bool_param = neo.ContractParameter.boolean(true);
     const int_param = neo.ContractParameter.integer(12345);
     const string_param = neo.ContractParameter.string("Hello Neo");
@@ -741,5 +741,5 @@ test "final complete integration validation" {
     try testing.expect(crypto_operations_work);
 
     std.log.info("✅ ALL SYSTEMS FULLY INTEGRATED AND FUNCTIONAL", .{});
-    std.log.info("🎉 COMPLETE SWIFT→ZIG CONVERSION VALIDATION SUCCESSFUL!", .{});
+    std.log.info("🎉 COMPLETE TEST VALIDATION SUCCESSFUL!", .{});
 }

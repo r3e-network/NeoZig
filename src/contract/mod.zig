@@ -1,6 +1,6 @@
 //! Contract module
 //!
-//! Complete smart contract system converted from Swift.
+//! Complete smart contract system.
 
 const std = @import("std");
 
@@ -13,7 +13,7 @@ pub const GasToken = @import("gas_token.zig").GasToken;
 pub const NeoToken = @import("neo_token.zig").NeoToken;
 pub const PolicyContract = @import("policy_contract.zig").PolicyContract;
 pub const RoleManagement = @import("role_management.zig").RoleManagement;
-pub const Role = @import("role_management.zig").Role;
+pub const Role = @import("../types/role.zig").Role;
 pub const Token = @import("token.zig").Token;
 pub const TransferRecipient = @import("fungible_token.zig").TransferRecipient;
 

@@ -1,6 +1,6 @@
 //! ECDSA Signature implementation
 //!
-//! Complete conversion from NeoSwift ECDSASignature.swift
+//! Neo N3
 //! Provides detailed ECDSA signature management and validation.
 
 const std = @import("std");
@@ -10,7 +10,7 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const secp256r1 = @import("secp256r1.zig");
 
-/// ECDSA signature with detailed component access (converted from Swift ECDSASignature)
+/// ECDSA signature with detailed component access
 pub const ECDSASignature = struct {
     /// R component of signature
     r: u256,
@@ -19,12 +19,12 @@ pub const ECDSASignature = struct {
 
     const Self = @This();
 
-    /// Creates ECDSA signature from R and S components (equivalent to Swift init(r:s:))
+    /// Creates ECDSA signature from R and S components)
     pub fn init(r: u256, s: u256) Self {
         return Self{ .r = r, .s = s };
     }
 
-    /// Creates from raw signature bytes (equivalent to Swift init(signature:))
+    /// Creates from raw signature bytes)
     pub fn fromBytes(signature_bytes: [64]u8) Self {
         const r = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature_bytes[0..32]));
         const s = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature_bytes[32..64]));
@@ -32,22 +32,22 @@ pub const ECDSASignature = struct {
         return Self.init(r, s);
     }
 
-    /// Gets R component as big integer (equivalent to Swift .r property)
+    /// Gets R component as big integer
     pub fn getR(self: Self) u256 {
         return self.r;
     }
 
-    /// Gets S component as big integer (equivalent to Swift .s property)
+    /// Gets S component as big integer
     pub fn getS(self: Self) u256 {
         return self.s;
     }
 
-    /// Checks if signature is canonical (equivalent to Swift .isCanonical property)
+    /// Checks if signature is canonical
     pub fn isCanonical(self: Self) bool {
         return self.s <= secp256r1.Secp256r1.HALF_CURVE_ORDER;
     }
 
-    /// Makes signature canonical by adjusting S component (equivalent to Swift canonicalization)
+    /// Makes signature canonical by adjusting S component
     pub fn toCanonical(self: Self) Self {
         if (self.isCanonical()) {
             return self;
@@ -58,7 +58,7 @@ pub const ECDSASignature = struct {
         }
     }
 
-    /// Converts to raw signature bytes (equivalent to Swift byte representation)
+    /// Converts to raw signature bytes
     pub fn toBytes(self: Self) [64]u8 {
         var signature_bytes: [64]u8 = undefined;
 
@@ -71,7 +71,7 @@ pub const ECDSASignature = struct {
         return signature_bytes;
     }
 
-    /// Converts to DER encoding (equivalent to Swift DER serialization)
+    /// Converts to DER encoding
     pub fn toDER(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var der = ArrayList(u8).init(allocator);
         defer der.deinit();
@@ -137,7 +137,7 @@ pub const ECDSASignature = struct {
         return try der.toOwnedSlice();
     }
 
-    /// Parses from DER encoding (equivalent to Swift DER parsing)
+    /// Parses from DER encoding
     pub fn fromDER(der_bytes: []const u8) !Self {
         if (der_bytes.len < 6) return errors.CryptoError.InvalidSignature;
 
@@ -236,19 +236,19 @@ pub const ECDSASignature = struct {
         return Self.init(r, s);
     }
 
-    /// Validates signature components (equivalent to Swift validation)
+    /// Validates signature components
     pub fn isValid(self: Self) bool {
         // R and S must be in range [1, n-1]
         return self.r > 0 and self.r < secp256r1.Secp256r1.N and
             self.s > 0 and self.s < secp256r1.Secp256r1.N;
     }
 
-    /// Compares signatures for equality (equivalent to Swift Hashable)
+    /// Compares signatures for equality
     pub fn eql(self: Self, other: Self) bool {
         return self.r == other.r and self.s == other.s;
     }
 
-    /// Hash function for HashMap usage (equivalent to Swift Hashable)
+    /// Hash function for HashMap usage
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -261,7 +261,7 @@ pub const ECDSASignature = struct {
         return hasher.final();
     }
 
-    /// String representation (equivalent to Swift description)
+    /// String representation
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(
             allocator,
@@ -271,13 +271,13 @@ pub const ECDSASignature = struct {
     }
 };
 
-// Tests (converted from Swift ECDSASignature tests)
+// Tests
 test "ECDSASignature creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
     _ = allocator;
 
-    // Test signature creation (equivalent to Swift ECDSASignature tests)
+    // Test signature creation
     const r: u256 = 0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF;
     const s: u256 = 0xFEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321;
 
@@ -296,7 +296,7 @@ test "ECDSASignature creation and properties" {
 test "ECDSASignature canonical operations" {
     const testing = std.testing;
 
-    // Test canonical signature (equivalent to Swift isCanonical tests)
+    // Test canonical signature
     const low_s: u256 = secp256r1.Secp256r1.HALF_CURVE_ORDER - 1;
     const high_s: u256 = secp256r1.Secp256r1.HALF_CURVE_ORDER + 1;
 
@@ -316,7 +316,7 @@ test "ECDSASignature DER encoding/decoding" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test DER encoding (equivalent to Swift DER tests)
+    // Test DER encoding
     const signature = ECDSASignature.init(
         0x123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0,
         0x0FEDCBA987654321FEDCBA987654321FEDCBA987654321FEDCBA987654321,
@@ -398,7 +398,7 @@ test "ECDSASignature DER rejects non-minimal and negative encodings" {
 test "ECDSASignature validation" {
     const testing = std.testing;
 
-    // Test signature validation (equivalent to Swift validation tests)
+    // Test signature validation
     const valid_signature = ECDSASignature.init(1, 1);
     try testing.expect(valid_signature.isValid());
 
@@ -417,7 +417,7 @@ test "ECDSASignature comparison and hashing" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const sig1 = ECDSASignature.init(123, 456);
     const sig2 = ECDSASignature.init(123, 456);
     const sig3 = ECDSASignature.init(123, 789);

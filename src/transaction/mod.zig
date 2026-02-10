@@ -1,6 +1,6 @@
 //! Transaction module
 //!
-//! Complete transaction system converted from Swift implementation.
+//! Complete transaction system.
 
 const std = @import("std");
 
@@ -12,7 +12,7 @@ pub const Witness = @import("transaction_builder.zig").Witness;
 pub const TransactionAttribute = @import("transaction_builder.zig").TransactionAttribute;
 pub const AttributeType = @import("transaction_builder.zig").AttributeType;
 pub const WitnessScope = @import("transaction_builder.zig").WitnessScope;
-pub const CompleteWitnessScope = @import("witness_scope_complete.zig").CompleteWitnessScope;
+pub const CompleteWitnessScope = @import("witness_scope.zig").CompleteWitnessScope;
 pub const WitnessRule = @import("transaction_builder.zig").WitnessRule;
 pub const WitnessAction = @import("transaction_builder.zig").WitnessAction;
 pub const WitnessCondition = @import("transaction_builder.zig").WitnessCondition;

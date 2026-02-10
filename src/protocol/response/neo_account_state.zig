@@ -1,6 +1,6 @@
 //! Neo AccountState Implementation
 //!
-//! Complete conversion from NeoSwift NeoAccountState.swift
+//! Neo N3
 
 const std = @import("std");
 

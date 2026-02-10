@@ -1,6 +1,6 @@
 //! Enum Type Tests
 //!
-//! Complete conversion from NeoSwift EnumTypeTests.swift
+//! Enum type tests
 //! Tests enum type functionality and ByteEnum protocol implementation.
 
 const std = @import("std");

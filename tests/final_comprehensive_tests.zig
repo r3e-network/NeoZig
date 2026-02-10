@@ -1,6 +1,6 @@
 //! Final Comprehensive Test Suite
 //!
-//! Complete conversion of ALL remaining Swift test files
+//! Comprehensive tests for all remaining SDK modules
 //! Ensures 100% test coverage of entire Neo Zig SDK.
 
 const std = @import("std");
@@ -15,7 +15,7 @@ test "all contract functionality tests" {
 
     std.log.info("📝 Testing ALL Contract Functionality...", .{});
 
-    // Test NefFile (converted from NefFileTests.swift)
+    // Test NefFile
     const method_tokens = [_]neo.contract.MethodToken{};
     const script = [_]u8{0x40}; // RET
 
@@ -43,7 +43,7 @@ test "all contract functionality tests" {
 
     try testing.expectEqualStrings(nef_file.compiler.?, deserialized_nef.compiler.?);
 
-    // Test NeoURI (converted from NeoURITests.swift)
+    // Test NeoURI
     var neo_uri = neo.contract.NeoURI.init(allocator);
     defer neo_uri.deinit();
 
@@ -60,7 +60,7 @@ test "all contract functionality tests" {
     const valid_uri = "neo:NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7?asset=gas&amount=1.0";
     try testing.expect(neo.contract.URIUtils.validateNeoURI(valid_uri));
 
-    // Test NNSName (converted from NNSNameTests.swift)
+    // Test NNSName
     var nns_name = try neo.contract.NNSName.init("example.neo", allocator);
     defer nns_name.deinit(allocator);
 
@@ -88,7 +88,7 @@ test "all transaction functionality tests" {
 
     std.log.info("💰 Testing ALL Transaction Functionality...", .{});
 
-    // Test SerializableTransaction (converted from SerializableTransactionTest.swift)
+    // Test SerializableTransaction
     const signers = [_]neo.transaction.Signer{
         neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry),
     };
@@ -120,7 +120,7 @@ test "all transaction functionality tests" {
     try testing.expectEqual(neo_transaction.version, deserialized.version);
     try testing.expectEqual(neo_transaction.nonce, deserialized.nonce);
 
-    // Test WitnessRule system (converted from WitnessTests.swift)
+    // Test WitnessRule system
     const bool_condition = neo.transaction.WitnessCondition.boolean(true);
     const script_condition = neo.transaction.WitnessCondition.scriptHash(neo.Hash160.ZERO);
     const entry_condition = neo.transaction.WitnessCondition.calledByEntry();
@@ -166,7 +166,7 @@ test "all wallet functionality tests" {
 
     std.log.info("💼 Testing ALL Wallet Functionality...", .{});
 
-    // Test Bip39Account (converted from Bip39AccountTests.swift)
+    // Test Bip39Account
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "comprehensive_test_password");
     defer bip39_account.deinit();
 
@@ -196,7 +196,7 @@ test "all wallet functionality tests" {
 
     try testing.expect(!(try child_account.getScriptHash()).eql(try hardened_child.getScriptHash()));
 
-    // Test Account base functionality (converted from AccountTests.swift)
+    // Test Account base functionality
     var test_account = try neo.transaction.Account.fromScriptHash(allocator, neo.Hash160.ZERO);
     defer test_account.deinit();
     try testing.expect((try test_account.getScriptHash()).eql(neo.Hash160.ZERO));
@@ -208,7 +208,7 @@ test "all wallet functionality tests" {
     const public_key = try private_key.getPublicKey(true);
     try testing.expect(public_key.isValid());
 
-    // Test NEP6Wallet (converted from NEP6WalletTests.swift)
+    // Test NEP6Wallet
     const nep6_accounts = [_]neo.wallet.NEP6Account{};
     const nep6_wallet = neo.wallet.NEP6Wallet.init(
         "Comprehensive Test Wallet",
@@ -239,7 +239,7 @@ test "all crypto functionality tests" {
 
     std.log.info("🔐 Testing ALL Crypto Functionality...", .{});
 
-    // Test ECKeyPair (converted from ECKeyPairTests.swift)
+    // Test ECKeyPair
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const uncompressed_point = "04b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e1368165f4f7fb1c5862465543c06dd5a2aa414f6583f92a5cc3e1d4259df79bf6839c9";
 
@@ -305,7 +305,7 @@ test "all crypto functionality tests" {
     try testing.expect(generator.eql(decoded_compressed));
     try testing.expect(generator.eql(decoded_uncompressed));
 
-    // Test Bip32ECKeyPair (converted from Bip32ECKeyPairTests.swift)
+    // Test Bip32ECKeyPair
     const bip32_seed = "comprehensive test seed for BIP32 operations";
     const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
 
@@ -354,7 +354,7 @@ test "all serialization functionality tests" {
 
     std.log.info("🔧 Testing ALL Serialization Functionality...", .{});
 
-    // Test BinaryWriter (converted from BinaryWriterTests.swift)
+    // Test BinaryWriter
     var writer = neo.serialization.BinaryWriter.init(allocator);
     defer writer.deinit();
 
@@ -371,7 +371,7 @@ test "all serialization functionality tests" {
     const written_data = writer.toSlice();
     try testing.expect(written_data.len > 0);
 
-    // Test BinaryReader (converted from BinaryReaderTests.swift)
+    // Test BinaryReader
     var reader = neo.serialization.BinaryReader.init(written_data);
 
     const read_byte = try reader.readByte();
@@ -396,7 +396,7 @@ test "all serialization functionality tests" {
     const varint4 = try reader.readVarInt();
     try testing.expectEqual(@as(u64, 0x123456789ABCDEF0), varint4);
 
-    // Test VarSize calculations (converted from VarSizeTests.swift)
+    // Test VarSize calculations
     const small_data = "small";
     const small_var_size = neo.serialization.VarSizeUtils.stringVarSize(small_data);
     try testing.expect(small_var_size >= small_data.len + 1);
@@ -415,17 +415,17 @@ test "all RPC functionality tests" {
 
     std.log.info("🌐 Testing ALL RPC Functionality...", .{});
 
-    // Test HttpService functionality (converted from HttpServiceTests.swift)
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    // Test HttpService functionality
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
     const service_config = service.getConfiguration();
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     try testing.expectEqualStrings("https://testnet1.neo.coz.io:443", service_config.endpoint);
     try testing.expectEqual(@as(u32, 30000), service_config.timeout_ms);
 
-    // Test all request creation (converted from RequestTests.swift)
+    // Test all request creation
     const best_block_request = try client.getBestBlockHash();
     const block_count_request = try client.getBlockCount();
     const connection_count_request = try client.getConnectionCount();

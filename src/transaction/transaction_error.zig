@@ -1,6 +1,6 @@
 //! Transaction Error implementation
 //!
-//! Complete conversion from NeoSwift TransactionError.swift
+//! Neo N3
 //! Provides specialized error handling for transaction operations.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const constants = @import("../core/constants.zig");
 
 const log = std.log.scoped(.neo_transaction);
 
-/// Transaction-specific errors (converted from Swift TransactionError)
+/// Transaction-specific errors
 pub const TransactionError = union(enum) {
     ScriptFormat: []const u8,
     SignerConfiguration: []const u8,
@@ -19,22 +19,22 @@ pub const TransactionError = union(enum) {
 
     const Self = @This();
 
-    /// Creates script format error (equivalent to Swift .scriptFormat)
+    /// Creates script format error
     pub fn scriptFormat(message: []const u8) Self {
         return Self{ .ScriptFormat = message };
     }
 
-    /// Creates signer configuration error (equivalent to Swift .signerConfiguration)
+    /// Creates signer configuration error
     pub fn signerConfiguration(message: []const u8) Self {
         return Self{ .SignerConfiguration = message };
     }
 
-    /// Creates transaction configuration error (equivalent to Swift .transactionConfiguration)
+    /// Creates transaction configuration error
     pub fn transactionConfiguration(message: []const u8) Self {
         return Self{ .TransactionConfiguration = message };
     }
 
-    /// Gets error description (equivalent to Swift .errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .ScriptFormat => |message| try allocator.dupe(u8, message),
@@ -238,12 +238,12 @@ pub const TransactionErrorUtils = struct {
     }
 };
 
-// Tests (converted from Swift TransactionError tests)
+// Tests
 test "TransactionError creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script format error (equivalent to Swift TransactionError tests)
+    // Test script format error
     const script_error = TransactionError.scriptFormat("Test script error");
     const script_description = try script_error.getErrorDescription(allocator);
     defer allocator.free(script_description);

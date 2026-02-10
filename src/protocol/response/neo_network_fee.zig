@@ -1,18 +1,18 @@
 //! Neo NetworkFee Implementation
 //!
-//! Complete conversion from NeoSwift NeoNetworkFee.swift
+//! Neo N3
 //! Provides network fee calculation response.
 
 const std = @import("std");
 
-/// Network fee response (converted from Swift NeoNetworkFee)
+/// Network fee response
 pub const NeoNetworkFee = struct {
     /// Network fee amount
     network_fee: []const u8,
 
     const Self = @This();
 
-    /// Creates new NeoNetworkFee (equivalent to Swift init)
+    /// Creates new NeoNetworkFee
     pub fn init(network_fee: []const u8) Self {
         return Self{ .network_fee = network_fee };
     }

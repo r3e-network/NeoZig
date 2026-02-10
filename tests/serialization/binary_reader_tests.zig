@@ -1,6 +1,6 @@
 //! Binary Reader Tests
 //!
-//! Complete conversion from NeoSwift BinaryReaderTests.swift
+//! BinaryReader tests
 //! Tests binary deserialization functionality and data type reading.
 
 const std = @import("std");

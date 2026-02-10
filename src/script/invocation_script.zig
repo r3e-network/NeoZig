@@ -1,6 +1,6 @@
 //! Invocation Script implementation
 //!
-//! Complete conversion from NeoSwift InvocationScript.swift
+//! Neo N3 
 //! Provides invocation script functionality for transaction witnesses.
 
 const std = @import("std");
@@ -11,10 +11,10 @@ const errors = @import("../core/errors.zig");
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const SignatureData = @import("../crypto/sign.zig").SignatureData;
 const ScriptBuilder = @import("script_builder.zig").ScriptBuilder;
-const BinaryWriter = @import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter;
-const BinaryReader = @import("../serialization/binary_reader_complete.zig").CompleteBinaryReader;
+const BinaryWriter = @import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter;
+const BinaryReader = @import("../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 
-/// Invocation script for transaction witnesses (converted from Swift InvocationScript)
+/// Invocation script for transaction witnesses
 pub const InvocationScript = struct {
     /// Script as byte array
     script: []const u8,
@@ -23,7 +23,7 @@ pub const InvocationScript = struct {
 
     const Self = @This();
 
-    /// Creates empty invocation script (equivalent to Swift init())
+    /// Creates empty invocation script)
     pub fn init() Self {
         return Self{
             .script = &[_]u8{},
@@ -31,7 +31,7 @@ pub const InvocationScript = struct {
         };
     }
 
-    /// Creates invocation script from bytes (equivalent to Swift init(_ script: Bytes))
+    /// Creates invocation script from bytes)
     pub fn initFromBytes(script_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
             .script = try allocator.dupe(u8, script_bytes),
@@ -39,7 +39,7 @@ pub const InvocationScript = struct {
         };
     }
 
-    /// Creates from signature (equivalent to Swift fromSignature(_ signature: Sign.SignatureData))
+    /// Creates from signature)
     pub fn fromSignature(signature: SignatureData, allocator: std.mem.Allocator) !Self {
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
@@ -53,13 +53,13 @@ pub const InvocationScript = struct {
         };
     }
 
-    /// Creates from message and key pair (equivalent to Swift fromMessageAndKeyPair)
+    /// Creates from message and key pair
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const signature_data = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
         return try Self.fromSignature(signature_data, allocator);
     }
 
-    /// Creates from signatures (equivalent to Swift fromSignatures(_ signatures: [Sign.SignatureData]))
+    /// Creates from signatures)
     pub fn fromSignatures(signatures: []const SignatureData, allocator: std.mem.Allocator) !Self {
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
@@ -100,7 +100,7 @@ pub const InvocationScript = struct {
         }
     }
 
-    /// Gets script size (equivalent to Swift .size property)
+    /// Gets script size
     pub fn getSize(self: Self) usize {
         return @import("../utils/bytes_extensions.zig").BytesUtils.varSize(self.script);
     }
@@ -115,12 +115,12 @@ pub const InvocationScript = struct {
         return self.script.len == 0;
     }
 
-    /// Serializes invocation script (equivalent to Swift serialize)
+    /// Serializes invocation script
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         try writer.writeVarBytes(self.script);
     }
 
-    /// Deserializes invocation script (equivalent to Swift deserialize)
+    /// Deserializes invocation script
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const script_bytes = try reader.readVarBytes(allocator);
         return Self{
@@ -186,12 +186,12 @@ pub const InvocationScript = struct {
         return try signatures.toOwnedSlice();
     }
 
-    /// Compares invocation scripts for equality (equivalent to Swift Hashable)
+    /// Compares invocation scripts for equality
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.script, other.script);
     }
 
-    /// Hash function for HashMap usage (equivalent to Swift Hashable)
+    /// Hash function for HashMap usage
     pub fn hash(self: Self) u64 {
         return std.hash_map.hashString(self.script);
     }
@@ -306,12 +306,12 @@ pub const ScriptAnalysis = struct {
     }
 };
 
-// Tests (converted from Swift InvocationScript tests)
+// Tests
 test "InvocationScript creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test empty invocation script creation (equivalent to Swift InvocationScript() tests)
+    // Test empty invocation script creation tests)
     var empty_script = InvocationScript.init();
     defer empty_script.deinit();
 
@@ -332,7 +332,7 @@ test "InvocationScript creation from signatures" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script from signature (equivalent to Swift fromSignature tests)
+    // Test script from signature
     const test_signature = SignatureData.init(28, 12345, 67890);
     var signature_script = try InvocationScript.fromSignature(test_signature, allocator);
     defer signature_script.deinit();
@@ -340,7 +340,7 @@ test "InvocationScript creation from signatures" {
     try testing.expect(!signature_script.isEmpty());
     try testing.expect(signature_script.script.len > 0);
 
-    // Test script from key pair (equivalent to Swift fromMessageAndKeyPair tests)
+    // Test script from key pair
     const key_pair = try ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
@@ -359,7 +359,7 @@ test "InvocationScript multi-signature operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script from multiple signatures (equivalent to Swift fromSignatures tests)
+    // Test script from multiple signatures
     const signatures = [_]SignatureData{
         SignatureData.init(27, 11111, 22222),
         SignatureData.init(28, 33333, 44444),
@@ -383,7 +383,7 @@ test "InvocationScript serialization operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script serialization (equivalent to Swift serialization tests)
+    // Test script serialization
     const test_script = [_]u8{ 0x01, 0x02, 0x03, 0x04 };
     var original_script = try InvocationScript.initFromBytes(&test_script, allocator);
     defer original_script.deinit();

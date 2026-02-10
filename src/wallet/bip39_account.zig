@@ -1,6 +1,6 @@
 //! BIP-39 Account implementation
 //!
-//! Complete conversion from NeoSwift Bip39Account.swift
+//! Neo N3 
 //! Provides BIP-39 mnemonic-based account generation.
 
 const std = @import("std");
@@ -16,7 +16,7 @@ const KeyPair = @import("../crypto/keys.zig").KeyPair;
 const Account = @import("account.zig").Account;
 const secure = @import("../utils/secure.zig");
 
-/// BIP-39 compatible Neo account (converted from Swift Bip39Account)
+/// BIP-39 compatible Neo account
 pub const Bip39Account = struct {
     /// Generated BIP-39 mnemonic
     mnemonic: []const u8,
@@ -29,7 +29,7 @@ pub const Bip39Account = struct {
 
     const Self = @This();
 
-    /// Creates BIP-39 account (equivalent to Swift private init)
+    /// Creates BIP-39 account
     fn initPrivate(allocator: std.mem.Allocator, key_pair: KeyPair, mnemonic: []const u8, bip32_node: @import("../crypto/bip32.zig").Bip32ECKeyPair) !Self {
         const account = try Account.fromKeyPair(key_pair, allocator);
 
@@ -50,7 +50,7 @@ pub const Bip39Account = struct {
         self.allocator.free(@constCast(self.mnemonic));
     }
 
-    /// Generates new BIP-39 account (equivalent to Swift create(_ password: String))
+    /// Generates new BIP-39 account)
     pub fn create(allocator: std.mem.Allocator, password: []const u8) !Self {
         // Generate BIP-39 mnemonic
         const mnemonic_words = try generateMnemonic(allocator);
@@ -83,7 +83,7 @@ pub const Bip39Account = struct {
         return result;
     }
 
-    /// Recovers account from BIP-39 mnemonic (equivalent to Swift fromBip39Mneumonic)
+    /// Recovers account from BIP-39 mnemonic
     pub fn fromBip39Mnemonic(
         allocator: std.mem.Allocator,
         password: []const u8,
@@ -119,7 +119,7 @@ pub const Bip39Account = struct {
         return result;
     }
 
-    /// Gets mnemonic (equivalent to Swift .mnemonic property)
+    /// Gets mnemonic
     pub fn getMnemonic(self: Self) []const u8 {
         return self.mnemonic;
     }
@@ -134,23 +134,23 @@ pub const Bip39Account = struct {
         return try self.account.clone(allocator);
     }
 
-    /// Gets script hash (equivalent to Swift script hash access)
+    /// Gets script hash
     pub fn getScriptHash(self: Self) !Hash160 {
         return try self.account.getScriptHash();
     }
 
-    /// Gets address (equivalent to Swift address access)
+    /// Gets address
     pub fn getAddress(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const address = self.account.getAddress();
         return try address.toString(allocator);
     }
 
-    /// Gets private key (equivalent to Swift private key access)
+    /// Gets private key
     pub fn getPrivateKey(self: Self) !PrivateKey {
         return try self.account.getPrivateKey();
     }
 
-    /// Gets public key (equivalent to Swift public key access)
+    /// Gets public key
     pub fn getPublicKey(self: Self) !PublicKey {
         const private_key = try self.getPrivateKey();
         return try private_key.getPublicKey(true);
@@ -297,8 +297,8 @@ const BIP39Utils = struct {
             }
         }
 
-        // Match NeoSwift behavior: split/join words so extra whitespace doesn't change the seed.
-        // (NeoSwift uses `mnemonic.split(separator: " ")` before deriving the seed.)
+        // Match NeoClient behavior: split/join words so extra whitespace doesn't change the seed.
+        // (NeoClient uses `mnemonic.split(separator: " ")` before deriving the seed.)
         var normalized_mnemonic_rejoined = ArrayList(u8).init(allocator);
         defer {
             secure.secureZeroBytes(normalized_mnemonic_rejoined.items);
@@ -663,12 +663,12 @@ pub const generateMnemonic = BIP39Utils.generateMnemonic;
 pub const validateMnemonic = BIP39Utils.validateMnemonic;
 pub const mnemonicToSeed = BIP39Utils.mnemonicToSeed;
 
-// Tests (converted from Swift Bip39Account tests)
+// Tests
 test "Bip39Account creation and mnemonic generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test account creation (equivalent to Swift create tests)
+    // Test account creation
     var bip39_account = try Bip39Account.create(allocator, "test_password");
     defer bip39_account.deinit();
 
@@ -697,7 +697,7 @@ test "Bip39Account recovery from mnemonic" {
     const original_mnemonic = original_account.getMnemonic();
     const original_script_hash = try original_account.getScriptHash();
 
-    // Recover account from mnemonic (equivalent to Swift fromBip39Mnemonic tests)
+    // Recover account from mnemonic
     var recovered_account = try Bip39Account.fromBip39Mnemonic(
         allocator,
         "recovery_password",
@@ -719,7 +719,7 @@ test "Bip39Account child derivation" {
     var parent_account = try Bip39Account.create(allocator, "derivation_password");
     defer parent_account.deinit();
 
-    // Test child derivation (equivalent to Swift child derivation tests)
+    // Test child derivation
     var child_account = try parent_account.deriveChild(0, false);
     defer child_account.deinit();
 
@@ -734,7 +734,7 @@ test "BIP39 mnemonic utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test mnemonic generation (equivalent to Swift mnemonic tests)
+    // Test mnemonic generation
     const mnemonic = try generateMnemonic(allocator);
     defer allocator.free(mnemonic);
 
@@ -788,7 +788,7 @@ test "Bip39Account private key operations" {
     var bip39_account = try Bip39Account.create(allocator, "key_test_password");
     defer bip39_account.deinit();
 
-    // Test private key access (equivalent to Swift private key tests)
+    // Test private key access
     const private_key = try bip39_account.getPrivateKey();
     try testing.expect(private_key.isValid());
 
@@ -801,7 +801,7 @@ test "Bip39Account private key operations" {
     try testing.expect(public_key.eql(derived_public));
 }
 
-test "Bip39Account deterministic NeoSwift vector" {
+test "Bip39Account deterministic NeoClient vector" {
     const testing = std.testing;
     const allocator = testing.allocator;
 

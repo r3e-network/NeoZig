@@ -1,6 +1,6 @@
 //! Oracle Request Implementation
 //!
-//! Complete conversion from NeoSwift OracleRequest.swift
+//! Neo N3
 //! Provides oracle request structure for Neo blockchain oracles.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const std = @import("std");
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 
-/// Oracle request structure (converted from Swift OracleRequest)
+/// Oracle request structure
 pub const OracleRequest = struct {
     /// Request ID
     request_id: u64,
@@ -29,7 +29,7 @@ pub const OracleRequest = struct {
 
     const Self = @This();
 
-    /// Creates new oracle request (equivalent to Swift init)
+    /// Creates new oracle request
     pub fn init(
         request_id: u64,
         original_transaction_hash: Hash256,
@@ -120,7 +120,7 @@ pub const OracleRequest = struct {
         try self.original_transaction_hash.validate();
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.request_id == other.request_id and
             self.original_transaction_hash.eql(other.original_transaction_hash) and
@@ -132,7 +132,7 @@ pub const OracleRequest = struct {
             std.mem.eql(u8, self.user_data, other.user_data);
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.request_id));
@@ -153,7 +153,7 @@ pub const OracleRequest = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const tx_hash_str = try self.original_transaction_hash.toString(allocator);
         defer allocator.free(tx_hash_str);
@@ -173,7 +173,7 @@ pub const OracleRequest = struct {
         });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -258,12 +258,12 @@ pub const OracleRequest = struct {
     }
 };
 
-// Tests (converted from Swift OracleRequest tests)
+// Tests
 test "OracleRequest creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test oracle request creation (equivalent to Swift tests)
+    // Test oracle request creation
     const original_tx_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const callback_contract = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
 
@@ -300,7 +300,7 @@ test "OracleRequest creation and properties" {
 test "OracleRequest equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const tx_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const contract_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
 
@@ -347,7 +347,7 @@ test "OracleRequest JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const tx_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const contract_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
 

@@ -1,6 +1,6 @@
 //! Iterator implementation
 //!
-//! Complete conversion from NeoSwift Iterator.swift
+//! Neo N3 
 //! Provides paginated result traversal for Neo smart contract operations.
 
 const std = @import("std");
@@ -8,13 +8,13 @@ const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 const StackItem = @import("../types/stack_item.zig").StackItem;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const NeoProtocol = @import("../protocol/neo_protocol.zig").NeoProtocol;
 
-/// Generic iterator for stack items (converted from Swift Iterator<T>)
+/// Generic iterator for stack items
 pub fn Iterator(comptime T: type, comptime Context: type) type {
     return struct {
-        /// Context reference (NeoSwift or similar)
+        /// Context reference (NeoClient or similar)
         context: Context,
         /// Session ID for iterator
         session_id: []const u8,
@@ -41,7 +41,7 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
             }
         }
 
-        /// Creates iterator (equivalent to Swift init)
+        /// Creates iterator
         pub fn init(
             allocator: std.mem.Allocator,
             context: Context,
@@ -73,8 +73,8 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
         }
 
         fn traverseRpc(self: *Self, count: u32) ![]T {
-            const neo_swift: *NeoSwift = @ptrCast(@alignCast(@constCast(&self.context)));
-            var protocol = NeoProtocol.init(neo_swift.getService());
+            const client: *NeoClient = @ptrCast(@alignCast(@constCast(&self.context)));
+            var protocol = NeoProtocol.init(client.getService());
             const service_allocator = protocol.service.getAllocator();
 
             var request = try protocol.traverseIterator(self.session_id, self.iterator_id, count);
@@ -99,7 +99,7 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
             return mapped_items;
         }
 
-        /// Traverses iterator (equivalent to Swift traverse(_ count: Int))
+        /// Traverses iterator)
         pub fn traverse(self: *Self, count: u32) ![]T {
             if (count == 0) {
                 return try self.allocator.alloc(T, 0);
@@ -149,10 +149,10 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
             return fetched;
         }
 
-        /// Terminates session (equivalent to Swift terminateSession())
+        /// Terminates session)
         pub fn terminateSession(self: Self) !void {
-            const neo_swift: *NeoSwift = @ptrCast(@alignCast(@constCast(&self.context)));
-            var protocol = NeoProtocol.init(neo_swift.getService());
+            const client: *NeoClient = @ptrCast(@alignCast(@constCast(&self.context)));
+            var protocol = NeoProtocol.init(client.getService());
             var request = try protocol.terminateSession(self.session_id);
             const response = try request.sendUsing(protocol.service);
             if (!(response.getTerminateSession() orelse false)) {
@@ -257,19 +257,19 @@ pub const SessionInfo = struct {
 /// Common iterator types
 pub const CommonIterators = struct {
     /// String iterator (most common)
-    pub const StringIterator = Iterator([]const u8, *NeoSwift);
+    pub const StringIterator = Iterator([]const u8, *NeoClient);
 
     /// Integer iterator
-    pub const IntegerIterator = Iterator(i64, *NeoSwift);
+    pub const IntegerIterator = Iterator(i64, *NeoClient);
 
     /// Hash160 iterator
-    pub const Hash160Iterator = Iterator(@import("../types/hash160.zig").Hash160, *NeoSwift);
+    pub const Hash160Iterator = Iterator(@import("../types/hash160.zig").Hash160, *NeoClient);
 
     /// Contract parameter iterator
-    pub const ContractParameterIterator = Iterator(@import("../types/contract_parameter.zig").ContractParameter, *NeoSwift);
+    pub const ContractParameterIterator = Iterator(@import("../types/contract_parameter.zig").ContractParameter, *NeoClient);
 
     /// Stack item iterator (raw)
-    pub const StackItemIterator = Iterator(StackItem, *NeoSwift);
+    pub const StackItemIterator = Iterator(StackItem, *NeoClient);
 };
 
 /// Iterator factory
@@ -277,7 +277,7 @@ pub const IteratorFactory = struct {
     /// Creates string iterator with default mapper
     pub fn createStringIterator(
         allocator: std.mem.Allocator,
-        context: *NeoSwift,
+        context: *NeoClient,
         session_id: []const u8,
         iterator_id: []const u8,
     ) !CommonIterators.StringIterator {
@@ -299,7 +299,7 @@ pub const IteratorFactory = struct {
     /// Creates integer iterator with default mapper
     pub fn createIntegerIterator(
         allocator: std.mem.Allocator,
-        context: *NeoSwift,
+        context: *NeoClient,
         session_id: []const u8,
         iterator_id: []const u8,
     ) !CommonIterators.IntegerIterator {
@@ -322,7 +322,7 @@ pub const IteratorFactory = struct {
     /// Creates Hash160 iterator with default mapper
     pub fn createHash160Iterator(
         allocator: std.mem.Allocator,
-        context: *NeoSwift,
+        context: *NeoClient,
         session_id: []const u8,
         iterator_id: []const u8,
     ) !CommonIterators.Hash160Iterator {
@@ -445,12 +445,12 @@ test "Iterator creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var neo_swift_dummy align(8) = @as(u64, 0);
-    const neo_swift_stub: *NeoSwift = @ptrCast(&neo_swift_dummy);
+    var client_dummy align(8) = @as(u64, 0);
+    const client_stub: *NeoClient = @ptrCast(&client_dummy);
 
     var string_iterator = try IteratorFactory.createStringIterator(
         allocator,
-        neo_swift_stub,
+        client_stub,
         "test_session_123",
         "test_iterator_456",
     );
@@ -513,12 +513,12 @@ test "Common iterator types" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var neo_swift_dummy align(8) = @as(u64, 0);
-    const neo_swift_stub: *NeoSwift = @ptrCast(&neo_swift_dummy);
+    var client_dummy align(8) = @as(u64, 0);
+    const client_stub: *NeoClient = @ptrCast(&client_dummy);
 
     var integer_iterator = try IteratorFactory.createIntegerIterator(
         allocator,
-        neo_swift_stub,
+        client_stub,
         "int_session",
         "int_iterator",
     );
@@ -529,7 +529,7 @@ test "Common iterator types" {
 
     var hash160_iterator = try IteratorFactory.createHash160Iterator(
         allocator,
-        neo_swift_stub,
+        client_stub,
         "hash_session",
         "hash_iterator",
     );

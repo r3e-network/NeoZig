@@ -1,6 +1,6 @@
 //! TransactionSigner Implementation
 //!
-//! Complete conversion from NeoSwift TransactionSigner.swift
+//! Neo N3
 
 const std = @import("std");
 

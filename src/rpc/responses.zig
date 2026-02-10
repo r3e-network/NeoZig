@@ -1,6 +1,6 @@
 //! RPC Response Types
 //!
-//! Complete conversion from NeoSwift protocol response types
+//! Neo N3
 //! Handles all Neo RPC response parsing and serialization.
 
 const std = @import("std");
@@ -41,7 +41,7 @@ fn parseIntFromJson(comptime T: type, value: std.json.Value) !T {
     };
 }
 
-/// Neo block response (converted from Swift NeoBlock)
+/// Neo block response
 pub const NeoBlock = struct {
     hash: Hash256,
     size: u32,
@@ -59,7 +59,7 @@ pub const NeoBlock = struct {
 
     const Self = @This();
 
-    /// Creates new block (equivalent to Swift init)
+    /// Creates new block
     pub fn init(
         hash: Hash256,
         size: u32,
@@ -111,7 +111,7 @@ pub const NeoBlock = struct {
         };
     }
 
-    /// Parses from JSON (equivalent to Swift Codable)
+    /// Parses from JSON
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         const obj = json_value.object;
 
@@ -218,7 +218,7 @@ pub const NeoBlock = struct {
     }
 };
 
-/// Neo witness (converted from Swift NeoWitness)
+/// Neo witness
 pub const NeoWitness = struct {
     invocation: []const u8,
     verification: []const u8,
@@ -245,7 +245,7 @@ pub const NeoWitness = struct {
     }
 };
 
-/// Transaction response (converted from Swift Transaction)
+/// Transaction response
 pub const Transaction = struct {
     hash: Hash256,
     size: u32,
@@ -389,7 +389,7 @@ pub const Transaction = struct {
     }
 };
 
-/// Transaction signer (converted from Swift TransactionSigner)
+/// Transaction signer
 pub const TransactionSigner = struct {
     account: Hash160,
     scopes: []const u8,
@@ -478,7 +478,7 @@ pub const TransactionSigner = struct {
     }
 };
 
-/// Witness rule (converted from Swift WitnessRule)
+/// Witness rule
 pub const WitnessRule = struct {
     action: []const u8,
     condition: WitnessCondition,
@@ -502,7 +502,7 @@ pub const WitnessRule = struct {
     }
 };
 
-/// Witness condition (converted from Swift WitnessCondition)
+/// Witness condition
 pub const WitnessCondition = struct {
     condition_type: []const u8,
     value: []const u8,
@@ -530,7 +530,7 @@ pub const WitnessCondition = struct {
     }
 };
 
-/// Invocation result (converted from Swift InvocationResult)
+/// Invocation result
 pub const InvocationResult = struct {
     script: []const u8,
     state: NeoVMStateType,
@@ -552,7 +552,7 @@ pub const InvocationResult = struct {
         };
     }
 
-    /// Gets first stack item (equivalent to Swift getFirstStackItem)
+    /// Gets first stack item
     pub fn getFirstStackItem(self: Self) !StackItem {
         if (self.stack.len == 0) {
             return errors.throwIllegalState("Stack is empty");
@@ -560,7 +560,7 @@ pub const InvocationResult = struct {
         return self.stack[0];
     }
 
-    /// Checks if invocation faulted (equivalent to Swift state checking)
+    /// Checks if invocation faulted
     pub fn hasFaulted(self: Self) bool {
         return self.state == .Fault;
     }
@@ -619,7 +619,7 @@ pub const InvocationResult = struct {
     }
 };
 
-/// Neo version response (converted from Swift NeoGetVersion)
+/// Neo version response
 pub const NeoVersion = struct {
     tcp_port: u16,
     ws_port: u16,
@@ -693,7 +693,7 @@ pub const HardforkInfo = struct {
     }
 };
 
-/// Protocol configuration (converted from Swift protocol data)
+/// Protocol configuration
 pub const ProtocolConfiguration = struct {
     network: u32,
     address_version: u8,
@@ -810,7 +810,7 @@ pub const ProtocolConfiguration = struct {
     }
 };
 
-/// NEP-17 balances response (converted from Swift NeoGetNep17Balances)
+/// NEP-17 balances response
 pub const Nep17Balances = struct {
     balance: []const TokenBalance,
     address: []const u8,
@@ -843,7 +843,7 @@ pub const Nep17Balances = struct {
     }
 };
 
-/// Token balance (converted from Swift token balance)
+/// Token balance
 pub const TokenBalance = struct {
     asset_hash: Hash160,
     amount: []const u8,
@@ -868,7 +868,7 @@ pub const TokenBalance = struct {
     }
 };
 
-/// NEP-17 transfers response (converted from Swift NeoGetNep17Transfers)
+/// NEP-17 transfers response
 pub const Nep17Transfers = struct {
     sent: []const TokenTransfer,
     received: []const TokenTransfer,
@@ -909,7 +909,7 @@ pub const Nep17Transfers = struct {
     }
 };
 
-/// Token transfer (converted from Swift token transfer)
+/// Token transfer
 pub const TokenTransfer = struct {
     timestamp: u64,
     asset_hash: Hash160,
@@ -938,7 +938,7 @@ pub const TokenTransfer = struct {
     }
 };
 
-/// Application log response (converted from Swift NeoApplicationLog)
+/// Application log response
 pub const NeoApplicationLog = struct {
     tx_id: Hash256,
     executions: []Execution,
@@ -984,7 +984,7 @@ pub const NeoApplicationLog = struct {
     }
 };
 
-/// Execution (converted from Swift execution data)
+/// Execution
 pub const Execution = struct {
     trigger: []const u8,
     vm_state: NeoVMStateType,
@@ -1080,7 +1080,7 @@ pub const Execution = struct {
     }
 };
 
-/// Notification (converted from Swift Notification)
+/// Notification
 pub const Notification = struct {
     contract: Hash160,
     event_name: []const u8,
@@ -1108,7 +1108,7 @@ pub const Notification = struct {
     }
 };
 
-/// Contract state response (converted from Swift ContractState)
+/// Contract state response
 pub const ContractState = struct {
     id: i32,
     update_counter: u32,
@@ -1150,7 +1150,7 @@ pub const ContractState = struct {
     }
 };
 
-/// Contract NEF (converted from Swift ContractNef)
+/// Contract NEF
 pub const ContractNef = struct {
     magic: u32,
     compiler: []const u8,
@@ -1243,7 +1243,7 @@ pub const ContractFeatures = struct {
     }
 };
 
-/// Contract manifest (converted from Swift ContractManifest)
+/// Contract manifest
 pub const ContractManifest = struct {
     name: ?[]const u8,
     groups: []const ContractGroup,
@@ -1742,7 +1742,7 @@ pub const ContractPermission = struct {
     }
 };
 
-/// Network fee response (converted from Swift network fee responses)
+/// Network fee response
 pub const NetworkFeeResponse = struct {
     network_fee: u64,
 
@@ -1772,7 +1772,7 @@ pub const NetworkFeeResponse = struct {
     }
 };
 
-/// Send transaction response (converted from Swift send responses)
+/// Send transaction response
 pub const SendRawTransactionResponse = struct {
     success: bool,
     hash: ?Hash256,
@@ -1812,7 +1812,7 @@ pub const SendRawTransactionResponse = struct {
 };
 
 // Import after definitions
-// Tests (converted from Swift response tests)
+// Tests
 test "NeoBlock response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
@@ -1830,7 +1830,7 @@ test "InvocationResult parsing and operations" {
 
     var invocation_result = InvocationResult.init();
 
-    // Test fault state checking (equivalent to Swift state tests)
+    // Test fault state checking
     try testing.expect(!invocation_result.hasFaulted());
 
     // Test with faulted state

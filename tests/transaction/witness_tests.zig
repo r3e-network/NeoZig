@@ -1,6 +1,6 @@
 //! Witness Tests
 //!
-//! Complete conversion from NeoSwift WitnessTests.swift
+//! Witness tests
 //! Tests witness creation, serialization, and multi-signature functionality.
 
 const std = @import("std");
@@ -18,18 +18,18 @@ const InvocationScript = neo.transaction.InvocationScript;
 const VerificationScript = neo.transaction.VerificationScript;
 const OpCode = neo.script.OpCode;
 
-// Test witness creation (converted from Swift testCreateWitness)
+// Test witness creation
 test "Witness creation" {
     const allocator = testing.allocator;
 
-    // Create test message (equivalent to Swift message = Bytes(repeating: 10, count: 10))
+    // Create test message)
     const message = [_]u8{10} ** 10;
 
-    // Create key pair (equivalent to Swift ECKeyPair.createEcKeyPair())
+    // Create key pair)
     var key_pair = try ECKeyPair.createRandom();
     defer key_pair.zeroize();
 
-    // Create witness (equivalent to Swift Witness.create(message, keyPair))
+    // Create witness)
     var witness = try Witness.create(&message, key_pair, allocator);
     defer witness.deinit(allocator);
 
@@ -41,7 +41,7 @@ test "Witness creation" {
     // Verify witness can be validated
     try witness.validate();
 
-    // Test expected signature (equivalent to Swift expectedSignature check)
+    // Test expected signature
     const expected_signature = try Sign.signMessage(&message, key_pair, allocator);
     const signature_bytes = expected_signature.getSignatureBytes();
 
@@ -68,16 +68,16 @@ test "Witness creation" {
     // but the witness creation and basic structure validation is confirmed
 }
 
-// Test witness serialization (converted from Swift testSerializeWitness)
+// Test witness serialization
 test "Witness serialization" {
     const allocator = testing.allocator;
 
-    // Create test data (equivalent to Swift test setup)
+    // Create test data
     const message = [_]u8{10} ** 10;
     var key_pair = try ECKeyPair.createRandom();
     defer key_pair.zeroize();
 
-    // Create witness (equivalent to Swift Witness.create)
+    // Create witness
     var witness = try Witness.create(&message, key_pair, allocator);
     defer witness.deinit(allocator);
 
@@ -97,22 +97,22 @@ test "Witness serialization" {
     try testing.expectEqual(calculated_size, witness_size);
 }
 
-// Test multi-signature witness creation (converted from Swift testSerializeMultiSigWitness)
+// Test multi-signature witness creation
 test "Multi-signature witness creation" {
     const allocator = testing.allocator;
 
-    // Create test message (equivalent to Swift message setup)
+    // Create test message
     const message = [_]u8{10} ** 10;
     const signing_threshold: u32 = 2;
 
-    // Create multiple key pairs and signatures (equivalent to Swift loop)
+    // Create multiple key pairs and signatures
     var signatures = ArrayList(SignatureData).init(allocator);
     defer signatures.deinit();
 
     var public_keys = ArrayList(PublicKey).init(allocator);
     defer public_keys.deinit();
 
-    // Create 3 key pairs (equivalent to Swift for loop 0...2)
+    // Create 3 key pairs
     var i: usize = 0;
     while (i < 3) : (i += 1) {
         var key_pair = try ECKeyPair.createRandom();
@@ -124,7 +124,7 @@ test "Multi-signature witness creation" {
         try public_keys.append(key_pair.getPublicKey());
     }
 
-    // Create multi-sig witness (equivalent to Swift Witness.creatMultiSigWitness)
+    // Create multi-sig witness
     var multi_sig_witness = try Witness.createMultiSigWitness(
         signing_threshold,
         signatures.items,

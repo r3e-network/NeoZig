@@ -1,6 +1,6 @@
 //! NEF File Tests
 //!
-//! Complete conversion from NeoSwift NefFileTests.swift
+//!
 //! Tests NEF (Neo Executable Format) file handling.
 
 const std = @import("std");

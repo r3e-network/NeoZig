@@ -1,6 +1,6 @@
 //! Contract Manifest Implementation
 //!
-//! Complete conversion from NeoSwift ContractManifest.swift
+//! Neo N3
 //! Provides contract manifest structure for smart contract metadata.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const Sign = @import("../../crypto/sign.zig").Sign;
 const ScriptBuilder = @import("../../script/script_builder.zig").ScriptBuilder;
 const json_utils = @import("../../utils/json_utils.zig");
 
-/// Contract group information (converted from Swift ContractGroup)
+/// Contract group information
 pub const ContractGroup = struct {
     /// Public key (hex string)
     pub_key: []const u8,
@@ -20,7 +20,7 @@ pub const ContractGroup = struct {
 
     const Self = @This();
 
-    /// Creates new contract group (equivalent to Swift init)
+    /// Creates new contract group
     pub fn init(pub_key: []const u8, signature: []const u8, allocator: std.mem.Allocator) !Self {
         // Validate public key
         const cleaned_key = if (std.mem.startsWith(u8, pub_key, "0x"))
@@ -46,13 +46,13 @@ pub const ContractGroup = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.pub_key, other.pub_key) and
             std.mem.eql(u8, self.signature, other.signature);
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.pub_key);
@@ -254,7 +254,7 @@ pub const ContractPermission = struct {
     }
 };
 
-/// Contract manifest (converted from Swift ContractManifest)
+/// Contract manifest
 pub const ContractManifest = struct {
     /// Contract name
     name: ?[]const u8,
@@ -275,7 +275,7 @@ pub const ContractManifest = struct {
 
     const Self = @This();
 
-    /// Creates contract manifest (equivalent to Swift init)
+    /// Creates contract manifest
     pub fn init(
         name: ?[]const u8,
         groups: []const ContractGroup,
@@ -378,7 +378,7 @@ pub const ContractManifest = struct {
         );
     }
 
-    /// Creates group for manifest (equivalent to Swift createGroup)
+    /// Creates group for manifest
     pub fn createGroup(
         group_key_pair: ECKeyPair,
         deployment_sender: Hash160,
@@ -452,7 +452,7 @@ pub const ContractManifest = struct {
         return self.trusts.len > 0;
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         // Compare name
         if (self.name == null and other.name == null) {
@@ -484,7 +484,7 @@ pub const ContractManifest = struct {
         return true;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -596,12 +596,12 @@ fn base64Encode(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
     return encoder.encode(encoded, data);
 }
 
-// Tests (converted from Swift ContractManifest tests)
+// Tests
 test "ContractGroup creation and validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test contract group creation (equivalent to Swift tests)
+    // Test contract group creation
     const valid_pub_key = "0302000000000000000000000000000000000000000000000000000000000000ab"; // 33 bytes
     const valid_signature = "dGVzdF9zaWduYXR1cmU="; // "test_signature" in base64
 
@@ -624,7 +624,7 @@ test "ContractManifest creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test manifest creation (equivalent to Swift tests)
+    // Test manifest creation
     const name = "TestContract";
     const standards = [_][]const u8{ "NEP-17", "NEP-11" };
 

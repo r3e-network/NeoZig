@@ -1,7 +1,7 @@
 //! Final Response Completion
 //!
-//! Complete implementation of remaining Swift protocol response types
-//! Ensures 100% equivalence with Swift NeoSwift implementation
+//! Protocol response type implementations
+//! Neo N3 protocol response coverage
 
 const std = @import("std");
 

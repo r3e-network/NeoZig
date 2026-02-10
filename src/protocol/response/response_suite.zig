@@ -1,7 +1,7 @@
 //! Complete Response Suite
 //!
 //! Comprehensive collection of remaining Neo protocol response types
-//! Ensures 100% Swift response equivalence
+//! Response type definitions
 
 const std = @import("std");
 

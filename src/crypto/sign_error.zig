@@ -1,6 +1,6 @@
 //! Sign Error implementation
 //!
-//! Complete conversion from NeoSwift SignError.swift
+//! Neo N3
 //! Provides specialized error handling for signature operations.
 
 const std = @import("std");
@@ -10,24 +10,24 @@ const errors = @import("../core/errors.zig");
 
 const log = std.log.scoped(.neo_crypto);
 
-/// Sign-specific errors (converted from Swift SignError)
+/// Sign-specific errors
 pub const SignError = union(enum) {
     HeaderOutOfRange: u8,
     RecoverFailed: void,
 
     const Self = @This();
 
-    /// Creates header out of range error (equivalent to Swift .headerOutOfRange)
+    /// Creates header out of range error
     pub fn headerOutOfRange(header_byte: u8) Self {
         return Self{ .HeaderOutOfRange = header_byte };
     }
 
-    /// Creates recovery failed error (equivalent to Swift .recoverFailed)
+    /// Creates recovery failed error
     pub fn recoverFailed() Self {
         return Self{ .RecoverFailed = {} };
     }
 
-    /// Gets error description (equivalent to Swift .errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .HeaderOutOfRange => |header| {
@@ -175,12 +175,12 @@ pub const SignErrorUtils = struct {
     }
 };
 
-// Tests (converted from Swift SignError tests)
+// Tests
 test "SignError creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test header out of range error (equivalent to Swift SignError tests)
+    // Test header out of range error
     const header_error = SignError.headerOutOfRange(31);
     const header_description = try header_error.getErrorDescription(allocator);
     defer allocator.free(header_description);
@@ -203,7 +203,7 @@ test "SignError creation and descriptions" {
 test "SignError validation functions" {
     const testing = std.testing;
 
-    // Test header byte validation (equivalent to Swift validation tests)
+    // Test header byte validation
     try SignError.validateHeaderByte(27); // Valid
     try SignError.validateHeaderByte(28); // Valid
     try SignError.validateHeaderByte(29); // Valid

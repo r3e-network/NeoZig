@@ -1,6 +1,6 @@
 //! Contract Parameters Context implementation
 //!
-//! Complete conversion from NeoSwift ContractParametersContext.swift
+//! Neo N3
 //! Provides transaction signing context for multi-signature scenarios.
 
 const std = @import("std");
@@ -12,9 +12,9 @@ const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 
-/// Contract parameters context (converted from Swift ContractParametersContext)
+/// Contract parameters context
 pub const ContractParametersContext = struct {
-    /// Context type constant (matches Swift type)
+    /// Context type constant
     pub const CONTEXT_TYPE = "Neo.Network.P2P.Payloads.Transaction";
 
     /// Transaction hash
@@ -30,7 +30,7 @@ pub const ContractParametersContext = struct {
 
     const Self = @This();
 
-    /// Creates contract parameters context (equivalent to Swift init)
+    /// Creates contract parameters context
     pub fn init(
         allocator: std.mem.Allocator,
         hash: []const u8,
@@ -60,18 +60,18 @@ pub const ContractParametersContext = struct {
         self.allocator.free(self.data);
     }
 
-    /// Adds context item (equivalent to Swift item addition)
+    /// Adds context item
     pub fn addItem(self: *Self, script_hash: []const u8, item: ContextItem) !void {
         const script_hash_copy = try self.allocator.dupe(u8, script_hash);
         try self.items.put(script_hash_copy, item);
     }
 
-    /// Gets context item (equivalent to Swift item retrieval)
+    /// Gets context item
     pub fn getItem(self: Self, script_hash: []const u8) ?ContextItem {
         return self.items.get(script_hash);
     }
 
-    /// Removes context item (equivalent to Swift item removal)
+    /// Removes context item
     pub fn removeItem(self: *Self, script_hash: []const u8) bool {
         if (self.items.fetchRemove(script_hash)) |kv| {
             self.allocator.free(kv.key);
@@ -81,7 +81,7 @@ pub const ContractParametersContext = struct {
         return false;
     }
 
-    /// Checks if context is complete (equivalent to Swift completion check)
+    /// Checks if context is complete
     pub fn isComplete(self: Self) bool {
         // Context is complete if all required items have sufficient signatures
         var iterator = self.items.iterator();
@@ -93,7 +93,7 @@ pub const ContractParametersContext = struct {
         return true;
     }
 
-    /// Gets signing data for script (equivalent to Swift signing data)
+    /// Gets signing data for script
     pub fn getSigningData(self: Self, script_hash: []const u8) ?[]const u8 {
         if (self.getItem(script_hash)) |item| {
             return item.getSigningData();
@@ -101,7 +101,7 @@ pub const ContractParametersContext = struct {
         return null;
     }
 
-    /// Exports to JSON (equivalent to Swift Codable encoding)
+    /// Exports to JSON
     pub fn toJson(self: Self) !std.json.Value {
         var context_obj = std.json.ObjectMap.init(self.allocator);
 
@@ -121,7 +121,7 @@ pub const ContractParametersContext = struct {
         return std.json.Value{ .object = context_obj };
     }
 
-    /// Imports from JSON (equivalent to Swift Codable decoding)
+    /// Imports from JSON
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         const obj = json_value.object;
 
@@ -150,7 +150,7 @@ pub const ContractParametersContext = struct {
     }
 };
 
-/// Context item (converted from Swift ContextItem)
+/// Context item
 pub const ContextItem = struct {
     /// Verification script
     script: []const u8,
@@ -165,7 +165,7 @@ pub const ContextItem = struct {
 
     const Self = @This();
 
-    /// Creates context item (equivalent to Swift init)
+    /// Creates context item
     pub fn init(
         allocator: std.mem.Allocator,
         script: []const u8,
@@ -202,19 +202,19 @@ pub const ContextItem = struct {
         self.signatures.deinit();
     }
 
-    /// Adds signature (equivalent to Swift signature addition)
+    /// Adds signature
     pub fn addSignature(self: *Self, public_key_hex: []const u8, signature_hex: []const u8) !void {
         const key_copy = try self.allocator.dupe(u8, public_key_hex);
         const sig_copy = try self.allocator.dupe(u8, signature_hex);
         try self.signatures.put(key_copy, sig_copy);
     }
 
-    /// Gets signature (equivalent to Swift signature retrieval)
+    /// Gets signature
     pub fn getSignature(self: Self, public_key_hex: []const u8) ?[]const u8 {
         return self.signatures.get(public_key_hex);
     }
 
-    /// Checks if item is complete (equivalent to Swift completion check)
+    /// Checks if item is complete
     pub fn isComplete(self: Self) bool {
         // For single-sig, need 1 signature
         // For multi-sig, would need threshold number of signatures
@@ -231,7 +231,7 @@ pub const ContextItem = struct {
         return @intCast(self.signatures.count());
     }
 
-    /// Exports to JSON (equivalent to Swift Codable)
+    /// Exports to JSON
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var item_obj = std.json.ObjectMap.init(allocator);
 
@@ -256,7 +256,7 @@ pub const ContextItem = struct {
         return std.json.Value{ .object = item_obj };
     }
 
-    /// Imports from JSON (equivalent to Swift Codable)
+    /// Imports from JSON
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         const obj = json_value.object;
 
@@ -310,12 +310,12 @@ pub const StringContext = struct {
     }
 };
 
-// Tests (converted from Swift ContractParametersContext tests)
+// Tests
 test "ContractParametersContext creation and operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test context creation (equivalent to Swift ContractParametersContext tests)
+    // Test context creation
     var context = ContractParametersContext.init(
         allocator,
         try allocator.dupe(u8, "test_hash"),
@@ -378,7 +378,7 @@ test "ContextItem signature management" {
     );
     defer item.deinit(allocator);
 
-    // Test signature addition (equivalent to Swift signature tests)
+    // Test signature addition
     try item.addSignature("public_key_1", "signature_1");
     try item.addSignature("public_key_2", "signature_2");
 

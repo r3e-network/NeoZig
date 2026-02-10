@@ -1,6 +1,6 @@
 //! Fungible Token (NEP-17) implementation
 //!
-//! Complete conversion from NeoSwift FungibleToken.swift
+//! Neo N3 
 //! Handles NEP-17 fungible token operations and transfers.
 
 const std = @import("std");
@@ -14,9 +14,9 @@ const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
 const Token = @import("token.zig").Token;
 
-/// Fungible token contract (converted from Swift FungibleToken)
+/// Fungible token contract
 pub const FungibleToken = struct {
-    /// Method names (match Swift constants)
+    /// Method names
     pub const BALANCE_OF = "balanceOf";
     pub const TRANSFER = "transfer";
 
@@ -25,25 +25,25 @@ pub const FungibleToken = struct {
 
     const Self = @This();
 
-    /// Creates new FungibleToken instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, neo_swift: ?*anyopaque) Self {
+    /// Creates new FungibleToken instance
+    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, client: ?*anyopaque) Self {
         return Self{
-            .token = Token.init(allocator, script_hash, neo_swift),
+            .token = Token.init(allocator, script_hash, client),
         };
     }
 
-    /// Gets balance for account (equivalent to Swift getBalanceOf(_ account: Account))
+    /// Gets balance for account)
     pub fn getBalanceOfAccount(self: Self, account: Account) !i64 {
         return try self.getBalanceOf(try account.getScriptHash());
     }
 
-    /// Gets balance for script hash (equivalent to Swift getBalanceOf(_ scriptHash: Hash160))
+    /// Gets balance for script hash)
     pub fn getBalanceOf(self: Self, script_hash: Hash160) !i64 {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         return try self.token.smart_contract.callFunctionReturningInt(BALANCE_OF, &params);
     }
 
-    /// Gets balance for wallet (equivalent to Swift getBalanceOf(_ wallet: Wallet))
+    /// Gets balance for wallet)
     pub fn getBalanceOfWallet(self: Self, wallet: Wallet) !i64 {
         var sum: i64 = 0;
         const accounts = try wallet.getAccounts(self.token.smart_contract.allocator);
@@ -56,7 +56,7 @@ pub const FungibleToken = struct {
         return sum;
     }
 
-    /// Creates transfer transaction with account (equivalent to Swift transfer(_ from: Account, _ to: Hash160, _ amount: Int, _ data: ContractParameter?))
+    /// Creates transfer transaction with account)
     pub fn transferFromAccount(
         self: Self,
         from: Account,
@@ -67,7 +67,7 @@ pub const FungibleToken = struct {
         const sender_hash = try from.getScriptHash();
         var tx_builder = try self.transfer(sender_hash, to, amount, data);
 
-        // Add account signer (equivalent to Swift AccountSigner.calledByEntry)
+        // Add account signer
         const signer = @import("../transaction/transaction_builder.zig").Signer.init(
             sender_hash,
             @import("../transaction/transaction_builder.zig").WitnessScope.CalledByEntry,
@@ -77,7 +77,7 @@ pub const FungibleToken = struct {
         return tx_builder;
     }
 
-    /// Creates transfer transaction with script hash (equivalent to Swift transfer(_ from: Hash160, _ to: Hash160, _ amount: Int, _ data: ContractParameter?))
+    /// Creates transfer transaction with script hash)
     pub fn transfer(
         self: Self,
         from: Hash160,
@@ -99,7 +99,7 @@ pub const FungibleToken = struct {
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
 
-    /// Multi-transfer operation (equivalent to Swift multiTransfer)
+    /// Multi-transfer operation
     pub fn multiTransfer(
         self: Self,
         from: Hash160,
@@ -134,7 +134,7 @@ pub const FungibleToken = struct {
         return builder;
     }
 
-    /// Gets token information (equivalent to Swift token info methods)
+    /// Gets token information
     pub fn getSymbol(self: Self) ![]u8 {
         return try self.token.getSymbol();
     }
@@ -183,7 +183,7 @@ pub const FungibleToken = struct {
     }
 };
 
-/// Transfer recipient structure (converted from Swift transfer patterns)
+/// Transfer recipient structure
 pub const TransferRecipient = struct {
     to: Hash160,
     amount: i64,
@@ -204,7 +204,7 @@ pub const TransferRecipient = struct {
 const Account = @import("../transaction/transaction_builder.zig").Account;
 const Wallet = @import("../wallet/neo_wallet.zig").Wallet;
 
-// Tests (converted from Swift FungibleToken tests)
+// Tests
 test "FungibleToken creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -224,7 +224,7 @@ test "FungibleToken transfer operations" {
     const token_hash = Hash160.ZERO;
     const fungible_token = FungibleToken.init(allocator, token_hash, null);
 
-    // Test transfer transaction building (equivalent to Swift transfer tests)
+    // Test transfer transaction building
     var transfer_tx = try fungible_token.transfer(
         Hash160.ZERO, // from
         Hash160.ZERO, // to

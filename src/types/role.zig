@@ -1,12 +1,12 @@
 //! Role Implementation
 //!
-//! Complete conversion from NeoSwift Role.swift
+//! Neo N3 
 //! Provides blockchain network roles for Neo consensus and services.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-/// Blockchain network roles (converted from Swift Role)
+/// Blockchain network roles
 pub const Role = enum(u8) {
     /// State validator role (consensus node)
     StateValidator = 0x04,
@@ -15,7 +15,7 @@ pub const Role = enum(u8) {
     /// NeoFS alphabet node role
     NeoFSAlphabetNode = 0x10,
 
-    /// Gets the JSON representation (equivalent to Swift jsonValue)
+    /// Gets the JSON representation
     pub fn toJsonString(self: Role) []const u8 {
         return switch (self) {
             .StateValidator => "StateValidator",
@@ -24,12 +24,12 @@ pub const Role = enum(u8) {
         };
     }
 
-    /// Gets the byte value (equivalent to Swift byte property)
+    /// Gets the byte value
     pub fn toByte(self: Role) u8 {
         return @intFromEnum(self);
     }
 
-    /// Creates Role from byte value (equivalent to Swift ByteEnum protocol)
+    /// Creates Role from byte value
     pub fn fromByte(byte_value: u8) ?Role {
         return switch (byte_value) {
             0x04 => .StateValidator,
@@ -128,11 +128,11 @@ pub const Role = enum(u8) {
     }
 };
 
-// Tests (converted from Swift Role tests)
+// Tests
 test "Role JSON conversion" {
     const testing = std.testing;
 
-    // Test toJsonString (equivalent to Swift jsonValue)
+    // Test toJsonString
     try testing.expectEqualStrings("StateValidator", Role.StateValidator.toJsonString());
     try testing.expectEqualStrings("Oracle", Role.Oracle.toJsonString());
     try testing.expectEqualStrings("NeoFSAlphabetNode", Role.NeoFSAlphabetNode.toJsonString());
@@ -149,12 +149,12 @@ test "Role JSON conversion" {
 test "Role byte conversion" {
     const testing = std.testing;
 
-    // Test toByte (equivalent to Swift byte property)
+    // Test toByte
     try testing.expectEqual(@as(u8, 0x04), Role.StateValidator.toByte());
     try testing.expectEqual(@as(u8, 0x08), Role.Oracle.toByte());
     try testing.expectEqual(@as(u8, 0x10), Role.NeoFSAlphabetNode.toByte());
 
-    // Test fromByte (equivalent to Swift ByteEnum protocol)
+    // Test fromByte
     try testing.expectEqual(Role.StateValidator, Role.fromByte(0x04).?);
     try testing.expectEqual(Role.Oracle, Role.fromByte(0x08).?);
     try testing.expectEqual(Role.NeoFSAlphabetNode, Role.fromByte(0x10).?);
@@ -210,7 +210,7 @@ test "Role combination and extraction" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test role combination (equivalent to Swift role combination tests)
+    // Test role combination
     const roles = [_]Role{ .StateValidator, .Oracle };
     const combined = Role.combineRoles(&roles);
     try testing.expectEqual(@as(u8, 0x04 | 0x08), combined); // 0x0C

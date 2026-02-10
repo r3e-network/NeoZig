@@ -1,6 +1,6 @@
 //! Witness Rule Tests
 //!
-//! Complete conversion from NeoSwift WitnessRuleTests.swift
+//! WitnessRule tests
 //! Tests witness rule functionality and validation.
 
 const std = @import("std");

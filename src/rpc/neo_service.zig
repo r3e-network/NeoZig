@@ -1,6 +1,6 @@
-//! Neo Swift Service implementation
+//! Neo service implementation
 //!
-//! Complete conversion from NeoSwift NeoSwiftService.swift protocol
+//! Neo N3
 //! Provides service interface for Neo RPC operations.
 
 const std = @import("std");
@@ -12,8 +12,8 @@ const Request = @import("request.zig").Request;
 const json_utils = @import("../utils/json_utils.zig");
 const Response = @import("response.zig").Response;
 
-/// Neo Swift service protocol (converted from Swift NeoSwiftService)
-pub const NeoSwiftService = struct {
+/// Neo service protocol
+pub const NeoService = struct {
     /// Service implementation
     service_impl: ServiceImplementation,
 
@@ -30,10 +30,10 @@ pub const NeoSwiftService = struct {
     }
 
     fn initFromUrl(url: []const u8) Self {
-        return initWithAllocator(std.heap.page_allocator, url) catch @panic("NeoSwiftService.init: out of memory");
+        return initWithAllocator(std.heap.page_allocator, url) catch @panic("NeoService.init: out of memory");
     }
 
-    /// Creates Neo Swift service.
+    /// Creates Neo service.
     /// Accepts either a `ServiceImplementation` or an endpoint URL string.
     /// When passed a URL, the service is created with `std.heap.page_allocator`
     /// as a convenience for tests and quick-start usage.
@@ -61,7 +61,7 @@ pub const NeoSwiftService = struct {
             else => {},
         }
 
-        @compileError("Unsupported NeoSwiftService.init argument");
+        @compileError("Unsupported NeoService.init argument");
     }
 
     /// Releases owned resources
@@ -69,7 +69,7 @@ pub const NeoSwiftService = struct {
         self.service_impl.deinit();
     }
 
-    /// Sends request (equivalent to Swift send<T: Response<U>, U>(_ request: Request<T, U>))
+    /// Sends request)
     pub fn send(
         self: *Self,
         comptime T: type,
@@ -330,30 +330,30 @@ pub const ServiceStatistics = struct {
 /// Service factory
 pub const ServiceFactory = struct {
     /// Creates service for MainNet
-    pub fn mainnet(allocator: std.mem.Allocator) !NeoSwiftService {
+    pub fn mainnet(allocator: std.mem.Allocator) !NeoService {
         const http_service = try allocator.create(@import("http_service.zig").HttpService);
         errdefer allocator.destroy(http_service);
         http_service.* = @import("http_service.zig").HttpServiceFactory.mainnet(allocator);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
-        return NeoSwiftService.init(service_impl);
+        return NeoService.init(service_impl);
     }
 
     /// Creates service for TestNet
-    pub fn testnet(allocator: std.mem.Allocator) !NeoSwiftService {
+    pub fn testnet(allocator: std.mem.Allocator) !NeoService {
         const http_service = try allocator.create(@import("http_service.zig").HttpService);
         errdefer allocator.destroy(http_service);
         http_service.* = @import("http_service.zig").HttpServiceFactory.testnet(allocator);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
-        return NeoSwiftService.init(service_impl);
+        return NeoService.init(service_impl);
     }
 
     /// Creates service for local node
-    pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoSwiftService {
+    pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoService {
         const http_service = try allocator.create(@import("http_service.zig").HttpService);
         errdefer allocator.destroy(http_service);
         http_service.* = @import("http_service.zig").HttpServiceFactory.localhost(allocator, port);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
-        return NeoSwiftService.init(service_impl);
+        return NeoService.init(service_impl);
     }
 
     /// Creates custom service
@@ -362,7 +362,7 @@ pub const ServiceFactory = struct {
         endpoint: []const u8,
         timeout_ms: u32,
         max_retries: u32,
-    ) !NeoSwiftService {
+    ) !NeoService {
         var http_service = try allocator.create(@import("http_service.zig").HttpService);
         errdefer allocator.destroy(http_service);
         http_service.* = @import("http_service.zig").HttpService.init(allocator, endpoint, false);
@@ -370,12 +370,12 @@ pub const ServiceFactory = struct {
         http_service.setMaxRetries(max_retries);
 
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
-        return NeoSwiftService.init(service_impl);
+        return NeoService.init(service_impl);
     }
 };
 
-// Tests (converted from Swift NeoSwiftService tests)
-test "NeoSwiftService creation and configuration" {
+// Tests
+test "NeoService creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
@@ -388,7 +388,7 @@ test "NeoSwiftService creation and configuration" {
     }
 
     const service_impl = ServiceImplementation.init(http_service, allocator, false);
-    var neo_service = NeoSwiftService.init(service_impl);
+    var neo_service = NeoService.init(service_impl);
     defer neo_service.deinit();
 
     // Test configuration

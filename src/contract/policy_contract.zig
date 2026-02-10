@@ -1,6 +1,6 @@
 //! Policy Contract implementation
 //!
-//! Complete conversion from NeoSwift PolicyContract.swift
+//! Neo N3 
 //! Handles network policy and fee management operations.
 
 const std = @import("std");
@@ -12,19 +12,19 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const iterator_mod = @import("iterator.zig");
 
-/// Policy contract for network policy management (converted from Swift PolicyContract)
+/// Policy contract for network policy management
 pub const PolicyContract = struct {
-    /// Contract name (matches Swift NAME)
+    /// Contract name
     pub const NAME = "PolicyContract";
 
-    /// Script hash (matches Swift SCRIPT_HASH)
+    /// Script hash
     pub const SCRIPT_HASH: Hash160 = Hash160{ .bytes = constants.NativeContracts.POLICY_CONTRACT };
 
-    /// Method names (match Swift constants)
+    /// Method names
     pub const GET_FEE_PER_BYTE = "getFeePerByte";
     pub const GET_EXEC_FEE_FACTOR = "getExecFeeFactor";
     pub const GET_STORAGE_PRICE = "getStoragePrice";
@@ -40,10 +40,10 @@ pub const PolicyContract = struct {
 
     const Self = @This();
 
-    /// Creates new PolicyContract instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, neo_swift: ?*anyopaque) Self {
+    /// Creates new PolicyContract instance
+    pub fn init(allocator: std.mem.Allocator, client: ?*anyopaque) Self {
         return Self{
-            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, neo_swift),
+            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, client),
         };
     }
 
@@ -65,66 +65,66 @@ pub const PolicyContract = struct {
         return self.smart_contract.isNativeContract();
     }
 
-    /// Gets fee per byte (equivalent to Swift getFeePerByte)
+    /// Gets fee per byte
     pub fn getFeePerByte(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(GET_FEE_PER_BYTE, &[_]ContractParameter{});
     }
 
-    /// Gets execution fee factor (equivalent to Swift getExecFeeFactor)
+    /// Gets execution fee factor
     pub fn getExecFeeFactor(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(GET_EXEC_FEE_FACTOR, &[_]ContractParameter{});
     }
 
-    /// Gets storage price (equivalent to Swift getStoragePrice)
+    /// Gets storage price
     pub fn getStoragePrice(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(GET_STORAGE_PRICE, &[_]ContractParameter{});
     }
 
-    /// Checks if account is blocked (equivalent to Swift isBlocked)
+    /// Checks if account is blocked
     pub fn isBlocked(self: Self, script_hash: Hash160) !bool {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         return try self.smart_contract.callFunctionReturningBool(IS_BLOCKED, &params);
     }
 
-    /// Sets fee per byte (equivalent to Swift setFeePerByte)
+    /// Sets fee per byte
     pub fn setFeePerByte(self: Self, fee_per_byte: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(fee_per_byte)};
         return try self.smart_contract.invokeFunction(SET_FEE_PER_BYTE, &params);
     }
 
-    /// Sets execution fee factor (equivalent to Swift setExecFeeFactor)
+    /// Sets execution fee factor
     pub fn setExecFeeFactor(self: Self, exec_fee_factor: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(exec_fee_factor)};
         return try self.smart_contract.invokeFunction(SET_EXEC_FEE_FACTOR, &params);
     }
 
-    /// Sets storage price (equivalent to Swift setStoragePrice)
+    /// Sets storage price
     pub fn setStoragePrice(self: Self, storage_price: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(storage_price)};
         return try self.smart_contract.invokeFunction(SET_STORAGE_PRICE, &params);
     }
 
-    /// Blocks account (equivalent to Swift blockAccount)
+    /// Blocks account
     pub fn blockAccount(self: Self, script_hash: Hash160) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         return try self.smart_contract.invokeFunction(BLOCK_ACCOUNT, &params);
     }
 
-    /// Unblocks account (equivalent to Swift unblockAccount)
+    /// Unblocks account
     pub fn unblockAccount(self: Self, script_hash: Hash160) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         return try self.smart_contract.invokeFunction(UNBLOCK_ACCOUNT, &params);
     }
 
-    /// Gets all blocked accounts (equivalent to Swift getBlockedAccounts)
+    /// Gets all blocked accounts
     pub fn getBlockedAccounts(self: Self) ![]Hash160 {
         const smart_contract = self.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, "getBlockedAccounts", &[_]ContractParameter{}, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, "getBlockedAccounts", &[_]ContractParameter{}, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -152,7 +152,7 @@ pub const PolicyContract = struct {
 
         var iterator = try iterator_mod.Iterator(Hash160).init(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
             mapper,
@@ -213,14 +213,14 @@ pub const NetworkPolicies = struct {
     }
 };
 
-// Tests (converted from Swift PolicyContract tests)
+// Tests
 test "PolicyContract creation and constants" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const policy_contract = PolicyContract.init(allocator, null);
 
-    // Test constants (equivalent to Swift constant tests)
+    // Test constants
     try testing.expectEqualStrings("PolicyContract", PolicyContract.NAME);
     try testing.expectEqualStrings("getFeePerByte", PolicyContract.GET_FEE_PER_BYTE);
     try testing.expectEqualStrings("setFeePerByte", PolicyContract.SET_FEE_PER_BYTE);
@@ -236,12 +236,12 @@ test "PolicyContract fee operations" {
 
     const policy_contract = PolicyContract.init(allocator, null);
 
-    // Test fee retrieval (equivalent to Swift fee tests)
+    // Test fee retrieval
     try testing.expectError(errors.NeoError.InvalidConfiguration, policy_contract.getFeePerByte());
     try testing.expectError(errors.NeoError.InvalidConfiguration, policy_contract.getExecFeeFactor());
     try testing.expectError(errors.NeoError.InvalidConfiguration, policy_contract.getStoragePrice());
 
-    // Test fee setting (equivalent to Swift set fee tests)
+    // Test fee setting
     var set_fee_tx = try policy_contract.setFeePerByte(1000);
     defer set_fee_tx.deinit();
 
@@ -264,7 +264,7 @@ test "PolicyContract account blocking" {
 
     const policy_contract = PolicyContract.init(allocator, null);
 
-    // Test account blocking operations (equivalent to Swift blocking tests)
+    // Test account blocking operations
     const test_script_hash = Hash160.ZERO;
 
     // Test is blocked check

@@ -7,10 +7,10 @@
 const std = @import("std");
 
 const NeoExpress = @import("neo_express.zig").NeoExpress;
-const NeoSwiftService = @import("../rpc/neo_swift_service.zig").NeoSwiftService;
+const NeoService = @import("../rpc/neo_service.zig").NeoService;
 const Request = @import("../rpc/request.zig").Request;
 const response_aliases = @import("../rpc/response_aliases.zig");
-const complete_responses = @import("../rpc/complete_responses.zig");
+const complete_responses = @import("../rpc/extended_responses.zig");
 const TransactionAttribute = @import("../transaction/transaction_builder.zig").TransactionAttribute;
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
@@ -20,8 +20,8 @@ pub const NeoExpressProtocol = struct {
 
     const Self = @This();
 
-    /// Builds a protocol wrapper from an existing NeoSwift service.
-    pub fn init(service: *NeoSwiftService) Self {
+    /// Builds a protocol wrapper from an existing NeoClient service.
+    pub fn init(service: *NeoService) Self {
         return Self{ .express = NeoExpress.init(service) };
     }
 
@@ -104,9 +104,9 @@ test "NeoExpressProtocol builds express requests" {
 
     http_service.http_client.withSender(mock_send, &mock_context);
 
-    const ServiceImplementation = @import("../rpc/neo_swift_service.zig").ServiceImplementation;
+    const ServiceImplementation = @import("../rpc/neo_service.zig").ServiceImplementation;
     var service_impl = ServiceImplementation.init(&http_service, allocator, false);
-    var neo_service = NeoSwiftService.init(service_impl);
+    var neo_service = NeoService.init(service_impl);
     var protocol = NeoExpressProtocol.init(&neo_service);
 
     const populated = try protocol.expressGetPopulatedBlocks();

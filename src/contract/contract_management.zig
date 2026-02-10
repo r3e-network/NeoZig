@@ -1,6 +1,6 @@
 //! Contract Management implementation
 //!
-//! Complete conversion from NeoSwift ContractManagement.swift
+//! Neo N3 
 //! Handles contract deployment, management, and state operations.
 
 const std = @import("std");
@@ -13,18 +13,18 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const NeoProtocol = @import("../protocol/neo_protocol.zig").NeoProtocol;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const iterator_mod = @import("iterator.zig");
 const responses = @import("../rpc/responses.zig");
 
-/// Contract Management contract (converted from Swift ContractManagement)
+/// Contract Management contract
 pub const ContractManagement = struct {
-    /// Contract name (matches Swift NAME)
+    /// Contract name
     pub const NAME = "ContractManagement";
 
-    /// Method names (match Swift constants)
+    /// Method names
     pub const GET_MINIMUM_DEPLOYMENT_FEE = "getMinimumDeploymentFee";
     pub const SET_MINIMUM_DEPLOYMENT_FEE = "setMinimumDeploymentFee";
     pub const GET_CONTRACT_BY_ID = "getContractById";
@@ -32,7 +32,7 @@ pub const ContractManagement = struct {
     pub const HAS_METHOD = "hasMethod";
     pub const DEPLOY = "deploy";
 
-    /// Script hash (matches Swift SCRIPT_HASH calculation)
+    /// Script hash
     pub const SCRIPT_HASH: Hash160 = Hash160{ .bytes = constants.NativeContracts.CONTRACT_MANAGEMENT };
 
     /// Base smart contract
@@ -40,10 +40,10 @@ pub const ContractManagement = struct {
 
     const Self = @This();
 
-    /// Creates new ContractManagement instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, neo_swift: ?*anyopaque) Self {
+    /// Creates new ContractManagement instance
+    pub fn init(allocator: std.mem.Allocator, client: ?*anyopaque) Self {
         return Self{
-            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, neo_swift),
+            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, client),
         };
     }
 
@@ -65,27 +65,27 @@ pub const ContractManagement = struct {
         return self.smart_contract.isNativeContract();
     }
 
-    /// Gets minimum deployment fee (equivalent to Swift getMinimumDeploymentFee)
+    /// Gets minimum deployment fee
     pub fn getMinimumDeploymentFee(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(GET_MINIMUM_DEPLOYMENT_FEE, &[_]ContractParameter{});
     }
 
-    /// Sets minimum deployment fee (equivalent to Swift setMinimumDeploymentFee)
+    /// Sets minimum deployment fee
     pub fn setMinimumDeploymentFee(self: Self, minimum_fee: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(minimum_fee)};
         return try self.smart_contract.invokeFunction(SET_MINIMUM_DEPLOYMENT_FEE, &params);
     }
 
-    /// Gets contract state by hash (equivalent to Swift getContract)
+    /// Gets contract state by hash
     pub fn getContract(self: Self, contract_hash: Hash160) !ContractState {
         const smart_contract = self.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var protocol = NeoProtocol.init(neo_swift.getService());
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var protocol = NeoProtocol.init(client.getService());
         var request = try protocol.getContractState(contract_hash);
         var response = try request.sendUsing(protocol.service);
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer response.deinit(service_allocator);
 
         const state = response.result orelse return errors.ContractError.InvalidContractState;
@@ -93,13 +93,13 @@ pub const ContractManagement = struct {
         return state;
     }
 
-    /// Gets contract by ID (equivalent to Swift getContractById)
+    /// Gets contract by ID
     pub fn getContractById(self: Self, contract_id: i32) !ContractState {
         const contract_hash = try self.getContractHashById(contract_id);
         return try self.getContract(contract_hash);
     }
 
-    /// Gets contract hash by ID (equivalent to Swift getContractHashById)
+    /// Gets contract hash by ID
     fn getContractHashById(self: Self, contract_id: i32) !Hash160 {
         const params = [_]ContractParameter{ContractParameter.integer(contract_id)};
 
@@ -107,12 +107,12 @@ pub const ContractManagement = struct {
         return try self.smart_contract.callFunctionReturningHash160("getContract", &params);
     }
 
-    /// Gets all contract hashes (equivalent to Swift getContractHashes)
+    /// Gets all contract hashes
     pub fn getContractHashes(self: Self) !ContractIterator {
         return try self.callFunctionReturningIterator(GET_CONTRACT_HASHES, &[_]ContractParameter{});
     }
 
-    /// Gets contract hashes unwrapped (equivalent to Swift getContractHashesUnwrapped)
+    /// Gets contract hashes unwrapped
     pub fn getContractHashesUnwrapped(self: Self) ![]ContractIdentifiers {
         return try self.callFunctionAndUnwrapIterator(
             GET_CONTRACT_HASHES,
@@ -121,7 +121,7 @@ pub const ContractManagement = struct {
         );
     }
 
-    /// Checks if contract has method (equivalent to Swift hasMethod)
+    /// Checks if contract has method
     pub fn hasMethod(self: Self, contract_hash: Hash160, method: []const u8, parameter_count: i32) !bool {
         const params = [_]ContractParameter{
             ContractParameter.hash160(contract_hash),
@@ -132,7 +132,7 @@ pub const ContractManagement = struct {
         return try self.smart_contract.callFunctionReturningBool(HAS_METHOD, &params);
     }
 
-    /// Deploys contract (equivalent to Swift deploy)
+    /// Deploys contract
     pub fn deploy(
         self: Self,
         nef_file: []const u8,
@@ -152,7 +152,7 @@ pub const ContractManagement = struct {
         return try self.smart_contract.invokeFunction(DEPLOY, params.items);
     }
 
-    /// Updates contract (equivalent to Swift update)
+    /// Updates contract
     pub fn update(
         self: Self,
         nef_file: []const u8,
@@ -172,7 +172,7 @@ pub const ContractManagement = struct {
         return try self.smart_contract.invokeFunction("update", params.items);
     }
 
-    /// Destroys contract (equivalent to Swift destroy)
+    /// Destroys contract
     pub fn destroy(self: Self) !TransactionBuilder {
         return try self.smart_contract.invokeFunction("destroy", &[_]ContractParameter{});
     }
@@ -184,12 +184,12 @@ pub const ContractManagement = struct {
         params: []const ContractParameter,
     ) !ContractIterator {
         const smart_contract = self.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -205,7 +205,7 @@ pub const ContractManagement = struct {
 
         return try ContractIterator.initWithIterator(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
         );
@@ -218,12 +218,12 @@ pub const ContractManagement = struct {
         max_items: u32,
     ) ![]ContractIdentifiers {
         const smart_contract = self.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -245,7 +245,7 @@ pub const ContractManagement = struct {
 
         var iterator = try iterator_mod.Iterator(ContractIdentifiers).init(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
             mapper,
@@ -275,9 +275,9 @@ pub const ContractManagement = struct {
     }
 };
 
-/// Contract iterator (converted from Swift Iterator pattern).
+/// Contract iterator.
 /// Iterator traversal is performed via the Neo RPC `traverseiterator` mechanism.
-/// When constructed without a NeoSwift instance, this iterator is empty.
+/// When constructed without a NeoClient instance, this iterator is empty.
 pub const ContractIterator = struct {
     session_id: []const u8,
     iterator_id: []const u8,
@@ -305,7 +305,7 @@ pub const ContractIterator = struct {
 
     pub fn initWithIterator(
         allocator: std.mem.Allocator,
-        neo_swift: *anyopaque,
+        client: *anyopaque,
         session_id: []const u8,
         iterator_id: []const u8,
     ) !Self {
@@ -317,7 +317,7 @@ pub const ContractIterator = struct {
 
         const inner_iter = try iterator_mod.Iterator(ContractIdentifiers).init(
             allocator,
-            neo_swift,
+            client,
             session_id,
             iterator_id,
             mapper,
@@ -378,7 +378,7 @@ pub const ContractIterator = struct {
     }
 };
 
-/// Contract identifiers (converted from Swift ContractState.ContractIdentifiers)
+/// Contract identifiers
 pub const ContractIdentifiers = struct {
     id: i32,
     hash: Hash160,
@@ -429,14 +429,14 @@ pub const ContractMethod = responses.ContractMethod;
 pub const ContractEvent = responses.ContractEvent;
 pub const ContractPermission = responses.ContractPermission;
 
-// Tests (converted from Swift ContractManagement tests)
+// Tests
 test "ContractManagement creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const contract_mgmt = ContractManagement.init(allocator, null);
 
-    // Test script hash (equivalent to Swift SCRIPT_HASH test)
+    // Test script hash
     try testing.expect(!contract_mgmt.smart_contract.getScriptHash().eql(Hash160.ZERO));
 
     // Test constant values
@@ -451,7 +451,7 @@ test "ContractManagement deployment operations" {
 
     const contract_mgmt = ContractManagement.init(allocator, null);
 
-    // Test contract deployment (equivalent to Swift deploy tests)
+    // Test contract deployment
     const nef_file = [_]u8{ 0x4E, 0x45, 0x46, 0x33 }; // Mock NEF file
     const manifest = "{}"; // Mock manifest JSON
 
@@ -475,7 +475,7 @@ test "ContractManagement method validation" {
 
     const contract_mgmt = ContractManagement.init(allocator, null);
 
-    // Test hasMethod functionality (equivalent to Swift hasMethod tests)
+    // Test hasMethod functionality
     const test_hash = Hash160.ZERO;
     try testing.expectError(errors.NeoError.InvalidConfiguration, contract_mgmt.hasMethod(test_hash, "testMethod", 2));
 }
@@ -486,7 +486,7 @@ test "ContractManagement fee operations" {
 
     const contract_mgmt = ContractManagement.init(allocator, null);
 
-    // Test minimum deployment fee operations (equivalent to Swift fee tests)
+    // Test minimum deployment fee operations
     try testing.expectError(errors.NeoError.InvalidConfiguration, contract_mgmt.getMinimumDeploymentFee());
 
     // Test setting minimum fee

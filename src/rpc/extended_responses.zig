@@ -1,7 +1,7 @@
 //! Complete RPC Response Types
 //!
-//! ALL remaining Swift protocol response types converted
-//! Ensures 100% protocol coverage for complete Swift conversion.
+//! Protocol response types
+//! Ensures complete protocol coverage.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -13,7 +13,7 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
-/// Neo account state (converted from Swift NeoAccountState)
+/// Neo account state
 pub const NeoAccountState = struct {
     balance: i64,
     balance_height: ?u32,
@@ -29,12 +29,12 @@ pub const NeoAccountState = struct {
         };
     }
 
-    /// Creates account state with no vote (equivalent to Swift withNoVote)
+    /// Creates account state with no vote
     pub fn withNoVote(balance: i64, update_height: u32) Self {
         return Self.init(balance, update_height, null);
     }
 
-    /// Creates account state with no balance (equivalent to Swift withNoBalance)
+    /// Creates account state with no balance
     pub fn withNoBalance() Self {
         return Self.init(0, null, null);
     }
@@ -73,7 +73,7 @@ pub const NeoAccountState = struct {
     }
 };
 
-/// Neo address response (converted from Swift NeoAddress)
+/// Neo address response
 pub const NeoAddress = struct {
     address: []const u8,
     is_valid: bool,
@@ -97,7 +97,7 @@ pub const NeoAddress = struct {
     }
 };
 
-/// Oracle request (converted from Swift OracleRequest)
+/// Oracle request
 pub const OracleRequest = struct {
     url: []const u8,
     filter: ?[]const u8,
@@ -144,7 +144,7 @@ pub const OracleRequest = struct {
     }
 };
 
-/// Contract method token (converted from Swift ContractMethodToken)
+/// Contract method token
 pub const ContractMethodToken = struct {
     hash: Hash160,
     method: []const u8,
@@ -180,7 +180,7 @@ pub const ContractMethodToken = struct {
     }
 };
 
-/// Name state (converted from Swift NameState)
+/// Name state
 pub const NameState = struct {
     name: []const u8,
     expiration: u32,
@@ -205,7 +205,7 @@ pub const NameState = struct {
     }
 };
 
-/// Neo list plugins response (converted from Swift NeoListPlugins)
+/// Neo list plugins response
 pub const NeoListPlugins = struct {
     plugins: []const Plugin,
 
@@ -308,7 +308,7 @@ pub const NeoListPlugins = struct {
     }
 };
 
-/// Transaction send token (converted from Swift TransactionSendToken)
+/// Transaction send token
 pub const TransactionSendToken = struct {
     asset: Hash160,
     value: i64,
@@ -346,7 +346,7 @@ pub const TransactionSendToken = struct {
     }
 };
 
-/// Neo get unclaimed GAS (converted from Swift NeoGetUnclaimedGas)
+/// Neo get unclaimed GAS
 pub const NeoGetUnclaimedGas = struct {
     unclaimed: []const u8,
     address: []const u8,
@@ -375,7 +375,7 @@ pub const NeoGetUnclaimedGas = struct {
     }
 };
 
-/// Neo get next block validators (converted from Swift NeoGetNextBlockValidators)
+/// Neo get next block validators
 pub const NeoGetNextBlockValidators = struct {
     validators: []const Validator,
 
@@ -445,7 +445,7 @@ pub const NeoGetNextBlockValidators = struct {
     }
 };
 
-/// Neo get state height (converted from Swift NeoGetStateHeight)
+/// Neo get state height
 pub const NeoGetStateHeight = struct {
     local_root_index: u32,
     validated_root_index: u32,
@@ -468,7 +468,7 @@ pub const NeoGetStateHeight = struct {
     }
 };
 
-/// Neo get state root (converted from Swift NeoGetStateRoot)
+/// Neo get state root
 pub const NeoGetStateRoot = struct {
     version: u8,
     index: u32,
@@ -516,7 +516,7 @@ pub const NeoGetStateRoot = struct {
     }
 };
 
-/// Neo witness (converted from Swift NeoWitness)
+/// Neo witness
 pub const NeoWitness = struct {
     invocation: []const u8,
     verification: []const u8,
@@ -562,7 +562,7 @@ pub const NeoWitness = struct {
     }
 };
 
-/// NEP-17 contract (converted from Swift Nep17Contract)
+/// NEP-17 contract
 pub const Nep17Contract = struct {
     script_hash: Hash160,
     symbol: []const u8,
@@ -592,7 +592,7 @@ pub const Nep17Contract = struct {
     }
 };
 
-/// Oracle response code (converted from Swift OracleResponseCode)
+/// Oracle response code
 pub const OracleResponseCode = enum(u8) {
     Success = 0x00,
     ProtocolNotSupported = 0x10,
@@ -652,7 +652,7 @@ pub const OracleResponseCode = enum(u8) {
     }
 };
 
-/// Neo network fee (converted from Swift NeoNetworkFee)
+/// Neo network fee
 pub const NeoNetworkFee = struct {
     network_fee: u64,
 
@@ -670,7 +670,7 @@ pub const NeoNetworkFee = struct {
     }
 };
 
-/// Neo validate address (converted from Swift NeoValidateAddress)
+/// Neo validate address
 pub const NeoValidateAddress = struct {
     address: []const u8,
     is_valid: bool,
@@ -692,7 +692,7 @@ pub const NeoValidateAddress = struct {
     }
 };
 
-/// Populated blocks (converted from Swift PopulatedBlocks)
+/// Populated blocks
 pub const PopulatedBlocks = struct {
     count: u32,
     blocks: []const u32,
@@ -727,7 +727,7 @@ pub const PopulatedBlocks = struct {
     }
 };
 
-/// Record state (converted from Swift RecordState)
+/// Record state
 pub const RecordState = struct {
     name: []const u8,
     record_type: []const u8,
@@ -761,7 +761,7 @@ pub const RecordState = struct {
     }
 };
 
-/// Native contract state (converted from Swift NativeContractState)
+/// Native contract state
 pub const NativeContractState = struct {
     id: i32,
     hash: Hash160,
@@ -820,7 +820,7 @@ pub const NativeContractState = struct {
     }
 };
 
-/// Express contract state (converted from Swift ExpressContractState)
+/// Express contract state
 pub const ExpressContractState = struct {
     hash: Hash160,
     manifest: ContractManifest,
@@ -846,7 +846,7 @@ pub const ExpressContractState = struct {
     }
 };
 
-/// Express shutdown (converted from Swift ExpressShutdown)
+/// Express shutdown
 pub const ExpressShutdown = struct {
     process_id: u32,
 
@@ -864,7 +864,7 @@ pub const ExpressShutdown = struct {
     }
 };
 
-/// Diagnostics (converted from Swift Diagnostics)
+/// Diagnostics
 pub const Diagnostics = struct {
     invocation_id: []const u8,
     invocation_counter: u32,
@@ -896,12 +896,12 @@ const ContractManifest = @import("responses.zig").ContractManifest;
 const ContractNef = @import("responses.zig").ContractNef;
 pub const ContractStorageEntry = @import("protocol_responses.zig").ContractStorageEntry;
 
-// Tests (converted from ALL Swift response tests)
+// Tests
 test "NeoAccountState response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test account state creation (equivalent to Swift NeoAccountState tests)
+    // Test account state creation
     const account_state = NeoAccountState.init(100000000, 12345, "02b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816");
 
     try testing.expectEqual(@as(i64, 100000000), account_state.balance);
@@ -922,12 +922,12 @@ test "Oracle response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test oracle request (equivalent to Swift OracleRequest tests)
+    // Test oracle request
     const oracle_request = OracleRequest.init();
     try testing.expectEqual(@as(usize, 0), oracle_request.url.len);
     try testing.expect(oracle_request.filter == null);
 
-    // Test oracle response codes (equivalent to Swift OracleResponseCode tests)
+    // Test oracle response codes
     try testing.expectEqual(@as(u8, 0x00), OracleResponseCode.Success.getByte());
     try testing.expectEqual(@as(u8, 0x14), OracleResponseCode.NotFound.getByte());
     try testing.expectEqual(@as(u8, 0xff), OracleResponseCode.Error.getByte());
@@ -945,7 +945,7 @@ test "Validator and network response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test validator response (equivalent to Swift validator tests)
+    // Test validator response
     const validator = NeoGetNextBlockValidators.Validator.init();
     try testing.expectEqual(@as(usize, 0), validator.public_key.len);
     try testing.expectEqualStrings("0", validator.votes);
@@ -965,7 +965,7 @@ test "Transaction and contract response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test transaction send token (equivalent to Swift TransactionSendToken tests)
+    // Test transaction send token
     const send_token = TransactionSendToken.init(
         Hash160.ZERO,
         100000000,
@@ -991,7 +991,7 @@ test "State and diagnostic response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test state root response (equivalent to Swift state root tests)
+    // Test state root response
     const state_root = NeoGetStateRoot.init();
     try testing.expectEqual(@as(u8, 0), state_root.version);
     try testing.expectEqual(@as(u32, 0), state_root.index);

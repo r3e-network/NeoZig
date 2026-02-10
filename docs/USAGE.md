@@ -67,7 +67,7 @@ const account = try wallet.createAccount("My Account");
 
 // Pattern 2: Immediate cleanup for large objects in loops
 while (processing) {
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
     // ... use client ...
 }
@@ -135,11 +135,11 @@ pub fn queryBlockchain() !void {
     const allocator = std.heap.page_allocator;
 
     // Create RPC service
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
 
     // Build client
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     // Query block count
@@ -172,8 +172,8 @@ pub fn transferGas(from_private_key: []const u8, to_address_str: []const u8) !vo
     }
 
     // Create RPC client
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, .{});
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+    var client = neo.rpc.NeoClient.build(allocator, &service, .{});
     defer client.deinit();
 
     // Get network magic
@@ -407,19 +407,19 @@ pub fn demonstrateRPC() !void {
     const allocator = std.heap.page_allocator;
 
     // Create service with custom settings
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
 
     // Customize max response size (default: 32 MiB)
     service.setMaxResponseBytes(64 * 1024 * 1024);
 
     // Configure client
-    var config = neo.rpc.NeoSwiftConfig.init();
+    var config = neo.rpc.NeoConfig.init();
     config.timeout_ms = 30000;  // 30 seconds
     config.max_retries = 3;
     config.retry_delay_ms = 1000;
 
     // Build client
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     // Use client...
@@ -452,7 +452,7 @@ const gas_balance = try client.getNep17Balance(
 const std = @import("std");
 const neo = @import("neo-zig");
 
-pub fn invokeContract(client: *neo.rpc.NeoSwift, script_hash: neo.Hash160) !void {
+pub fn invokeContract(client: *neo.rpc.NeoClient, script_hash: neo.Hash160) !void {
     const allocator = std.heap.page_allocator;
 
     // Prepare parameters
@@ -481,7 +481,7 @@ const neo = @import("neo-zig");
 
 pub fn buildBasicTransaction(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     from_hash: neo.Hash160,
     to_hash: neo.Hash160,
 ) !neo.transaction.NeoTransaction {
@@ -528,7 +528,7 @@ const neo = @import("neo-zig");
 
 pub fn buildMultiSigTransaction(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     signers: []const neo.transaction.Signer,
     key_pairs: []const neo.crypto.KeyPair,
 ) !neo.transaction.NeoTransaction {
@@ -572,7 +572,7 @@ const std = @import("std");
 const neo = @import("neo-zig");
 
 pub fn sendTransaction(
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     transaction: *neo.transaction.NeoTransaction,
 ) ![]const u8 {
     const allocator = std.heap.page_allocator;
@@ -603,7 +603,7 @@ const neo = @import("neo-zig");
 
 pub fn nep17Operations(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     wallet_hash: neo.Hash160,
 ) !void {
     // Create token wrapper
@@ -636,7 +636,7 @@ const neo = @import("neo-zig");
 
 pub fn nep11Operations(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     owner_hash: neo.Hash160,
     nft_hash: neo.Hash160,
 ) !void {
@@ -672,7 +672,7 @@ const neo = @import("neo-zig");
 
 pub fn deployContract(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.NeoSwift,
+    client: *neo.rpc.NeoClient,
     nef_bytes: []const u8,
     manifest_json: []const u8,
     sender_hash: neo.Hash160,
@@ -817,7 +817,7 @@ pub fn complexOperation() !void {
 ### Recoverable Errors
 
 ```zig
-pub fn robustRPCRequest(client: *neo.rpc.NeoSwift) !u32 {
+pub fn robustRPCRequest(client: *neo.rpc.NeoClient) !u32 {
     const result = client.getBlockCount() catch |err| {
         switch (err) {
             error.RequestTimeout => {
@@ -865,7 +865,7 @@ std.log.info("Key generated successfully", .{});
 
 ```zig
 // Use HTTPS for production
-var service = neo.rpc.NeoSwiftService.init("https://mainnet1.neo.coz.io:443");
+var service = neo.rpc.NeoService.init("https://mainnet1.neo.coz.io:443");
 ```
 
 ### Performance

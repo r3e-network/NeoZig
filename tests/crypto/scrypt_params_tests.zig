@@ -1,6 +1,6 @@
 //! Scrypt Parameters Tests
 //!
-//! Complete conversion from NeoSwift ScryptParamsTests.swift
+//! Scrypt parameters tests
 //! Tests scrypt parameter validation and configuration.
 
 const std = @import("std");

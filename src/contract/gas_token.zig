@@ -1,6 +1,6 @@
 //! GAS Token implementation
 //!
-//! Complete conversion from NeoSwift GasToken.swift
+//! Neo N3 
 //! Represents the native GAS token contract.
 
 const std = @import("std");
@@ -10,18 +10,18 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const FungibleToken = @import("fungible_token.zig").FungibleToken;
 
-/// GAS token contract (converted from Swift GasToken)
+/// GAS token contract
 pub const GasToken = struct {
-    /// Contract name (matches Swift NAME)
+    /// Contract name
     pub const NAME = "GasToken";
 
-    /// Script hash (matches Swift SCRIPT_HASH)
+    /// Script hash
     pub const SCRIPT_HASH: Hash160 = Hash160{ .bytes = constants.NativeContracts.GAS_TOKEN };
 
-    /// Token decimals (matches Swift DECIMALS)
+    /// Token decimals
     pub const DECIMALS: u8 = 8;
 
-    /// Token symbol (matches Swift SYMBOL)
+    /// Token symbol
     pub const SYMBOL = "GAS";
 
     /// Base fungible token
@@ -29,25 +29,25 @@ pub const GasToken = struct {
 
     const Self = @This();
 
-    /// Creates new GasToken instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, neo_swift: ?*anyopaque) Self {
+    /// Creates new GasToken instance
+    pub fn init(allocator: std.mem.Allocator, client: ?*anyopaque) Self {
         return Self{
-            .fungible_token = FungibleToken.init(allocator, SCRIPT_HASH, neo_swift),
+            .fungible_token = FungibleToken.init(allocator, SCRIPT_HASH, client),
         };
     }
 
-    /// Gets token name (equivalent to Swift getName() override)
+    /// Gets token name override)
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return NAME;
     }
 
-    /// Gets token symbol (equivalent to Swift getSymbol() override)
+    /// Gets token symbol override)
     pub fn getSymbol(self: Self) ![]const u8 {
         return try self.fungible_token.getSymbol();
     }
 
-    /// Gets token decimals (equivalent to Swift getDecimals() override)
+    /// Gets token decimals override)
     pub fn getDecimals(self: Self) !u8 {
         return try self.fungible_token.getDecimals();
     }
@@ -89,19 +89,19 @@ pub const GasToken = struct {
     }
 };
 
-// Tests (converted from Swift GasToken tests)
+// Tests
 test "GasToken constants and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const gas_token = GasToken.init(allocator, null);
 
-    // Test constant values (equivalent to Swift constant tests)
+    // Test constant values
     try testing.expectEqualStrings("GasToken", try gas_token.getName());
     try testing.expectError(errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
     try testing.expectError(errors.NeoError.InvalidConfiguration, gas_token.getDecimals());
 
-    // Test script hash (equivalent to Swift SCRIPT_HASH test)
+    // Test script hash
     const script_hash = gas_token.getScriptHash();
     try testing.expect(std.mem.eql(u8, &constants.NativeContracts.GAS_TOKEN, &script_hash.toArray()));
 }
@@ -112,11 +112,11 @@ test "GasToken operations" {
 
     const gas_token = GasToken.init(allocator, null);
 
-    // Test balance operations (equivalent to Swift balance tests)
+    // Test balance operations
     try testing.expectError(errors.NeoError.InvalidConfiguration, gas_token.getBalanceOf(Hash160.ZERO));
     try testing.expectError(errors.NeoError.InvalidConfiguration, gas_token.getTotalSupply());
 
-    // Test transfer operations (equivalent to Swift transfer tests)
+    // Test transfer operations
     var transfer_tx = try gas_token.transfer(Hash160.ZERO, Hash160.ZERO, 100000000, null);
     defer transfer_tx.deinit();
 

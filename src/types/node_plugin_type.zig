@@ -1,6 +1,6 @@
 //! Node Plugin Type implementation
 //!
-//! Complete conversion from NeoSwift NodePluginType.swift
+//! Neo N3 
 //! Defines Neo node plugin types and capabilities.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const std = @import("std");
 const errors = @import("../core/errors.zig");
 const json_utils = @import("../utils/json_utils.zig");
 
-/// Neo node plugin type (converted from Swift NodePluginType)
+/// Neo node plugin type
 pub const NodePluginType = enum {
     ApplicationLogs,
     CoreMetrics,
@@ -25,7 +25,7 @@ pub const NodePluginType = enum {
 
     const Self = @This();
 
-    /// Gets raw string value (equivalent to Swift .rawValue property)
+    /// Gets raw string value
     pub fn getRawValue(self: Self) []const u8 {
         return switch (self) {
             .ApplicationLogs => "ApplicationLogs",
@@ -43,7 +43,7 @@ pub const NodePluginType = enum {
         };
     }
 
-    /// Creates from string value (equivalent to Swift init(rawValue:))
+    /// Creates from string value)
     pub fn fromRawValue(raw_value: []const u8) ?Self {
         if (std.mem.eql(u8, raw_value, "ApplicationLogs")) return .ApplicationLogs;
         if (std.mem.eql(u8, raw_value, "CoreMetrics")) return .CoreMetrics;
@@ -61,7 +61,7 @@ pub const NodePluginType = enum {
         return null;
     }
 
-    /// Gets all plugin types (equivalent to Swift CaseIterable)
+    /// Gets all plugin types
     pub fn getAllCases() []const Self {
         return &[_]Self{
             .ApplicationLogs,
@@ -140,11 +140,11 @@ pub const NodePluginType = enum {
     }
 };
 
-// Tests (converted from Swift NodePluginType tests)
+// Tests
 test "NodePluginType raw values" {
     const testing = std.testing;
 
-    // Test raw value conversion (equivalent to Swift rawValue tests)
+    // Test raw value conversion
     try testing.expectEqualStrings("ApplicationLogs", NodePluginType.ApplicationLogs.getRawValue());
     try testing.expectEqualStrings("CoreMetrics", NodePluginType.CoreMetrics.getRawValue());
     try testing.expectEqualStrings("LevelDBStore", NodePluginType.LevelDbStore.getRawValue());
@@ -155,7 +155,7 @@ test "NodePluginType raw values" {
 test "NodePluginType conversion from raw values" {
     const testing = std.testing;
 
-    // Test creation from raw value (equivalent to Swift init(rawValue:) tests)
+    // Test creation from raw value tests)
     try testing.expectEqual(NodePluginType.ApplicationLogs, NodePluginType.fromRawValue("ApplicationLogs").?);
     try testing.expectEqual(NodePluginType.CoreMetrics, NodePluginType.fromRawValue("CoreMetrics").?);
     try testing.expectEqual(NodePluginType.RpcServerPlugin, NodePluginType.fromRawValue("RpcServerPlugin").?);
@@ -192,7 +192,7 @@ test "NodePluginType functionality classification" {
 test "NodePluginType enumeration" {
     const testing = std.testing;
 
-    // Test all cases enumeration (equivalent to Swift allCases tests)
+    // Test all cases enumeration
     const all_cases = NodePluginType.getAllCases();
     try testing.expectEqual(@as(usize, 12), all_cases.len);
 

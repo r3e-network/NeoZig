@@ -1,6 +1,6 @@
 //! Neo Script Builder
 //!
-//! Complete conversion from NeoSwift ScriptBuilder.swift
+//! Neo N3 
 //! Essential for contract calls and transaction building.
 
 const std = @import("std");
@@ -12,13 +12,13 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 pub const InteropService = @import("interop_service.zig").InteropService;
 
-/// Script builder for Neo VM scripts (converted from Swift ScriptBuilder)
+/// Script builder for Neo VM scripts
 pub const ScriptBuilder = struct {
     writer: BinaryWriter,
 
     const Self = @This();
 
-    /// Creates new script builder (equivalent to Swift init())
+    /// Creates new script builder)
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .writer = BinaryWriter.init(allocator),
@@ -30,7 +30,7 @@ pub const ScriptBuilder = struct {
         self.writer.deinit();
     }
 
-    /// Appends OpCodes (equivalent to Swift opCode(_ opCodes: OpCode...))
+    /// Appends OpCodes)
     pub fn opCode(self: *Self, op_codes: []const OpCode) !*Self {
         for (op_codes) |op| {
             try self.writer.writeByte(@intFromEnum(op));
@@ -38,14 +38,14 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Appends OpCode with argument (equivalent to Swift opCode(_ opCode: OpCode, _ argument: Bytes))
+    /// Appends OpCode with argument)
     pub fn opCodeWithArg(self: *Self, op: OpCode, argument: []const u8) !*Self {
         try self.writer.writeByte(@intFromEnum(op));
         try self.writer.writeBytes(argument);
         return self;
     }
 
-    /// Contract call (equivalent to Swift contractCall method)
+    /// Contract call
     pub fn contractCall(
         self: *Self,
         script_hash: Hash160,
@@ -57,29 +57,29 @@ pub const ScriptBuilder = struct {
             return errors.throwIllegalArgument("Method name cannot be empty");
         }
 
-        // Push parameters (equivalent to Swift pushParams)
+        // Push parameters
         if (params.len == 0) {
             _ = try self.opCode(&[_]OpCode{.NEWARRAY0});
         } else {
             _ = try self.pushParams(params);
         }
 
-        // Push call flags (equivalent to Swift pushInteger)
+        // Push call flags
         const flags = call_flags orelse CallFlags.All;
         _ = try self.pushInteger(@intFromEnum(flags));
 
-        // Push method name (equivalent to Swift pushData)
+        // Push method name
         _ = try self.pushData(method);
 
-        // Push contract hash (equivalent to Swift pushData with little endian)
+        // Push contract hash
         const little_endian_hash = script_hash.toLittleEndianArray();
         _ = try self.pushData(&little_endian_hash);
 
-        // System call (equivalent to Swift sysCall(.systemContractCall))
+        // System call)
         return try self.sysCall(.SystemContractCall);
     }
 
-    /// System call (equivalent to Swift sysCall(_ operation: InteropService))
+    /// System call)
     pub fn sysCall(self: *Self, operation: InteropService) !*Self {
         _ = try self.opCode(&[_]OpCode{.SYSCALL});
 
@@ -90,9 +90,9 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Push contract parameters (equivalent to Swift pushParams)
+    /// Push contract parameters
     pub fn pushParams(self: *Self, params: []const ContractParameter) !*Self {
-        // Push parameters in the provided order (matches NeoSwift).
+        // Push parameters in the provided order (matches NeoClient).
         for (params) |param| {
             _ = try self.pushParam(param);
         }
@@ -104,7 +104,7 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Push single parameter (equivalent to Swift parameter handling)
+    /// Push single parameter
     pub fn pushParam(self: *Self, param: ContractParameter) !*Self {
         switch (param) {
             .Any, .Void => {
@@ -165,17 +165,17 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Pushes an array of parameters (equivalent to Swift pushArray)
+    /// Pushes an array of parameters
     pub fn pushArray(self: *Self, items: []const ContractParameter) !*Self {
         return try self.pushParam(ContractParameter.array(items));
     }
 
-    /// Pushes a boolean value (equivalent to Swift pushBoolean)
+    /// Pushes a boolean value
     pub fn pushBoolean(self: *Self, value: bool) !*Self {
         return try self.pushParam(ContractParameter.boolean(value));
     }
 
-    /// Push integer value (equivalent to Swift pushInteger)
+    /// Push integer value
     pub fn pushInteger(self: *Self, value: i64) !*Self {
         if (value == 0) {
             _ = try self.opCode(&[_]OpCode{.PUSH0});
@@ -208,7 +208,7 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Push data (equivalent to Swift pushData)
+    /// Push data
     pub fn pushData(self: *Self, data: []const u8) !*Self {
         if (data.len <= 255) {
             _ = try self.opCode(&[_]OpCode{.PUSHDATA1});
@@ -226,7 +226,7 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Build verification script for single public key (equivalent to Swift buildVerificationScript)
+    /// Build verification script for single public key
     pub fn buildVerificationScript(public_key: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
@@ -237,7 +237,7 @@ pub const ScriptBuilder = struct {
         return try allocator.dupe(u8, builder.toScript());
     }
 
-    /// Build multi-sig verification script (equivalent to Swift buildVerificationScript for multi-sig)
+    /// Build multi-sig verification script
     pub fn buildMultiSigVerificationScript(
         public_keys: []const []const u8,
         signing_threshold: u32,
@@ -251,7 +251,7 @@ pub const ScriptBuilder = struct {
             return errors.throwIllegalArgument("Invalid signing threshold");
         }
 
-        // Neo requires public keys to be sorted lexicographically (matches NeoSwift).
+        // Neo requires public keys to be sorted lexicographically (matches NeoClient).
         var sorted_keys = try allocator.alloc([]const u8, public_keys.len);
         defer allocator.free(sorted_keys);
         for (public_keys, 0..) |key, i| sorted_keys[i] = key;
@@ -302,17 +302,17 @@ pub const ScriptBuilder = struct {
         return try allocator.dupe(u8, builder.toScript());
     }
 
-    /// Gets the built script (equivalent to Swift toArray())
+    /// Gets the built script)
     pub fn toScript(self: *Self) []const u8 {
         return self.writer.toSlice();
     }
 
-    /// Gets script size (equivalent to Swift size property)
+    /// Gets script size
     pub fn size(self: *Self) usize {
         return self.writer.toSlice().len;
     }
 
-    /// Resets the builder (equivalent to Swift reset)
+    /// Resets the builder
     pub fn reset(self: *Self) void {
         self.writer.clear();
     }
@@ -351,7 +351,7 @@ const OpCode = @import("op_code.zig").OpCode;
 
 const CallFlags = @import("../types/call_flags.zig").CallFlags;
 
-// Tests (converted from Swift ScriptBuilder tests)
+// Tests
 test "ScriptBuilder basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -359,7 +359,7 @@ test "ScriptBuilder basic operations" {
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test OpCode appending (equivalent to Swift opCode tests)
+    // Test OpCode appending
     _ = try builder.opCode(&[_]OpCode{ .PUSH1, .PUSH2, .ADD });
 
     const script = builder.toScript();
@@ -376,7 +376,7 @@ test "ScriptBuilder contract call" {
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test contract call (equivalent to Swift contractCall test)
+    // Test contract call
     const contract_hash = Hash160.ZERO;
     const params = [_]ContractParameter{
         ContractParameter.string("test"),
@@ -396,7 +396,7 @@ test "ScriptBuilder verification scripts" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test single-sig verification script (equivalent to Swift buildVerificationScript)
+    // Test single-sig verification script
     const public_key = [_]u8{0x02} ++ [_]u8{0xAB} ** 32; // Mock compressed public key
     const verification_script = try ScriptBuilder.buildVerificationScript(&public_key, allocator);
     defer allocator.free(verification_script);
@@ -419,7 +419,7 @@ test "ScriptBuilder data operations" {
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test pushInteger (equivalent to Swift pushInteger tests)
+    // Test pushInteger
     _ = try builder.pushInteger(0); // Should use PUSH0
     _ = try builder.pushInteger(5); // Should use PUSH5
     _ = try builder.pushInteger(100); // Should use PUSHDATA
@@ -437,7 +437,7 @@ test "ScriptBuilder parameter handling" {
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test various parameter types (equivalent to Swift parameter tests)
+    // Test various parameter types
     const bool_param = ContractParameter.boolean(true);
     const int_param = ContractParameter.integer(12345);
     const str_param = ContractParameter.string("Hello Neo");

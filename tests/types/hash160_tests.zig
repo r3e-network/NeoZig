@@ -1,6 +1,6 @@
 //! Hash160 Tests
 //!
-//! Complete conversion from NeoSwift Hash160Tests.swift
+//! Hash160 tests
 //! Tests Hash160 creation, validation, serialization, and operations.
 
 const std = @import("std");
@@ -11,11 +11,11 @@ const Hash160 = neo.Hash160;
 const BinaryWriter = neo.serialization.BinaryWriter;
 const BinaryReader = neo.serialization.BinaryReader;
 
-// Test creating Hash160 from valid hash strings (converted from Swift testFromValidHash)
+// Test creating Hash160 from valid hash strings
 test "Hash160 from valid hash strings" {
     const allocator = testing.allocator;
 
-    // Test hash creation with 0x prefix (equivalent to Swift Hash160("0x...") test)
+    // Test hash creation with 0x prefix test)
     const hash_with_prefix = try Hash160.initWithString("0x23ba2703c53263e8d6e522dc32203339dcd8eee9");
     const hash_string_with_prefix = try hash_with_prefix.toString(allocator);
     defer allocator.free(hash_string_with_prefix);
@@ -29,7 +29,7 @@ test "Hash160 from valid hash strings" {
 
     try testing.expectEqualStrings(expected_without_prefix, actual_without_prefix);
 
-    // Test hash creation without 0x prefix (equivalent to Swift Hash160("...") test)
+    // Test hash creation without 0x prefix test)
     const hash_without_prefix = try Hash160.initWithString("23ba2703c53263e8d6e522dc32203339dcd8eee9");
     const hash_string_without_prefix = try hash_without_prefix.toString(allocator);
     defer allocator.free(hash_string_without_prefix);
@@ -45,9 +45,9 @@ test "Hash160 from valid hash strings" {
     try testing.expect(hash_with_prefix.eql(hash_without_prefix));
 }
 
-// Test Hash160 creation error conditions (converted from Swift testCreationThrows)
+// Test Hash160 creation error conditions
 test "Hash160 creation error conditions" {
-    // Test invalid hex characters (equivalent to Swift "String argument is not hexadecimal" errors)
+    // Test invalid hex characters
     const invalid_hex_cases = [_][]const u8{
         "g3ba2703c53263e8d6e522dc32203339dcd8eee9", // Invalid hex character 'g'
         "0x23ba2703c53263e8d6e522dc32203339dcd8eee", // Too short (19 bytes)
@@ -58,7 +58,7 @@ test "Hash160 creation error conditions" {
         try testing.expectError(neo.NeoError.IllegalArgument, Hash160.initWithString(invalid_hex));
     }
 
-    // Test wrong length cases (equivalent to Swift "Hash must be 20 bytes long" errors)
+    // Test wrong length cases
     const wrong_length_cases = [_][]const u8{
         "23ba2703c53263e8d6e522dc32203339dcd8ee", // 19 bytes
         "c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b", // 32 bytes (Hash256 length)
@@ -69,18 +69,18 @@ test "Hash160 creation error conditions" {
     }
 }
 
-// Test Hash160 array conversion (converted from Swift testToArray)
+// Test Hash160 array conversion
 test "Hash160 array conversion" {
     const allocator = testing.allocator;
 
-    // Test toLittleEndianArray (equivalent to Swift toLittleEndianArray)
+    // Test toLittleEndianArray
     const hash_string = "23ba2703c53263e8d6e522dc32203339dcd8eee9";
     const hash160 = try Hash160.initWithString(hash_string);
 
     // Get little-endian array
     const little_endian_array = hash160.toLittleEndianArray();
 
-    // Convert expected bytes (equivalent to Swift bytesFromHex.reversed())
+    // Convert expected bytes)
     const expected_bytes = try neo.utils.StringUtils.bytesFromHex(hash_string, allocator);
     defer allocator.free(expected_bytes);
 
@@ -97,24 +97,24 @@ test "Hash160 array conversion" {
     try testing.expectEqualSlices(u8, expected_bytes, slice_array);
 }
 
-// Test Hash160 serialization and deserialization (converted from Swift testSerializeAndDeserialize)
+// Test Hash160 serialization and deserialization
 test "Hash160 serialization and deserialization" {
     const allocator = testing.allocator;
 
-    // Test serialization (equivalent to Swift serialize test)
+    // Test serialization
     const hash_string = "23ba2703c53263e8d6e522dc32203339dcd8eee9";
     const hash160 = try Hash160.initWithString(hash_string);
 
-    // Create binary writer (equivalent to Swift BinaryWriter())
+    // Create binary writer)
     var writer = BinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Serialize hash (equivalent to Swift .serialize(writer))
+    // Serialize hash)
     try hash160.serialize(&writer);
 
     const serialized_data = writer.toSlice();
 
-    // Expected data is little-endian bytes (equivalent to Swift data.reversed())
+    // Expected data is little-endian bytes)
     const expected_bytes = try neo.utils.StringUtils.bytesFromHex(hash_string, allocator);
     defer allocator.free(expected_bytes);
 
@@ -122,14 +122,14 @@ test "Hash160 serialization and deserialization" {
     defer allocator.free(expected_little_endian);
     std.mem.reverse(u8, expected_little_endian);
 
-    // Verify serialized data matches expected (equivalent to Swift XCTAssertEqual(writer.toSlice(), data))
+    // Verify serialized data matches expected, data))
     try testing.expectEqualSlices(u8, expected_little_endian, serialized_data);
 
-    // Test deserialization (equivalent to Swift Hash160.from(data))
+    // Test deserialization)
     var reader = BinaryReader.init(serialized_data);
     const deserialized_hash = try Hash160.deserialize(&reader);
 
-    // Verify deserialized hash matches original (equivalent to Swift XCTAssertEqual)
+    // Verify deserialized hash matches original
     try testing.expect(hash160.eql(deserialized_hash));
 
     const deserialized_string = try deserialized_hash.toString(allocator);

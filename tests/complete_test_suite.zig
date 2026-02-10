@@ -1,6 +1,6 @@
 //! Complete Test Suite
 //!
-//! Comprehensive tests covering ALL converted Swift functionality
+//! Comprehensive Neo N3 SDK tests
 //! Validates 100% of implemented Neo Zig SDK features.
 
 const std = @import("std");
@@ -8,14 +8,14 @@ const std = @import("std");
 const neo = @import("neo-zig");
 const json_utils = @import("../src/utils/json_utils.zig");
 
-// Complete cryptographic test suite (converted from ALL Swift crypto tests)
+// Complete cryptographic test suite
 test "complete cryptographic functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔐 Testing Complete Cryptographic Suite...", .{});
 
-    // Test all key operations (ECKeyPairTests.swift equivalent)
+    // Test all key operations
     const key_pair = try neo.crypto.generateKeyPair(true);
     defer {
         var mutable_key_pair = key_pair;
@@ -25,14 +25,14 @@ test "complete cryptographic functionality" {
     try testing.expect(key_pair.isValid());
     try testing.expect(key_pair.public_key.compressed);
 
-    // Test WIF operations (WIFTests.swift equivalent)
+    // Test WIF operations
     const wif_string = try neo.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
     defer allocator.free(wif_string);
 
     const decoded_wif = try neo.crypto.decodeWIF(wif_string, allocator);
     try testing.expect(decoded_wif.private_key.eql(key_pair.private_key));
 
-    // Test NEP-2 encryption (NEP2Tests.swift equivalent)
+    // Test NEP-2 encryption
     const password = "test_password_123";
     const nep2_params = neo.wallet.ScryptParams.init(512, 1, 1); // Light params for testing
 
@@ -47,7 +47,7 @@ test "complete cryptographic functionality" {
 
     try testing.expect(key_pair.private_key.eql(decrypted_key_pair.private_key));
 
-    // Test BIP32 HD wallets (Bip32ECKeyPairTests.swift equivalent)
+    // Test BIP32 HD wallets
     const bip32_seed = "bip32 test seed for HD wallet generation";
     const master_hd_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
 
@@ -61,14 +61,14 @@ test "complete cryptographic functionality" {
     std.log.info("✅ All cryptographic tests passed", .{});
 }
 
-// Complete transaction test suite (converted from ALL Swift transaction tests)
+// Complete transaction test suite
 test "complete transaction functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("💰 Testing Complete Transaction Suite...", .{});
 
-    // Test transaction builder (TransactionBuilderTests.swift equivalent)
+    // Test transaction builder
     var builder = neo.transaction.TransactionBuilder.init(allocator);
     defer builder.deinit();
 
@@ -109,14 +109,14 @@ test "complete transaction functionality" {
     std.log.info("✅ All transaction tests passed", .{});
 }
 
-// Complete smart contract test suite (converted from ALL Swift contract tests)
+// Complete smart contract test suite
 test "complete smart contract functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("📝 Testing Complete Smart Contract Suite...", .{});
 
-    // Test SmartContract base class (SmartContractTests.swift equivalent)
+    // Test SmartContract base class
     const contract_hash = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const smart_contract = neo.contract.SmartContract.init(allocator, contract_hash, null);
 
@@ -129,7 +129,7 @@ test "complete smart contract functionality" {
 
     try testing.expect(invoke_tx.getScript() != null);
 
-    // Test ContractManagement (ContractManagementTests.swift equivalent)
+    // Test ContractManagement
     const contract_mgmt = neo.contract.ContractManagement.init(allocator, null);
 
     const nef_file = [_]u8{ 0x4E, 0x45, 0x46, 0x33 };
@@ -140,7 +140,7 @@ test "complete smart contract functionality" {
 
     try testing.expect(deploy_tx.getScript() != null);
 
-    // Test GasToken (GasTokenTests.swift equivalent)
+    // Test GasToken
     const gas_token = neo.contract.GasToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
@@ -151,7 +151,7 @@ test "complete smart contract functionality" {
 
     try testing.expect(gas_transfer.getScript() != null);
 
-    // Test NeoToken (NeoTokenTests.swift equivalent)
+    // Test NeoToken
     const neo_token = neo.contract.NeoToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, neo_token.getSymbol());
@@ -166,14 +166,14 @@ test "complete smart contract functionality" {
     std.log.info("✅ All smart contract tests passed", .{});
 }
 
-// Complete wallet test suite (converted from ALL Swift wallet tests)
+// Complete wallet test suite
 test "complete wallet functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("💼 Testing Complete Wallet Suite...", .{});
 
-    // Test Wallet base class (WalletTests.swift equivalent)
+    // Test Wallet base class
     var wallet = neo.wallet.Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -184,7 +184,7 @@ test "complete wallet functionality" {
     try testing.expect(wallet.containsAccount(account));
     try testing.expect(wallet.isDefault(account));
 
-    // Test NEP-6 wallet (NEP6WalletTests.swift equivalent)
+    // Test NEP-6 wallet
     const nep6_accounts = [_]neo.wallet.NEP6Account{};
     const nep6_wallet = neo.wallet.NEP6Wallet.init(
         "NEP6 Test Wallet",
@@ -206,29 +206,29 @@ test "complete wallet functionality" {
     std.log.info("✅ All wallet tests passed", .{});
 }
 
-// Complete RPC test suite (converted from ALL Swift RPC tests)
+// Complete RPC test suite
 test "complete RPC functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🌐 Testing Complete RPC Suite...", .{});
 
-    // Test RPC client creation (NeoSwiftTests.swift equivalent)
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    // Test RPC client creation
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
 
-    // Test RPC request creation (RequestTests.swift equivalent)
+    // Test RPC request creation
     const best_block_request = try client.getBestBlockHash();
     try testing.expectEqualStrings("getbestblockhash", best_block_request.method);
 
     const block_count_request = try client.getBlockCount();
     try testing.expectEqualStrings("getblockcount", block_count_request.method);
 
-    // Test response type creation (ResponseTests.swift equivalent)
+    // Test response type creation
     const block = neo.rpc.NeoBlock.initDefault();
     try testing.expect(block.hash.eql(neo.Hash256.ZERO));
 
@@ -241,14 +241,14 @@ test "complete RPC functionality" {
     std.log.info("✅ All RPC tests passed", .{});
 }
 
-// Complete script building test suite (converted from Swift script tests)
+// Complete script building test suite
 test "complete script building functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🏗️ Testing Complete Script Building Suite...", .{});
 
-    // Test ScriptBuilder (ScriptBuilderTests.swift equivalent)
+    // Test ScriptBuilder
     var builder = neo.script.ScriptBuilder.init(allocator);
     defer builder.deinit();
 
@@ -271,7 +271,7 @@ test "complete script building functionality" {
     const contract_script = builder.toScript();
     try testing.expect(contract_script.len > 0);
 
-    // Test OpCode properties (OpCodeTests.swift equivalent)
+    // Test OpCode properties
     try testing.expectEqual(@as(u8, 0x10), @intFromEnum(neo.script.OpCode.PUSH0));
     try testing.expectEqual(@as(u8, 0x41), @intFromEnum(neo.script.OpCode.SYSCALL));
 
@@ -281,14 +281,14 @@ test "complete script building functionality" {
     std.log.info("✅ All script building tests passed", .{});
 }
 
-// Complete utility test suite (converted from ALL Swift utility tests)
+// Complete utility test suite
 test "complete utility functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔧 Testing Complete Utility Suite...", .{});
 
-    // Test string utilities (StringTests.swift equivalent)
+    // Test string utilities
     const hex_string = "1234abcd";
     try testing.expect(neo.utils.StringUtils.isValidHex(hex_string));
 
@@ -299,7 +299,7 @@ test "complete utility functionality" {
     defer allocator.free(bytes_from_hex);
     try testing.expectEqual(@as(usize, 4), bytes_from_hex.len);
 
-    // Test array utilities (ArrayTests.swift equivalent)
+    // Test array utilities
     const test_array = [_]i32{ 1, 2, 3 };
     const with_appended = try neo.utils.ArrayUtils.appendElement(i32, &test_array, 4, allocator);
     defer allocator.free(with_appended);
@@ -307,7 +307,7 @@ test "complete utility functionality" {
     const expected = [_]i32{ 1, 2, 3, 4 };
     try testing.expectEqualSlices(i32, &expected, with_appended);
 
-    // Test Base64 utilities (Base64Tests.swift equivalent)
+    // Test Base64 utilities
     const test_data = "Hello Neo";
     const base64_encoded = try neo.utils.StringUtils.base64Encoded(test_data, allocator);
     defer allocator.free(base64_encoded);
@@ -320,14 +320,14 @@ test "complete utility functionality" {
     std.log.info("✅ All utility tests passed", .{});
 }
 
-// Complete type system test suite (converted from ALL Swift type tests)
+// Complete type system test suite
 test "complete type system functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("📋 Testing Complete Type System...", .{});
 
-    // Test Hash160 (Hash160Tests.swift equivalent)
+    // Test Hash160
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const hash160_string = try hash160.string(allocator);
     defer allocator.free(hash160_string);
@@ -341,14 +341,14 @@ test "complete type system functionality" {
     const recovered_hash = try neo.Hash160.fromAddress(address, allocator);
     try testing.expect(hash160.eql(recovered_hash));
 
-    // Test Hash256 (Hash256Tests.swift equivalent)
+    // Test Hash256
     const hash256 = try neo.Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     const hash256_string = try hash256.string(allocator);
     defer allocator.free(hash256_string);
 
     try testing.expectEqualStrings("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", hash256_string);
 
-    // Test ContractParameter (ContractParameterTests.swift equivalent)
+    // Test ContractParameter
     const bool_param = neo.ContractParameter.boolean(true);
     const int_param = neo.ContractParameter.integer(12345);
     const string_param = neo.ContractParameter.string("Hello Neo");
@@ -365,14 +365,14 @@ test "complete type system functionality" {
     std.log.info("✅ All type system tests passed", .{});
 }
 
-// Complete serialization test suite (converted from ALL Swift serialization tests)
+// Complete serialization test suite
 test "complete serialization functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔧 Testing Complete Serialization Suite...", .{});
 
-    // Test BinaryWriter/BinaryReader (BinaryReaderTests.swift + BinaryWriterTests.swift equivalent)
+    // Test BinaryWriter/BinaryReader
     var writer = neo.serialization.BinaryWriter.init(allocator);
     defer writer.deinit();
 
@@ -543,62 +543,62 @@ test "complete security and safety validation" {
 }
 
 // /// Complete API compatibility validation
-test "complete Swift API compatibility validation" {
+test "complete API validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    std.log.info("🔗 Validating Complete Swift API Compatibility...", .{});
+    std.log.info("🔗 Validating API Compatibility...", .{});
 
-    // Validate all major Swift classes have Zig equivalents
+    // Validate all major types have correct equivalents
 
-    // Hash types (Swift Hash160, Hash256)
+    // Hash types
     const hash160 = neo.Hash160.ZERO;
     const hash256 = neo.Hash256.ZERO;
     try testing.expect(hash160.eql(neo.Hash160.init()));
     try testing.expect(hash256.eql(neo.Hash256.init()));
 
-    // Crypto types (Swift ECKeyPair, PrivateKey, etc.)
+    // Crypto types
     const private_key = neo.crypto.generatePrivateKey();
     const public_key = try private_key.getPublicKey(true);
     try testing.expect(private_key.isValid());
     try testing.expect(public_key.isValid());
 
-    // Transaction types (Swift TransactionBuilder, Transaction, etc.)
+    // Transaction types
     var tx_builder = neo.transaction.TransactionBuilder.init(allocator);
     defer tx_builder.deinit();
 
     _ = tx_builder.version(0);
     _ = try tx_builder.nonce(12345);
 
-    // Contract types (Swift SmartContract, ContractManagement, etc.)
+    // Contract types
     const smart_contract = neo.contract.SmartContract.init(allocator, neo.Hash160.ZERO, null);
     try testing.expect(smart_contract.getScriptHash().eql(neo.Hash160.ZERO));
 
     const gas_token = neo.contract.GasToken.init(allocator, null);
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
 
-    // Wallet types (Swift Wallet, Account, etc.)
+    // Wallet types
     var wallet = neo.wallet.Wallet.init(allocator);
     defer wallet.deinit();
 
     try testing.expectEqualStrings(neo.wallet.Wallet.DEFAULT_WALLET_NAME, wallet.getName());
 
-    // RPC types (Swift NeoSwift, Request, Response, etc.)
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    // RPC types
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
 
-    // Script types (Swift ScriptBuilder, OpCode, etc.)
+    // Script types
     var script_builder = neo.script.ScriptBuilder.init(allocator);
     defer script_builder.deinit();
 
     _ = try script_builder.opCode(&[_]neo.script.OpCode{.PUSH0});
     try testing.expect(script_builder.toScript().len > 0);
 
-    std.log.info("✅ All Swift API compatibility validated", .{});
+    std.log.info("✅ All API compatibility validated", .{});
 }
 
 // /// Final comprehensive validation
@@ -651,9 +651,9 @@ test "final comprehensive SDK validation" {
     try testing.expect(!tx_hash.eql(neo.Hash256.ZERO));
 
     // 6. Test RPC client setup
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     const balance_request = try client.getNep17Balances(account_script_hash);

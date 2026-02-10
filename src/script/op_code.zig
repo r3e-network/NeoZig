@@ -1,11 +1,11 @@
 //! Neo VM OpCode definitions
 //!
-//! Complete conversion from NeoSwift OpCode.swift
+//! Neo N3 
 //! All Neo VM opcodes for script building.
 
 const std = @import("std");
 
-/// Neo VM OpCodes (complete conversion from Swift OpCode enum)
+/// Neo VM OpCodes
 pub const OpCode = enum(u8) {
     // Constants
     PUSHINT8 = 0x00,
@@ -221,12 +221,12 @@ pub const OpCode = enum(u8) {
     ABORTMSG = 0xE0,
     ASSERTMSG = 0xE1,
 
-    /// Gets opcode value (equivalent to Swift .opcode property)
+    /// Gets opcode value
     pub fn getOpcode(self: OpCode) u8 {
         return @intFromEnum(self);
     }
 
-    /// Gets opcode name (equivalent to Swift description)
+    /// Gets opcode name
     pub fn getName(self: OpCode) []const u8 {
         return @tagName(self);
     }
@@ -275,11 +275,11 @@ pub const OpCode = enum(u8) {
     }
 };
 
-// Tests (converted from Swift OpCode tests)
+// Tests
 test "OpCode basic properties" {
     const testing = std.testing;
 
-    // Test opcode values (equivalent to Swift opcode value tests)
+    // Test opcode values
     try testing.expectEqual(@as(u8, 0x10), OpCode.PUSH0.getOpcode());
     try testing.expectEqual(@as(u8, 0x11), OpCode.PUSH1.getOpcode());
     try testing.expectEqual(@as(u8, 0x41), OpCode.SYSCALL.getOpcode());
@@ -293,7 +293,7 @@ test "OpCode basic properties" {
 test "OpCode classification" {
     const testing = std.testing;
 
-    // Test push operation detection (equivalent to Swift isPush tests)
+    // Test push operation detection
     try testing.expect(OpCode.PUSH0.isPush());
     try testing.expect(OpCode.PUSH16.isPush());
     try testing.expect(OpCode.PUSHDATA1.isPush());
@@ -310,7 +310,7 @@ test "OpCode classification" {
 test "OpCode push values" {
     const testing = std.testing;
 
-    // Test push value extraction (equivalent to Swift push value tests)
+    // Test push value extraction
     try testing.expectEqual(@as(i32, 0), OpCode.PUSH0.getPushValue().?);
     try testing.expectEqual(@as(i32, 1), OpCode.PUSH1.getPushValue().?);
     try testing.expectEqual(@as(i32, 16), OpCode.PUSH16.getPushValue().?);

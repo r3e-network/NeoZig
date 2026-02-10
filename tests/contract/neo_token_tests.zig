@@ -1,6 +1,6 @@
 //! NEO Token Tests
 //!
-//! Complete conversion from NeoSwift NeoTokenTests.swift
+//!
 //! Tests NEO token specific functionality, voting, and candidate management.
 
 const std = @import("std");
@@ -15,7 +15,7 @@ const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
 const constants = @import("../../src/core/constants.zig");
 const TestUtils = @import("../helpers/test_utilities.zig");
 
-/// NEO token method constants (equivalent to Swift test constants)
+/// NEO token method constants
 const VOTE = "vote";
 const REGISTER_CANDIDATE = "registerCandidate";
 const UNREGISTER_CANDIDATE = "unregisterCandidate";
@@ -25,7 +25,7 @@ const GET_REGISTER_PRICE = "getRegisterPrice";
 const SET_REGISTER_PRICE = "setRegisterPrice";
 const GET_ACCOUNT_STATE = "getAccountState";
 
-/// Creates test account (equivalent to Swift account1 setup)
+/// Creates test account
 fn createTestAccount(allocator: std.mem.Allocator) !Account {
     const private_key_hex = "e6e919577dd7b8e97805151c05ae07ff4f752654d6d8797597aca989c02c4cb3";
     const private_key = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(private_key_hex, allocator);
@@ -35,17 +35,17 @@ fn createTestAccount(allocator: std.mem.Allocator) !Account {
     return try Account.init(key_pair, allocator);
 }
 
-// /// Test NEO token constants (converted from Swift testConstants)
+// /// Test NEO token constants
 test "NEO token constants and properties" {
     const allocator = testing.allocator;
 
-    // Create NEO token instance (equivalent to Swift NeoToken(neoSwift))
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    // Create NEO token instance)
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
-    const neo_token = NeoToken.init(allocator, &neo_swift);
+    const neo_token = NeoToken.init(allocator, &client);
 
-    // Test NEO token constants (equivalent to Swift constant tests)
+    // Test NEO token constants
     const expected_script_hash = "ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5";
     const neo_hash_string = try neo_token.getScriptHash().toString(allocator);
     defer allocator.free(neo_hash_string);
@@ -66,7 +66,7 @@ test "NEO token constants and properties" {
     try testing.expect(neo_token.isNativeContract());
 }
 
-// /// Test register candidate functionality (converted from Swift testRegisterCandidate)
+// /// Test register candidate functionality
 test "Register candidate script generation" {
     const allocator = testing.allocator;
 
@@ -74,17 +74,17 @@ test "Register candidate script generation" {
     var account = try createTestAccount(allocator);
     defer account.deinit();
 
-    // Get public key for candidate registration (equivalent to Swift pubKeyBytes)
+    // Get public key for candidate registration
     const public_key = account.getKeyPair().?.getPublicKey();
     const pub_key_bytes = public_key.toSlice();
 
-    // Build expected script (equivalent to Swift expectedScript)
+    // Build expected script
     const neo_script_hash = Hash160.fromArray(constants.NativeContracts.NEO_TOKEN);
 
     var expected_builder = ScriptBuilder.init(allocator);
     defer expected_builder.deinit();
 
-    // Create public key parameter (equivalent to Swift .publicKey(pubKeyBytes))
+    // Create public key parameter)
     var pub_key_param = try ContractParameter.createPublicKey(public_key, allocator);
     defer pub_key_param.deinit(allocator);
 
@@ -119,7 +119,7 @@ test "Vote functionality script generation" {
 
     const candidate_public_key = candidate_key_pair.getPublicKey();
 
-    // Build vote script (equivalent to Swift vote function call)
+    // Build vote script
     const neo_script_hash = Hash160.fromArray(constants.NativeContracts.NEO_TOKEN);
 
     var vote_builder = ScriptBuilder.init(allocator);
@@ -387,10 +387,10 @@ test "Candidate registration and unregistration" {
 test "NEO token method name validation" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
-    const neo_token = NeoToken.init(allocator, &neo_swift);
+    const neo_token = NeoToken.init(allocator, &client);
 
     // Test valid NEO token methods
     const valid_methods = [_][]const u8{

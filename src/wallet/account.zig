@@ -1,6 +1,6 @@
 //! Account implementation
 //!
-//! Complete conversion from NeoSwift Account.swift
+//! Neo N3 
 //! Represents a Neo account with single-sig or multi-sig capabilities.
 
 const std = @import("std");
@@ -14,7 +14,7 @@ const PrivateKey = @import("../crypto/keys.zig").PrivateKey;
 const VerificationScript = @import("verification_script.zig").VerificationScript;
 const secure = @import("../utils/secure.zig");
 
-/// Neo account (converted from Swift Account)
+/// Neo account
 pub const Account = struct {
     /// EC key pair if available
     key_pair: ?ECKeyPair,
@@ -39,7 +39,7 @@ pub const Account = struct {
 
     const Self = @This();
 
-    /// Creates account from key pair (equivalent to Swift init(keyPair:))
+    /// Creates account from key pair)
     pub fn initFromKeyPair(
         allocator: std.mem.Allocator,
         key_pair: ECKeyPair,
@@ -66,7 +66,7 @@ pub const Account = struct {
         };
     }
 
-    /// Creates account from address (equivalent to Swift init(address:label:))
+    /// Creates account from address)
     pub fn initFromAddress(
         allocator: std.mem.Allocator,
         address: Address,
@@ -109,7 +109,7 @@ pub const Account = struct {
         }
     }
 
-    /// Gets script hash (equivalent to Swift getScriptHash())
+    /// Gets script hash)
     pub fn getScriptHash(self: Self) !Hash160 {
         if (self.verification_script) |script| {
             return script.getScriptHash();
@@ -123,7 +123,7 @@ pub const Account = struct {
         return self.address.toHash160();
     }
 
-    /// Gets address (equivalent to Swift .address property)
+    /// Gets address
     pub fn getAddress(self: Self) Address {
         return self.address;
     }
@@ -141,7 +141,7 @@ pub const Account = struct {
         return self.key_pair;
     }
 
-    /// Gets label (equivalent to Swift .label property)
+    /// Gets label
     pub fn getLabel(self: Self) ?[]const u8 {
         return self.label;
     }
@@ -151,7 +151,7 @@ pub const Account = struct {
         return self.encrypted_private_key;
     }
 
-    /// Sets label (equivalent to Swift label setting)
+    /// Sets label
     pub fn setLabel(self: *Self, label: ?[]const u8) !void {
         if (self.label) |old_label| {
             self.allocator.free(old_label);
@@ -217,7 +217,7 @@ pub const Account = struct {
         };
     }
 
-    /// Checks if account is multi-sig (equivalent to Swift .isMultiSig property)
+    /// Checks if account is multi-sig
     pub fn isMultiSig(self: Self) bool {
         return self.signing_threshold != null and self.nr_of_participants != null;
     }
@@ -253,34 +253,34 @@ pub const Account = struct {
         }
     }
 
-    /// Checks if account is default (equivalent to Swift .isDefault property)
+    /// Checks if account is default
     pub fn isDefault(self: Self) bool {
         // Would check with parent wallet
         _ = self;
         return false; // stub
     }
 
-    /// Checks if account is locked (equivalent to Swift .isLocked property)
+    /// Checks if account is locked
     pub fn isLocked(self: Self) bool {
         return self.is_locked;
     }
 
-    /// Locks account (equivalent to Swift lock())
+    /// Locks account)
     pub fn lock(self: *Self) void {
         self.is_locked = true;
     }
 
-    /// Unlocks account (equivalent to Swift unlock())
+    /// Unlocks account)
     pub fn unlock(self: *Self) void {
         self.is_locked = false;
     }
 
-    /// Checks if has private key (equivalent to Swift private key availability)
+    /// Checks if has private key
     pub fn hasPrivateKey(self: Self) bool {
         return self.key_pair != null or self.encrypted_private_key != null;
     }
 
-    /// Gets private key (equivalent to Swift private key access)
+    /// Gets private key
     pub fn getPrivateKey(self: Self) !@import("../crypto/keys.zig").PrivateKey {
         if (self.is_locked) {
             return errors.WalletError.WalletLocked;
@@ -297,7 +297,7 @@ pub const Account = struct {
         return errors.WalletError.AccountNotFound;
     }
 
-    /// Gets public key (equivalent to Swift public key access)
+    /// Gets public key
     pub fn getPublicKey(self: Self) !@import("../crypto/keys.zig").PublicKey {
         if (self.key_pair) |kp| {
             return kp.getPublicKey();
@@ -310,7 +310,7 @@ pub const Account = struct {
         return errors.WalletError.AccountNotFound;
     }
 
-    /// Signs message (equivalent to Swift signing)
+    /// Signs message
     pub fn signMessage(self: Self, message: []const u8, allocator: std.mem.Allocator) !@import("../crypto/sign.zig").SignatureData {
         if (self.is_locked) {
             return errors.WalletError.WalletLocked;
@@ -327,7 +327,7 @@ pub const Account = struct {
         return errors.WalletError.AccountNotFound;
     }
 
-    /// Encrypts private key (equivalent to Swift encryption)
+    /// Encrypts private key
     pub fn encryptPrivateKey(self: *Self, password: []const u8) !void {
         const kp = self.key_pair orelse return errors.WalletError.AccountNotFound;
         const nep2 = @import("../crypto/nep2.zig");
@@ -362,7 +362,7 @@ pub const Account = struct {
         self.lock();
     }
 
-    /// Decrypts private key (equivalent to Swift decryption)
+    /// Decrypts private key
     pub fn decryptPrivateKey(self: *Self, password: []const u8) !void {
         const encrypted = self.encrypted_private_key orelse return errors.WalletError.AccountNotFound;
         const nep2 = @import("../crypto/nep2.zig");
@@ -389,7 +389,7 @@ pub const Account = struct {
         self.unlock();
     }
 
-    /// Creates an account from a key pair (Swift-compatible initializer).
+    /// Creates an account from a key pair.
     pub fn init(key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         return try Self.initFromKeyPair(allocator, key_pair, null, null);
     }
@@ -401,7 +401,7 @@ pub const Account = struct {
         return try Self.initFromKeyPair(allocator, ec_key_pair, null, null);
     }
 
-    /// Creates a random account (equivalent to Swift Account.create()).
+    /// Creates a random account).
     pub fn create(allocator: std.mem.Allocator) !Self {
         const key_pair = try ECKeyPair.createRandom();
         return try Self.init(key_pair, allocator);
@@ -436,7 +436,7 @@ pub const Account = struct {
         return try Self.initWithPrivateKey(decode_result.private_key, decode_result.compressed, allocator);
     }
 
-    /// Creates a multi-signature account (Swift-compatible convenience).
+    /// Creates a multi-signature account.
     pub fn createMultiSigAccount(
         public_keys: []const @import("../crypto/keys.zig").PublicKey,
         signing_threshold: u32,
@@ -526,12 +526,12 @@ pub const Account = struct {
     }
 };
 
-// Tests (converted from Swift Account tests)
+// Tests
 test "Account creation from key pair" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test single-sig account creation (equivalent to Swift Account tests)
+    // Test single-sig account creation
     const key_pair = try ECKeyPair.createRandom();
     var account = try Account.initFromKeyPair(allocator, key_pair, null, null);
     defer account.deinit();
@@ -551,7 +551,7 @@ test "Account multi-signature creation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test multi-sig account creation (equivalent to Swift multi-sig tests)
+    // Test multi-sig account creation
     const address = Address.fromHash160(Hash160.ZERO);
     const verification_script = try VerificationScript.initFromScript(&[_]u8{0x40}, allocator); // RET
 
@@ -578,7 +578,7 @@ test "Account lock and security operations" {
     var account = try Account.initFromKeyPair(allocator, key_pair, null, null);
     defer account.deinit();
 
-    // Test locking (equivalent to Swift lock/unlock tests)
+    // Test locking
     try testing.expect(!account.isLocked());
 
     account.lock();
@@ -587,7 +587,7 @@ test "Account lock and security operations" {
     account.unlock();
     try testing.expect(!account.isLocked());
 
-    // Test private key encryption (equivalent to Swift encryption tests)
+    // Test private key encryption
     try account.encryptPrivateKey("test_password");
     try testing.expect(account.encrypted_private_key != null);
     try testing.expect(account.key_pair == null); // Should be cleared after encryption
@@ -605,7 +605,7 @@ test "Account label management" {
     var account = try Account.initFromKeyPair(allocator, key_pair, null, null);
     defer account.deinit();
 
-    // Test label operations (equivalent to Swift label tests)
+    // Test label operations
     const original_label = account.getLabel();
     try testing.expect(original_label != null);
 
@@ -623,7 +623,7 @@ test "VerificationScript operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test verification script creation (equivalent to Swift VerificationScript tests)
+    // Test verification script creation
     const key_pair = try ECKeyPair.createRandom();
     var verification_script = try VerificationScript.initFromPublicKey(key_pair.getPublicKey(), allocator);
     defer verification_script.deinit(allocator);
@@ -648,7 +648,7 @@ test "Account signing operations" {
     var account = try Account.initFromKeyPair(allocator, key_pair, null, null);
     defer account.deinit();
 
-    // Test message signing (equivalent to Swift signing tests)
+    // Test message signing
     const message = "Test message for account signing";
     const signature_data = try account.signMessage(message, allocator);
 

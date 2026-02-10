@@ -1,6 +1,6 @@
 //! Transaction Implementation
 //!
-//! Complete conversion from NeoSwift Transaction.swift
+//! Neo N3
 //! Provides transaction structure for RPC responses.
 
 const std = @import("std");
@@ -116,7 +116,7 @@ pub const TransactionSigner = struct {
     }
 };
 
-/// Transaction structure (converted from Swift Transaction)
+/// Transaction structure
 pub const Transaction = struct {
     /// Transaction hash
     hash: Hash256,
@@ -153,7 +153,7 @@ pub const Transaction = struct {
 
     const Self = @This();
 
-    /// Creates new Transaction (equivalent to Swift init)
+    /// Creates new Transaction
     pub fn init(
         hash: Hash256,
         size: u32,
@@ -257,7 +257,7 @@ pub const Transaction = struct {
         return self.signers.len > 1;
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.hash.eql(other.hash) and
             self.size == other.size and
@@ -269,7 +269,7 @@ pub const Transaction = struct {
             self.valid_until_block == other.valid_until_block;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hashValue(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -281,7 +281,7 @@ pub const Transaction = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const hash_str = try self.hash.toString(allocator);
         defer allocator.free(hash_str);
@@ -402,7 +402,7 @@ pub const Transaction = struct {
     }
 };
 
-// Tests (converted from Swift Transaction tests)
+// Tests
 test "Transaction creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

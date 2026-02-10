@@ -1,11 +1,11 @@
 //! Neo Address Implementation
 //!
-//! Complete conversion from NeoSwift NeoAddress.swift
+//! Neo N3
 //! Provides Neo address structure for RPC responses.
 
 const std = @import("std");
 
-/// Neo address structure (converted from Swift NeoAddress)
+/// Neo address structure
 pub const NeoAddress = struct {
     /// Address string
     address: []const u8,
@@ -18,7 +18,7 @@ pub const NeoAddress = struct {
 
     const Self = @This();
 
-    /// Creates new NeoAddress (equivalent to Swift init)
+    /// Creates new NeoAddress
     pub fn init(address: []const u8, has_key: bool, label: ?[]const u8, watch_only: bool) Self {
         return Self{
             .address = address,
@@ -95,7 +95,7 @@ pub const NeoAddress = struct {
     }
 };
 
-// Tests (converted from Swift NeoAddress tests)
+// Tests
 test "NeoAddress creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

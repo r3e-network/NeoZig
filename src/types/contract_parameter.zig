@@ -1,6 +1,6 @@
 //! Neo VM contract parameter types
 //!
-//! Complete conversion from Swift ContractParameter system.
+//! Neo N3 ContractParameter system.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -91,8 +91,8 @@ pub const ContractParameter = union(ContractParameterType) {
     pub fn hash256(value: Hash256) Self {
         return Self{ .Hash256 = value };
     }
-    pub fn publicKey(bytes: []const u8) Self {
-        return publicKeyChecked(bytes) catch |err| @panic(@errorName(err));
+    pub fn publicKey(bytes: []const u8) errors.ValidationError!Self {
+        return publicKeyChecked(bytes);
     }
     pub fn publicKeyChecked(bytes: []const u8) errors.ValidationError!Self {
         if (bytes.len != constants.PUBLIC_KEY_SIZE_COMPRESSED) {
@@ -102,8 +102,8 @@ pub const ContractParameter = union(ContractParameterType) {
         @memcpy(&key, bytes[0..constants.PUBLIC_KEY_SIZE_COMPRESSED]);
         return Self{ .PublicKey = key };
     }
-    pub fn signature(bytes: []const u8) Self {
-        return signatureChecked(bytes) catch |err| @panic(@errorName(err));
+    pub fn signature(bytes: []const u8) errors.ValidationError!Self {
+        return signatureChecked(bytes);
     }
     pub fn signatureChecked(bytes: []const u8) errors.ValidationError!Self {
         if (bytes.len != constants.SIGNATURE_SIZE) {
@@ -116,7 +116,7 @@ pub const ContractParameter = union(ContractParameterType) {
     pub fn array(items: []const ContractParameter) Self {
         return Self{ .Array = items };
     }
-    pub fn void_param() Self {
+    pub fn voidParam() Self {
         return Self{ .Void = {} };
     }
 

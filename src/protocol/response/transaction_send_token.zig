@@ -1,6 +1,6 @@
 //! TransactionSendToken Implementation
 //!
-//! Complete conversion from NeoSwift TransactionSendToken.swift
+//! Neo N3
 
 const std = @import("std");
 

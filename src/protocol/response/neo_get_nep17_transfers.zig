@@ -1,6 +1,6 @@
 //! Neo GetNep17Transfers Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetNep17Transfers.swift
+//! Neo N3
 
 const std = @import("std");
 

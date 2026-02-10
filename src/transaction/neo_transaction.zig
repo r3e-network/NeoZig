@@ -1,7 +1,7 @@
 //! Neo Transaction implementation
 //!
-//! Complete conversion from NeoSwift NeoTransaction.swift
-//! Provides full transaction functionality with Swift API compatibility.
+//! Neo N3
+//! Provides full transaction functionality.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -12,16 +12,16 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const bytes_utils = @import("../utils/bytes.zig");
 
-/// Neo transaction (converted from Swift NeoTransaction)
+/// Neo transaction
 pub const NeoTransaction = struct {
-    /// Header size constant (matches Swift HEADER_SIZE)
+    /// Header size constant
     pub const HEADER_SIZE: u32 = 25;
 
     /// Neo client reference
-    neo_swift: ?*anyopaque,
+    client: ?*anyopaque,
     /// Transaction version
     version: u8,
     /// Transaction nonce
@@ -47,9 +47,9 @@ pub const NeoTransaction = struct {
 
     const Self = @This();
 
-    /// Creates new Neo transaction (equivalent to Swift init)
+    /// Creates new Neo transaction
     pub fn init(
-        neo_swift: ?*anyopaque,
+        client: ?*anyopaque,
         version: u8,
         nonce: u32,
         valid_until_block: u32,
@@ -62,7 +62,7 @@ pub const NeoTransaction = struct {
         block_count_when_sent: ?u32,
     ) Self {
         return Self{
-            .neo_swift = neo_swift,
+            .client = client,
             .version = version,
             .nonce = nonce,
             .valid_until_block = valid_until_block,
@@ -77,7 +77,7 @@ pub const NeoTransaction = struct {
         };
     }
 
-    /// Gets transaction sender (equivalent to Swift .sender property)
+    /// Gets transaction sender
     pub fn getSender(self: Self) Hash160 {
         // Find signer with .none scope (fee-only) or use first signer
         for (self.signers) |signer| {
@@ -93,7 +93,7 @@ pub const NeoTransaction = struct {
         return Hash160.ZERO;
     }
 
-    /// Gets transaction size (equivalent to Swift getSize)
+    /// Gets transaction size
     pub fn getSize(self: Self) u32 {
         var size: u32 = HEADER_SIZE;
 
@@ -121,7 +121,7 @@ pub const NeoTransaction = struct {
         return size;
     }
 
-    /// Calculates transaction hash (equivalent to Swift getHash)
+    /// Calculates transaction hash
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
         var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
@@ -130,7 +130,7 @@ pub const NeoTransaction = struct {
         return Hash256.sha256(buffer.items);
     }
 
-    /// Serializes transaction without witnesses (equivalent to Swift unsigned serialization)
+    /// Serializes transaction without witnesses
     pub fn serializeUnsigned(self: Self, buffer: *ArrayList(u8)) !void {
         var writer = BinaryWriter.init(buffer.allocator);
         defer writer.deinit();
@@ -161,7 +161,7 @@ pub const NeoTransaction = struct {
         try buffer.appendSlice(writer.toSlice());
     }
 
-    /// Serializes complete transaction (equivalent to Swift full serialization)
+    /// Serializes complete transaction
     pub fn serialize(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var buffer = ArrayList(u8).init(allocator);
         defer buffer.deinit();
@@ -182,7 +182,7 @@ pub const NeoTransaction = struct {
         return try buffer.toOwnedSlice();
     }
 
-    /// Deserializes transaction (equivalent to Swift deserialization)
+    /// Deserializes transaction
     pub fn deserialize(data: []const u8, allocator: std.mem.Allocator) !Self {
         var reader = BinaryReader.init(data);
 
@@ -291,7 +291,7 @@ pub const NeoTransaction = struct {
         self.* = undefined;
     }
 
-    /// Validates transaction (equivalent to Swift validation)
+    /// Validates transaction
     pub fn validate(self: Self) !void {
         // Check version
         if (self.version != constants.CURRENT_TX_VERSION) {
@@ -327,12 +327,12 @@ pub const NeoTransaction = struct {
         }
     }
 
-    /// Sends transaction to network (equivalent to Swift send).
+    /// Sends transaction to network.
     pub fn send(self: Self) !Hash256 {
-        const raw_ptr = self.neo_swift orelse
-            return errors.throwIllegalState("NeoSwift instance required for sending");
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(raw_ptr));
-        const service_allocator = neo_swift.getService().getAllocator();
+        const raw_ptr = self.client orelse
+            return errors.throwIllegalState("NeoClient instance required for sending");
+        const client: *NeoClient = @ptrCast(@alignCast(raw_ptr));
+        const service_allocator = client.getService().getAllocator();
 
         try self.validate();
 
@@ -342,7 +342,7 @@ pub const NeoTransaction = struct {
         const hex_transaction = try bytes_utils.toHex(serialized, service_allocator);
         defer service_allocator.free(hex_transaction);
 
-        var request = try neo_swift.sendRawTransaction(hex_transaction);
+        var request = try client.sendRawTransaction(hex_transaction);
         const response = try request.send();
 
         if (!response.success) {
@@ -357,7 +357,7 @@ pub const NeoTransaction = struct {
         return try self.getHash(service_allocator);
     }
 
-    /// Tracks transaction status (equivalent to Swift tracking).
+    /// Tracks transaction status.
     /// NOTE: Placeholder returning an empty log until RPC support is added.
     pub fn getApplicationLog(self: Self) !ApplicationLog {
         _ = self;
@@ -365,7 +365,7 @@ pub const NeoTransaction = struct {
         return ApplicationLog.init();
     }
 
-    /// Estimates network fee (equivalent to Swift fee estimation)
+    /// Estimates network fee
     pub fn estimateNetworkFee(self: Self) i64 {
         const base_fee = constants.FeeConstants.MIN_NETWORK_FEE;
         const size_factor = self.getSize() / 1024; // Per KB
@@ -373,7 +373,7 @@ pub const NeoTransaction = struct {
     }
 };
 
-/// Application log (converted from Swift application log)
+/// Application log
 pub const ApplicationLog = struct {
     tx_id: Hash256,
     executions: []const Execution,
@@ -386,7 +386,7 @@ pub const ApplicationLog = struct {
     }
 };
 
-/// Execution (converted from Swift execution)
+/// Execution
 pub const Execution = struct {
     trigger: []const u8,
     vm_state: []const u8,
@@ -423,12 +423,12 @@ fn getVarIntSize(value: usize) usize {
     return 9;
 }
 
-// Tests (converted from Swift NeoTransaction tests)
+// Tests
 test "NeoTransaction creation and properties" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Create test transaction (equivalent to Swift NeoTransaction tests)
+    // Create test transaction
     const signers = [_]Signer{
         Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
     };
@@ -439,7 +439,7 @@ test "NeoTransaction creation and properties" {
     };
 
     const transaction = NeoTransaction.init(
-        null, // neo_swift
+        null, // client
         0, // version
         12345, // nonce
         1000000, // valid_until_block
@@ -452,14 +452,14 @@ test "NeoTransaction creation and properties" {
         null, // block_count_when_sent
     );
 
-    // Test properties (equivalent to Swift property tests)
+    // Test properties
     try testing.expectEqual(@as(u8, 0), transaction.version);
     try testing.expectEqual(@as(u32, 12345), transaction.nonce);
     try testing.expectEqual(@as(u32, 1000000), transaction.valid_until_block);
     try testing.expectEqual(@as(u64, 1000000), transaction.system_fee);
     try testing.expectEqual(@as(u64, 500000), transaction.network_fee);
 
-    // Test sender property (equivalent to Swift .sender tests)
+    // Test sender property
     const sender = transaction.getSender();
     try testing.expect(sender.eql(Hash160.ZERO));
 }
@@ -491,7 +491,7 @@ test "NeoTransaction size calculation" {
         null,
     );
 
-    // Test size calculation (equivalent to Swift getSize tests)
+    // Test size calculation
     const size = transaction.getSize();
     try testing.expect(size >= NeoTransaction.HEADER_SIZE);
     try testing.expect(size > 0);
@@ -527,7 +527,7 @@ test "NeoTransaction hash calculation" {
         null,
     );
 
-    // Test hash calculation (equivalent to Swift getHash tests)
+    // Test hash calculation
     const tx_hash = try transaction.getHash(allocator);
     try testing.expect(!tx_hash.eql(Hash256.ZERO));
 
@@ -563,7 +563,7 @@ test "NeoTransaction serialization" {
         null,
     );
 
-    // Test serialization (equivalent to Swift serialization tests)
+    // Test serialization
     const serialized = try original_tx.serialize(allocator);
     defer allocator.free(serialized);
 
@@ -685,7 +685,7 @@ test "NeoTransaction fee estimation" {
         null,
     );
 
-    // Test fee estimation (equivalent to Swift fee estimation tests)
+    // Test fee estimation
     const estimated_fee = transaction.estimateNetworkFee();
     try testing.expect(estimated_fee >= constants.FeeConstants.MIN_NETWORK_FEE);
 

@@ -1,13 +1,13 @@
 //! URL Session utilities
 //!
-//! Complete conversion from NeoSwift URLSession.swift extensions
+//! Neo N3 
 //! Provides HTTP request functionality and URL handling.
 
 const std = @import("std");
 
 const errors = @import("../core/errors.zig");
 
-/// URL requester interface (converted from Swift URLRequester protocol)
+/// URL requester interface
 pub const URLRequester = struct {
     /// Performs HTTP request and returns data
     pub fn dataFromRequest(self: anytype, request: URLRequest) !HTTPResponse {
@@ -15,7 +15,7 @@ pub const URLRequester = struct {
     }
 };
 
-/// URL request structure (converted from Swift URLRequest)
+/// URL request structure
 pub const URLRequest = struct {
     url: []const u8,
     method: HTTPMethod,
@@ -53,7 +53,7 @@ pub const URLRequest = struct {
         }
     }
 
-    /// Adds header value (equivalent to Swift addValue)
+    /// Adds header value
     pub fn addValue(self: *Self, value: []const u8, for_field: []const u8) !void {
         const key_copy = try self.allocator.dupe(u8, for_field);
         const value_copy = try self.allocator.dupe(u8, value);
@@ -67,12 +67,12 @@ pub const URLRequest = struct {
         try self.headers.put(key_copy, value_copy);
     }
 
-    /// Sets HTTP method (equivalent to Swift httpMethod)
+    /// Sets HTTP method
     pub fn setHttpMethod(self: *Self, method: HTTPMethod) void {
         self.method = method;
     }
 
-    /// Sets HTTP body (equivalent to Swift httpBody)
+    /// Sets HTTP body
     pub fn setHttpBody(self: *Self, body: []const u8) !void {
         if (self.body) |old_body| {
             self.allocator.free(old_body);
@@ -110,7 +110,7 @@ pub const HTTPMethod = enum {
     }
 };
 
-/// HTTP response structure (converted from Swift response handling)
+/// HTTP response structure
 pub const HTTPResponse = struct {
     data: []const u8,
     response: ?URLResponse,
@@ -133,7 +133,7 @@ pub const HTTPResponse = struct {
     }
 };
 
-/// URL response structure (converted from Swift URLResponse)
+/// URL response structure
 pub const URLResponse = struct {
     status_code: u16,
     headers: std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage),
@@ -158,7 +158,7 @@ pub const URLResponse = struct {
     }
 };
 
-/// URL session implementation (converted from Swift URLSession extension)
+/// URL session implementation
 pub const URLSession = struct {
     allocator: std.mem.Allocator,
     timeout_ms: u32,
@@ -175,7 +175,7 @@ pub const URLSession = struct {
         };
     }
 
-    /// Performs data request (equivalent to Swift data(from:))
+    /// Performs data request)
     pub fn dataFromRequest(self: Self, request: URLRequest) !HTTPResponse {
         var client = std.http.Client{ .allocator = self.allocator };
         defer client.deinit();
@@ -236,7 +236,7 @@ pub const URLSession = struct {
         return HTTPResponse.init(response_data, url_response);
     }
 
-    /// Shared session instance (equivalent to Swift .shared)
+    /// Shared session instance
     pub var shared: ?URLSession = null;
 
     /// Gets shared session
@@ -308,12 +308,12 @@ pub const URLComponents = struct {
     }
 };
 
-// Tests (converted from Swift URLSession tests)
+// Tests
 test "URLRequest creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URL request creation (equivalent to Swift URLRequest tests)
+    // Test URL request creation
     var request = URLRequest.init(allocator, "https://test.neo.node:443");
     defer request.deinit();
 
@@ -341,7 +341,7 @@ test "URLSession operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URL session creation (equivalent to Swift URLSession tests)
+    // Test URL session creation
     var session = URLSession.init(allocator);
 
     try testing.expectEqual(@as(u32, 30000), session.timeout_ms);
@@ -363,7 +363,7 @@ test "URL utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URL validation (equivalent to Swift URL validation tests)
+    // Test URL validation
     try testing.expect(URLUtils.validateURL("http://localhost:20332"));
     try testing.expect(URLUtils.validateURL("https://mainnet1.neo.coz.io:443"));
 
@@ -384,7 +384,7 @@ test "URL utilities" {
 test "HTTP method operations" {
     const testing = std.testing;
 
-    // Test HTTP method string conversion (equivalent to Swift method tests)
+    // Test HTTP method string conversion
     try testing.expectEqualStrings("GET", HTTPMethod.GET.toString());
     try testing.expectEqualStrings("POST", HTTPMethod.POST.toString());
     try testing.expectEqualStrings("PUT", HTTPMethod.PUT.toString());

@@ -1,6 +1,6 @@
 //! Hash256 implementation for Neo blockchain
 //!
-//! Complete conversion from NeoSwift Hash256 type with full API compatibility.
+//! Neo N3 
 
 const std = @import("std");
 
@@ -61,7 +61,7 @@ pub const Hash256 = struct {
         return try allocator.dupe(u8, &hex);
     }
 
-    /// Backwards-compatible alias for string() (matches Swift naming)
+    /// Backwards-compatible alias for string()
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return self.string(allocator);
     }

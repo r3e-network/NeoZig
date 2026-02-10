@@ -1,6 +1,6 @@
 //! Neo GetPeers Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetPeers.swift
+//! Neo N3
 
 const std = @import("std");
 

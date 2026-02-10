@@ -1,6 +1,6 @@
 //! Protocol Error Implementation
 //!
-//! Complete conversion from NeoSwift ProtocolError.swift
+//! Neo N3
 //! Provides protocol-specific error handling for Neo RPC communication.
 
 const std = @import("std");
@@ -10,7 +10,7 @@ const StackItem = @import("../types/stack_item.zig").StackItem;
 
 const log = std.log.scoped(.neo_protocol);
 
-/// Protocol errors for Neo RPC communication (converted from Swift ProtocolError)
+/// Protocol errors for Neo RPC communication
 pub const ProtocolError = union(enum) {
     /// RPC response error from Neo node
     RpcResponseError: []const u8,
@@ -26,25 +26,25 @@ pub const ProtocolError = union(enum) {
 
     const Self = @This();
 
-    /// Creates RPC response error (equivalent to Swift .rpcResponseError)
+    /// Creates RPC response error
     pub fn rpcResponseError(error_message: []const u8, allocator: std.mem.Allocator) !Self {
         const message_copy = try allocator.dupe(u8, error_message);
         return Self{ .RpcResponseError = message_copy };
     }
 
-    /// Creates invocation fault state error (equivalent to Swift .invocationFaultState)
+    /// Creates invocation fault state error
     pub fn invocationFaultState(error_message: []const u8, allocator: std.mem.Allocator) !Self {
         const message_copy = try allocator.dupe(u8, error_message);
         return Self{ .InvocationFaultState = message_copy };
     }
 
-    /// Creates client connection error (equivalent to Swift .clientConnection)
+    /// Creates client connection error
     pub fn clientConnection(error_message: []const u8, allocator: std.mem.Allocator) !Self {
         const message_copy = try allocator.dupe(u8, error_message);
         return Self{ .ClientConnection = message_copy };
     }
 
-    /// Creates stack item cast error (equivalent to Swift .stackItemCastError)
+    /// Creates stack item cast error
     pub fn stackItemCastError(
         item: StackItem,
         target_type: []const u8,
@@ -59,7 +59,7 @@ pub const ProtocolError = union(enum) {
         } };
     }
 
-    /// Gets error description (equivalent to Swift errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .RpcResponseError => |error_msg| {
@@ -250,12 +250,12 @@ pub const ProtocolErrorUtils = struct {
     }
 };
 
-// Tests (converted from Swift ProtocolError tests)
+// Tests
 test "ProtocolError creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test RPC response error (equivalent to Swift tests)
+    // Test RPC response error
     var rpc_error = try ProtocolError.rpcResponseError("Method not found", allocator);
     defer rpc_error.deinit(allocator);
 

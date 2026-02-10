@@ -1,6 +1,6 @@
 //! Wallet Tests
 //!
-//! Complete conversion from NeoSwift WalletTests.swift
+//!
 //! Tests wallet creation, account management, and validation.
 
 const std = @import("std");
@@ -12,7 +12,7 @@ const Hash160 = @import("../../src/types/hash160.zig").Hash160;
 const errors = @import("../../src/core/errors.zig");
 const json_utils = @import("../../src/utils/json_utils.zig");
 
-// /// Test creating default wallet (converted from Swift testCreateDefaultWallet)
+// /// Test creating default wallet
 test "Create default wallet" {
     const allocator = testing.allocator;
 
@@ -21,8 +21,8 @@ test "Create default wallet" {
     defer wallet.deinit();
     _ = try wallet.createAccount("Default Account");
 
-    // Verify wallet properties (equivalent to Swift XCTAssertEqual checks)
-    try testing.expectEqualStrings("NeoSwiftWallet", wallet.getName());
+    // Verify wallet properties
+    try testing.expectEqualStrings("NeoWallet", wallet.getName());
     try testing.expectEqualStrings(Wallet.CURRENT_VERSION, wallet.getVersion());
     try testing.expect(wallet.getAccountCount() > 0);
 
@@ -30,7 +30,7 @@ test "Create default wallet" {
     try testing.expect(wallet.getDefaultAccount() != null);
 }
 
-// /// Test creating wallet with accounts (converted from Swift testCreateWalletWithAccounts)
+// /// Test creating wallet with accounts
 test "Create wallet with accounts" {
     const allocator = testing.allocator;
 
@@ -50,7 +50,7 @@ test "Create wallet with accounts" {
     try testing.expect(wallet.containsAccount(account2));
 }
 
-// /// Test creating wallet with no accounts (converted from Swift testCreateWalletWithAccounts_noAccounts)
+// /// Test creating wallet with no accounts
 test "Create wallet with no accounts should fail" {
     const allocator = testing.allocator;
 
@@ -62,7 +62,7 @@ test "Create wallet with no accounts should fail" {
     try testing.expectError(errors.NeoError.IllegalArgument, wallet.defaultAccountByHash(Hash160.ZERO));
 }
 
-// /// Test checking if account is default (converted from Swift testIsDefault_account)
+// /// Test checking if account is default
 test "Check if account is default" {
     const allocator = testing.allocator;
 
@@ -79,7 +79,7 @@ test "Check if account is default" {
     try testing.expect(wallet.isDefault(other_account));
 }
 
-// /// Test wallet holds account (converted from Swift testHoldsAccount)
+// /// Test wallet holds account
 test "Wallet holds account verification" {
     const allocator = testing.allocator;
 

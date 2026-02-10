@@ -1,6 +1,6 @@
 //! Witness Scope Tests
 //!
-//! Complete conversion from NeoSwift WitnessScopeTests.swift
+//! WitnessScope tests
 //! Tests witness scope functionality and combinations.
 
 const std = @import("std");

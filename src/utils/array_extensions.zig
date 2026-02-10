@@ -1,14 +1,14 @@
 //! Array extension utilities
 //!
-//! Complete conversion from NeoSwift Array.swift extensions
-//! Provides Swift-compatible array operations.
+//! Neo N3 
+//! Array extension operations.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-/// Array utility functions (converted from Swift Array extensions)
+/// Array utility functions
 pub const ArrayUtils = struct {
-    /// Appends element to array (equivalent to Swift + operator)
+    /// Appends element to array
     pub fn appendElement(comptime T: type, array: []const T, element: T, allocator: std.mem.Allocator) ![]T {
         var result = try allocator.alloc(T, array.len + 1);
         @memcpy(result[0..array.len], array);
@@ -16,7 +16,7 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Prepends element to array (equivalent to Swift + operator)
+    /// Prepends element to array
     pub fn prependElement(comptime T: type, element: T, array: []const T, allocator: std.mem.Allocator) ![]T {
         var result = try allocator.alloc(T, array.len + 1);
         result[0] = element;
@@ -24,7 +24,7 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Concatenates two arrays (equivalent to Swift + operator)
+    /// Concatenates two arrays
     pub fn concatenate(comptime T: type, lhs: []const T, rhs: []const T, allocator: std.mem.Allocator) ![]T {
         var result = try allocator.alloc(T, lhs.len + rhs.len);
         @memcpy(result[0..lhs.len], lhs);
@@ -32,7 +32,7 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Finds element in array (equivalent to Swift .contains)
+    /// Finds element in array
     pub fn contains(comptime T: type, array: []const T, element: T) bool {
         for (array) |item| {
             if (std.meta.eql(item, element)) {
@@ -42,7 +42,7 @@ pub const ArrayUtils = struct {
         return false;
     }
 
-    /// Finds index of element (equivalent to Swift .firstIndex)
+    /// Finds index of element
     pub fn firstIndex(comptime T: type, array: []const T, element: T) ?usize {
         for (array, 0..) |item, i| {
             if (std.meta.eql(item, element)) {
@@ -52,7 +52,7 @@ pub const ArrayUtils = struct {
         return null;
     }
 
-    /// Filters array (equivalent to Swift .filter)
+    /// Filters array
     pub fn filter(
         comptime T: type,
         array: []const T,
@@ -71,7 +71,7 @@ pub const ArrayUtils = struct {
         return try result.toOwnedSlice();
     }
 
-    /// Maps array to new type (equivalent to Swift .map)
+    /// Maps array to new type
     pub fn map(
         comptime T: type,
         comptime U: type,
@@ -88,7 +88,7 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Reduces array to single value (equivalent to Swift .reduce)
+    /// Reduces array to single value
     pub fn reduce(
         comptime T: type,
         comptime U: type,
@@ -105,12 +105,12 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Sorts array in place (equivalent to Swift .sort)
+    /// Sorts array in place
     pub fn sort(comptime T: type, array: []T, lessThan: *const fn (void, T, T) bool) void {
         std.sort.block(T, array, {}, lessThan);
     }
 
-    /// Returns sorted copy (equivalent to Swift .sorted)
+    /// Returns sorted copy
     pub fn sorted(
         comptime T: type,
         array: []const T,
@@ -122,19 +122,19 @@ pub const ArrayUtils = struct {
         return result;
     }
 
-    /// Reverses array in place (equivalent to Swift .reverse)
+    /// Reverses array in place
     pub fn reverse(comptime T: type, array: []T) void {
         std.mem.reverse(T, array);
     }
 
-    /// Returns reversed copy (equivalent to Swift .reversed)
+    /// Returns reversed copy
     pub fn reversed(comptime T: type, array: []const T, allocator: std.mem.Allocator) ![]T {
         const result = try allocator.dupe(T, array);
         reverse(T, result);
         return result;
     }
 
-    /// Checks if all elements satisfy condition (equivalent to Swift .allSatisfy)
+    /// Checks if all elements satisfy condition
     pub fn allSatisfy(comptime T: type, array: []const T, predicate: *const fn (T) bool) bool {
         for (array) |item| {
             if (!predicate(item)) {
@@ -144,7 +144,7 @@ pub const ArrayUtils = struct {
         return true;
     }
 
-    /// Checks if any element satisfies condition (equivalent to Swift .contains(where:))
+    /// Checks if any element satisfies condition)
     pub fn anySatisfy(comptime T: type, array: []const T, predicate: *const fn (T) bool) bool {
         for (array) |item| {
             if (predicate(item)) {
@@ -154,7 +154,7 @@ pub const ArrayUtils = struct {
         return false;
     }
 
-    /// Gets first element satisfying condition (equivalent to Swift .first(where:))
+    /// Gets first element satisfying condition)
     pub fn first(comptime T: type, array: []const T, predicate: *const fn (T) bool) ?T {
         for (array) |item| {
             if (predicate(item)) {
@@ -164,23 +164,23 @@ pub const ArrayUtils = struct {
         return null;
     }
 
-    /// Removes element at index (equivalent to Swift .remove(at:))
+    /// Removes element at index)
     pub fn removeAt(comptime T: type, array: *ArrayList(T), index: usize) T {
         return array.orderedRemove(index);
     }
 
-    /// Inserts element at index (equivalent to Swift .insert(_:at:))
+    /// Inserts element at index)
     pub fn insertAt(comptime T: type, array: *ArrayList(T), element: T, index: usize) !void {
         try array.insert(index, element);
     }
 };
 
-// Tests (converted from Swift Array extension tests)
+// Tests
 test "Array concatenation operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test array + element (equivalent to Swift + operator tests)
+    // Test array + element
     const original_array = [_]u32{ 1, 2, 3 };
     const with_appended = try ArrayUtils.appendElement(u32, &original_array, 4, allocator);
     defer allocator.free(with_appended);
@@ -188,7 +188,7 @@ test "Array concatenation operations" {
     const expected_appended = [_]u32{ 1, 2, 3, 4 };
     try testing.expectEqualSlices(u32, &expected_appended, with_appended);
 
-    // Test element + array (equivalent to Swift + operator tests)
+    // Test element + array
     const with_prepended = try ArrayUtils.prependElement(u32, 0, &original_array, allocator);
     defer allocator.free(with_prepended);
 
@@ -211,15 +211,15 @@ test "Array search and filtering" {
 
     const test_array = [_]i32{ 1, 2, 3, 4, 5, 6 };
 
-    // Test contains (equivalent to Swift .contains tests)
+    // Test contains
     try testing.expect(ArrayUtils.contains(i32, &test_array, 3));
     try testing.expect(!ArrayUtils.contains(i32, &test_array, 10));
 
-    // Test firstIndex (equivalent to Swift .firstIndex tests)
+    // Test firstIndex
     try testing.expectEqual(@as(usize, 2), ArrayUtils.firstIndex(i32, &test_array, 3).?);
     try testing.expectEqual(@as(?usize, null), ArrayUtils.firstIndex(i32, &test_array, 10));
 
-    // Test filter (equivalent to Swift .filter tests)
+    // Test filter
     const is_even = struct {
         fn predicate(x: i32) bool {
             return @mod(x, 2) == 0;
@@ -239,7 +239,7 @@ test "Array transformation operations" {
 
     const test_array = [_]i32{ 1, 2, 3, 4 };
 
-    // Test map (equivalent to Swift .map tests)
+    // Test map
     const double = struct {
         fn mapper(x: i32) i32 {
             return x * 2;
@@ -252,7 +252,7 @@ test "Array transformation operations" {
     const expected_doubled = [_]i32{ 2, 4, 6, 8 };
     try testing.expectEqualSlices(i32, &expected_doubled, doubled);
 
-    // Test reduce (equivalent to Swift .reduce tests)
+    // Test reduce
     const sum = struct {
         fn reducer(acc: i32, x: i32) i32 {
             return acc + x;
@@ -276,11 +276,11 @@ test "Array conditional operations" {
         }
     }.predicate;
 
-    // Test allSatisfy (equivalent to Swift .allSatisfy tests)
+    // Test allSatisfy
     try testing.expect(ArrayUtils.allSatisfy(i32, &test_array, is_even));
     try testing.expect(!ArrayUtils.allSatisfy(i32, &mixed_array, is_even));
 
-    // Test anySatisfy (equivalent to Swift .contains(where:) tests)
+    // Test anySatisfy tests)
     try testing.expect(ArrayUtils.anySatisfy(i32, &mixed_array, is_even));
 
     const is_negative = struct {
@@ -291,7 +291,7 @@ test "Array conditional operations" {
 
     try testing.expect(!ArrayUtils.anySatisfy(i32, &test_array, is_negative));
 
-    // Test first(where:) (equivalent to Swift .first(where:) tests)
+    // Test first(where:) tests)
     const first_even = ArrayUtils.first(i32, &mixed_array, is_even);
     try testing.expectEqual(@as(i32, 2), first_even.?);
 

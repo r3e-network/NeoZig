@@ -1,6 +1,6 @@
 //! HTTP Service Tests
 //!
-//! Complete conversion from NeoSwift HttpServiceTests.swift
+//! HTTP service tests
 //! Tests HTTP service functionality and networking.
 
 const std = @import("std");

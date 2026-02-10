@@ -1,19 +1,19 @@
 //! Error types for Neo Zig SDK
 //!
-//! Complete conversion from NeoSwift error handling system.
-//! All error types match the original Swift implementation.
+//! Neo N3 error handling system.
+//! Comprehensive error types for all SDK modules.
 //!
 //! Design principles:
 //! - Each error set has domain-specific, non-overlapping error names
 //! - Error names are prefixed with domain context for clarity
-//! - Use throwIllegalArgument/throwIllegalState for Swift API compatibility
+//! - Use throwIllegalArgument/throwIllegalState for argument validation
 
 const std = @import("std");
 const builtin = @import("builtin");
 
 const log = std.log.scoped(.neo_errors);
 
-/// General Neo SDK errors (converted from NeoSwiftError)
+/// General Neo SDK errors
 pub const NeoError = error{
     IllegalArgument,
     IllegalState,
@@ -138,7 +138,7 @@ pub const ContractError = error{
     InvalidContractState,
 };
 
-/// Utility function to convert Swift error messages.
+/// Utility function for error message formatting.
 /// Emits a debug log (in Debug builds) before returning the error.
 /// This provides context that Zig's error system cannot carry. Enable debug logs by
 /// setting `std_options.log_level = .debug` in your root file.
@@ -150,7 +150,7 @@ pub fn throwIllegalArgument(message: []const u8) NeoError {
     return NeoError.IllegalArgument;
 }
 
-/// Utility function to convert Swift error messages.
+/// Utility function for error message formatting.
 /// Emits a debug log (in Debug builds) before returning the error.
 pub fn throwIllegalState(message: []const u8) NeoError {
     // Best-effort diagnostic context; no hard stdout/stderr side effects.

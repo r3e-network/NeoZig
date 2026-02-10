@@ -1,43 +1,43 @@
 //! Enum utilities and protocols
 //!
-//! Complete conversion from NeoSwift Enum.swift
+//! Neo N3 
 //! Provides byte enum protocol and JSON conversion utilities.
 
 const std = @import("std");
 
 const errors = @import("../core/errors.zig");
 
-/// Byte enum trait (converted from Swift ByteEnum protocol)
+/// Byte enum trait
 pub fn ByteEnum(comptime T: type) type {
     return struct {
-        /// Gets byte value (equivalent to Swift .byte property)
+        /// Gets byte value
         pub fn getByte(self: T) u8 {
             return T.getByte(self);
         }
 
-        /// Gets JSON value (equivalent to Swift .jsonValue property)
+        /// Gets JSON value
         pub fn getJsonValue(self: T) []const u8 {
             return T.getJsonValue(self);
         }
 
-        /// Creates from byte value with error (equivalent to Swift throwingValueOf)
+        /// Creates from byte value with error
         pub fn throwingValueOf(byte_value: u8) !T {
             return T.fromByte(byte_value) orelse {
                 return errors.throwIllegalArgument("Enum value not found for byte");
             };
         }
 
-        /// Creates from byte value safely (equivalent to Swift valueOf)
+        /// Creates from byte value safely
         pub fn valueOf(byte_value: u8) ?T {
             return T.fromByte(byte_value);
         }
 
-        /// Creates from JSON value (equivalent to Swift fromJsonValue)
+        /// Creates from JSON value
         pub fn fromJsonValue(json_string: []const u8) ?T {
             return T.fromJsonValue(json_string);
         }
 
-        /// Decodes from JSON (equivalent to Swift init(from:))
+        /// Decodes from JSON)
         pub fn decodeFromJson(json_value: std.json.Value) !T {
             return switch (json_value) {
                 .string => |s| {
@@ -50,7 +50,7 @@ pub fn ByteEnum(comptime T: type) type {
             };
         }
 
-        /// Encodes to JSON (equivalent to Swift encode(to:))
+        /// Encodes to JSON)
         pub fn encodeToJson(self: T, allocator: std.mem.Allocator) !std.json.Value {
             const value = try allocator.dupe(u8, self.getJsonValue());
             return std.json.Value{ .string = value };
@@ -58,9 +58,9 @@ pub fn ByteEnum(comptime T: type) type {
     };
 }
 
-/// Enum iteration utilities (converted from Swift CaseIterable)
+/// Enum iteration utilities
 pub const EnumUtils = struct {
-    /// Gets all enum cases (equivalent to Swift .allCases)
+    /// Gets all enum cases
     pub fn getAllCases(comptime T: type) []const T {
         return comptime blk: {
             const enum_info = @typeInfo(T).Enum;
@@ -74,7 +74,7 @@ pub const EnumUtils = struct {
         };
     }
 
-    /// Finds enum case by predicate (equivalent to Swift .first(where:))
+    /// Finds enum case by predicate)
     pub fn findCase(comptime T: type, predicate: *const fn (T) bool) ?T {
         const all_cases = getAllCases(T);
 
@@ -87,12 +87,12 @@ pub const EnumUtils = struct {
         return null;
     }
 
-    /// Counts enum cases (equivalent to Swift .count)
+    /// Counts enum cases
     pub fn getCaseCount(comptime T: type) usize {
         return getAllCases(T).len;
     }
 
-    /// Gets enum case names (equivalent to Swift case name access)
+    /// Gets enum case names
     pub fn getCaseNames(comptime T: type) []const []const u8 {
         return comptime blk: {
             const enum_info = @typeInfo(T).Enum;
@@ -107,9 +107,9 @@ pub const EnumUtils = struct {
     }
 };
 
-/// String enum utilities (converted from Swift string enum handling)
+/// String enum utilities
 pub const StringEnumUtils = struct {
-    /// Creates string enum from value (equivalent to Swift string enum init)
+    /// Creates string enum from value
     pub fn fromString(comptime T: type, value: []const u8) ?T {
         const case_names = EnumUtils.getCaseNames(T);
         const all_cases = EnumUtils.getAllCases(T);
@@ -123,7 +123,7 @@ pub const StringEnumUtils = struct {
         return null;
     }
 
-    /// Converts enum to string (equivalent to Swift string enum string value)
+    /// Converts enum to string
     pub fn toString(comptime T: type, value: T) []const u8 {
         const case_names = EnumUtils.getCaseNames(T);
         const all_cases = EnumUtils.getAllCases(T);
@@ -140,13 +140,13 @@ pub const StringEnumUtils = struct {
 
 /// JSON enum conversion utilities
 pub const JsonEnumUtils = struct {
-    /// Encodes enum as JSON string (equivalent to Swift JSON encoding)
+    /// Encodes enum as JSON string
     pub fn encodeEnumAsString(comptime T: type, value: T) std.json.Value {
         const string_value = StringEnumUtils.toString(T, value);
         return std.json.Value{ .string = string_value };
     }
 
-    /// Decodes enum from JSON string (equivalent to Swift JSON decoding)
+    /// Decodes enum from JSON string
     pub fn decodeEnumFromString(comptime T: type, json_value: std.json.Value) !T {
         const string_value = switch (json_value) {
             .string => |s| s,
@@ -159,7 +159,7 @@ pub const JsonEnumUtils = struct {
     }
 };
 
-// Tests (converted from Swift Enum tests)
+// Tests
 test "ByteEnum protocol operations" {
     const testing = std.testing;
 
@@ -200,7 +200,7 @@ test "ByteEnum protocol operations" {
         }
     };
 
-    // Test byte enum operations (equivalent to Swift ByteEnum tests)
+    // Test byte enum operations
     const first_enum = TestByteEnum.First;
     try testing.expectEqual(@as(u8, 0x01), first_enum.getByte());
     try testing.expectEqualStrings("first", first_enum.getJsonValue());
@@ -227,11 +227,11 @@ test "Enum utility functions" {
         Gamma,
     };
 
-    // Test case counting (equivalent to Swift .allCases.count)
+    // Test case counting
     const case_count = EnumUtils.getCaseCount(TestEnum);
     try testing.expectEqual(@as(usize, 3), case_count);
 
-    // Test case names (equivalent to Swift case name access)
+    // Test case names
     const case_names = EnumUtils.getCaseNames(TestEnum);
     try testing.expectEqual(@as(usize, 3), case_names.len);
     try testing.expectEqualStrings("Alpha", case_names[0]);

@@ -1,6 +1,6 @@
 //! Response Tests
 //!
-//! Complete conversion from NeoSwift ResponseTests.swift
+//! Response tests
 //! Tests JSON-RPC response parsing and handling.
 
 const std = @import("std");

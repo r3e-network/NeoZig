@@ -1,6 +1,6 @@
 //! Wallet module
 //!
-//! Complete wallet system converted from Swift implementation.
+//! Complete wallet system.
 
 const std = @import("std");
 
@@ -17,7 +17,7 @@ pub const validateMnemonic = @import("bip39_account.zig").validateMnemonic;
 pub const NEP6Wallet = @import("nep6_wallet.zig").NEP6Wallet;
 pub const NEP6Account = @import("nep6_wallet.zig").NEP6Account;
 pub const NEP6Contract = @import("nep6_wallet.zig").NEP6Contract;
-pub const CompleteNEP6Wallet = @import("nep6_complete.zig").CompleteNEP6Wallet;
+pub const CompleteNEP6Wallet = @import("nep6_extended.zig").CompleteNEP6Wallet;
 
 test "wallet module" {
     std.testing.refAllDecls(@This());

@@ -1,7 +1,7 @@
 //! Bytes Extensions
 //!
-//! Complete conversion from NeoSwift Bytes.swift extensions
-//! Provides all Swift bytes utility methods and conversions.
+//! Neo N3 
+//! Bytes utility methods and conversions.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -10,9 +10,9 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 
-/// Bytes utility functions (converted from Swift Bytes extensions)
+/// Bytes utility functions
 pub const BytesUtils = struct {
-    /// Converts bytes to big integer (equivalent to Swift .bInt property)
+    /// Converts bytes to big integer
     pub fn toBigInt(bytes: []const u8) u256 {
         if (bytes.len == 0) return 0;
 
@@ -42,7 +42,7 @@ pub const BytesUtils = struct {
         return result;
     }
 
-    /// Base64 encoding (equivalent to Swift .base64Encoded property)
+    /// Base64 encoding
     pub fn base64Encoded(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const encoder = std.base64.standard.Encoder;
         const encoded_len = encoder.calcSize(bytes.len);
@@ -64,19 +64,19 @@ pub const BytesUtils = struct {
         return result;
     }
 
-    /// Base58 encoding (equivalent to Swift .base58Encoded property)
+    /// Base58 encoding
     pub fn base58Encoded(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const base58 = @import("base58.zig");
         return try base58.encode(bytes, allocator);
     }
 
-    /// Base58Check encoding (equivalent to Swift .base58CheckEncoded property)
+    /// Base58Check encoding
     pub fn base58CheckEncoded(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const base58 = @import("base58.zig");
         return try base58.encodeCheck(bytes, allocator);
     }
 
-    /// Hex string without prefix (equivalent to Swift .noPrefixHex property)
+    /// Hex string without prefix
     pub fn noPrefixHex(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const hex_string = try @import("bytes.zig").toHex(bytes, allocator);
         defer allocator.free(hex_string);
@@ -85,13 +85,13 @@ pub const BytesUtils = struct {
         return try allocator.dupe(u8, cleaned);
     }
 
-    /// Variable size calculation (equivalent to Swift .varSize property)
+    /// Variable size calculation
     pub fn varSize(bytes: []const u8) usize {
         const count = bytes.len;
         return @import("numeric_extensions.zig").IntUtils.varSize(@intCast(count)) + count;
     }
 
-    /// Script hash to address conversion (equivalent to Swift .scripthashToAddress property)
+    /// Script hash to address conversion
     pub fn scripthashToAddress(script_hash: []const u8, allocator: std.mem.Allocator) ![]u8 {
         if (script_hash.len != 20) {
             return errors.throwIllegalArgument("Script hash must be 20 bytes");
@@ -101,7 +101,7 @@ pub const BytesUtils = struct {
         var payload: [21]u8 = undefined;
         payload[0] = constants.AddressConstants.ADDRESS_VERSION;
 
-        // Reverse the script hash (Swift uses reversed())
+        // Reverse the script hash to big-endian
         var i: usize = 0;
         while (i < 20) : (i += 1) {
             payload[i + 1] = script_hash[19 - i];
@@ -121,9 +121,9 @@ pub const BytesUtils = struct {
         return try base58Encoded(&full_payload, allocator);
     }
 
-    /// Pads bytes to specified length (equivalent to Swift toPadded)
+    /// Pads bytes to specified length
     pub fn toPadded(bytes: []const u8, length: usize, trailing: bool, allocator: std.mem.Allocator) ![]u8 {
-        // Handle leading zero removal (Swift logic)
+        // Handle leading zero removal
         const first_zero = bytes.len > 0 and bytes[0] == 0;
         const src_offset: usize = if (first_zero) 1 else 0;
         const bytes_length = bytes.len - src_offset;
@@ -148,7 +148,7 @@ pub const BytesUtils = struct {
         return result;
     }
 
-    /// Trims trailing bytes (equivalent to Swift trimTrailingBytes)
+    /// Trims trailing bytes
     pub fn trimTrailingBytes(bytes: []const u8, byte_to_trim: u8, allocator: std.mem.Allocator) ![]u8 {
         var end = bytes.len;
         while (end > 0 and bytes[end - 1] == byte_to_trim) {
@@ -176,14 +176,14 @@ pub const BytesUtils = struct {
         return try allocator.dupe(u8, bytes[start..]);
     }
 
-    /// Reverses bytes (equivalent to Swift .reversed())
+    /// Reverses bytes)
     pub fn reversed(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const result = try allocator.dupe(u8, bytes);
         std.mem.reverse(u8, result);
         return result;
     }
 
-    /// Converts bytes to hex string (equivalent to Swift .toHexString())
+    /// Converts bytes to hex string)
     pub fn toHexString(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const hex_len = bytes.len * 2;
         const result = try allocator.alloc(u8, hex_len);
@@ -245,12 +245,12 @@ pub const BytesUtils = struct {
     }
 };
 
-// Tests (converted from Swift Bytes extension tests)
+// Tests
 test "BytesUtils big integer conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test bytes to big integer (equivalent to Swift .bInt tests)
+    // Test bytes to big integer
     const test_bytes = [_]u8{ 0x01, 0x23, 0x45, 0x67 };
     const big_int = BytesUtils.toBigInt(&test_bytes);
     try testing.expectEqual(@as(u256, 0x01234567), big_int);
@@ -276,7 +276,7 @@ test "BytesUtils encoding operations" {
 
     const test_data = "Hello Neo Blockchain";
 
-    // Test Base64 encoding (equivalent to Swift .base64Encoded tests)
+    // Test Base64 encoding
     const base64_encoded = try BytesUtils.base64Encoded(test_data, allocator);
     defer allocator.free(base64_encoded);
 
@@ -285,13 +285,13 @@ test "BytesUtils encoding operations" {
 
     try testing.expectEqualStrings(test_data, base64_decoded);
 
-    // Test Base58 encoding (equivalent to Swift .base58Encoded tests)
+    // Test Base58 encoding
     const base58_encoded = try BytesUtils.base58Encoded(test_data, allocator);
     defer allocator.free(base58_encoded);
 
     try testing.expect(base58_encoded.len > 0);
 
-    // Test Base58Check encoding (equivalent to Swift .base58CheckEncoded tests)
+    // Test Base58Check encoding
     const base58_check_encoded = try BytesUtils.base58CheckEncoded(test_data, allocator);
     defer allocator.free(base58_check_encoded);
 
@@ -303,7 +303,7 @@ test "BytesUtils hex operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test hex conversion (equivalent to Swift hex tests)
+    // Test hex conversion
     const test_bytes = [_]u8{ 0xAB, 0xCD, 0xEF };
 
     const hex_string = try BytesUtils.toHexString(&test_bytes, allocator);
@@ -319,7 +319,7 @@ test "BytesUtils padding operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test padding (equivalent to Swift toPadded tests)
+    // Test padding
     const short_bytes = [_]u8{ 0x12, 0x34 };
 
     // Test leading padding (default)
@@ -344,7 +344,7 @@ test "BytesUtils trimming operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test trailing byte trimming (equivalent to Swift trimTrailingBytes tests)
+    // Test trailing byte trimming
     const bytes_with_trailing = [_]u8{ 0x12, 0x34, 0x00, 0x00, 0x00 };
     const trimmed_trailing = try BytesUtils.trimTrailingBytes(&bytes_with_trailing, 0x00, allocator);
     defer allocator.free(trimmed_trailing);
@@ -371,7 +371,7 @@ test "BytesUtils script hash to address" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script hash to address conversion (equivalent to Swift .scripthashToAddress tests)
+    // Test script hash to address conversion
     const test_script_hash = [_]u8{ 0x01, 0x02, 0x03, 0x04, 0x05 } ++ [_]u8{ 0x06, 0x07, 0x08, 0x09, 0x0A } ++ [_]u8{ 0x0B, 0x0C, 0x0D, 0x0E, 0x0F } ++ [_]u8{ 0x10, 0x11, 0x12, 0x13, 0x14 };
 
     const address = try BytesUtils.scripthashToAddress(&test_script_hash, allocator);
@@ -429,7 +429,7 @@ test "BytesUtils utility operations" {
 test "BytesUtils variable size calculation" {
     const testing = std.testing;
 
-    // Test variable size calculation (equivalent to Swift .varSize tests)
+    // Test variable size calculation
     const small_bytes = [_]u8{ 0x01, 0x02, 0x03 };
     const small_var_size = BytesUtils.varSize(&small_bytes);
     try testing.expect(small_var_size >= 4); // 1 byte length + 3 bytes data

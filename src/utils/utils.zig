@@ -1,6 +1,6 @@
 //! Utility functions module
 //!
-//! Converted from Swift utility extensions and helper functions.
+//! Utility extensions and helper functions.
 
 const std = @import("std");
 

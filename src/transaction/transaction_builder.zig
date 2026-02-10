@@ -1,6 +1,6 @@
 //! Neo Transaction Builder
 //!
-//! Complete conversion from NeoSwift TransactionBuilder.swift
+//! Neo N3
 //! Maintains full API compatibility with builder pattern and all features.
 
 const std = @import("std");
@@ -19,23 +19,23 @@ const witness_rule_mod = @import("witness_rule.zig");
 
 pub const Account = @import("../wallet/account.zig").Account;
 
-/// Transaction builder for constructing Neo transactions (Swift API compatible)
+/// Transaction builder for constructing Neo transactions
 pub const TransactionBuilder = struct {
-    /// GAS token hash (matches Swift GAS_TOKEN_HASH)
+    /// GAS token hash
     pub const GAS_TOKEN_HASH: Hash160 = blk: {
-        break :blk Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf") catch |err| @panic(@errorName(err));
+        break :blk Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf") catch @compileError("invalid GAS_TOKEN_HASH literal");
     };
 
-    /// Balance function name (matches Swift BALANCE_OF_FUNCTION)
+    /// Balance function name
     pub const BALANCE_OF_FUNCTION = "balanceOf";
 
-    /// Dummy public key for fee calculation (matches Swift DUMMY_PUB_KEY)
+    /// Dummy public key for fee calculation
     pub const DUMMY_PUB_KEY = "02ec143f00b88524caf36a0121c2de09eef0519ddbe1c710a00f0e2663201ee4c0";
 
     allocator: std.mem.Allocator,
-    neo_swift: ?*anyopaque, // stub for NeoSwift reference
+    client: ?*anyopaque, // stub for NeoClient reference
 
-    // Transaction fields (match Swift private vars)
+    // Transaction fields
     version_field: u8,
     nonce_field: u32,
     valid_until_block_field: ?u32,
@@ -51,13 +51,13 @@ pub const TransactionBuilder = struct {
 
     const Self = @This();
 
-    /// Creates a new transaction builder (equivalent to Swift init(_ neoSwift: NeoSwift))
+    /// Creates a new transaction builder)
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .neo_swift = null,
+            .client = null,
             .version_field = constants.CURRENT_TX_VERSION,
-            .nonce_field = std.crypto.random.int(u32), // Random nonce like Swift
+            .nonce_field = std.crypto.random.int(u32), // Random nonce
             .valid_until_block_field = null,
             .signers_list = ArrayList(Signer).init(allocator),
             .additional_network_fee = 0,
@@ -84,31 +84,31 @@ pub const TransactionBuilder = struct {
         }
     }
 
-    /// Sets the version for this transaction (equivalent to Swift version(_ version: Byte))
+    /// Sets the version for this transaction)
     pub fn version(self: *Self, transaction_version: u8) *Self {
         self.version_field = transaction_version;
         return self;
     }
 
-    /// Sets the nonce (equivalent to Swift nonce(_ nonce: Int))
+    /// Sets the nonce)
     pub fn nonce(self: *Self, transaction_nonce: u32) !*Self {
         // Validate nonce range (0 to 2^32-1)
         self.nonce_field = transaction_nonce;
         return self;
     }
 
-    /// Sets valid until block (equivalent to Swift validUntilBlock(_ blockNr: Int))
+    /// Sets valid until block)
     pub fn validUntilBlock(self: *Self, block_nr: u32) !*Self {
         self.valid_until_block_field = block_nr;
         return self;
     }
 
-    /// Sets the first signer by account (equivalent to Swift firstSigner(_ sender: Account))
+    /// Sets the first signer by account)
     pub fn firstSignerAccount(self: *Self, sender_account: Account) !*Self {
         return try self.firstSigner(try sender_account.getScriptHash());
     }
 
-    /// Sets the first signer by script hash (equivalent to Swift firstSigner(_ sender: Hash160))
+    /// Sets the first signer by script hash)
     pub fn firstSigner(self: *Self, sender: Hash160) !*Self {
         // Check for fee-only witness scope signers
         for (self.signers_list.items) |existing_signer| {
@@ -137,7 +137,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds signers to the transaction (equivalent to Swift signers(_ signers: [Signer]))
+    /// Adds signers to the transaction)
     /// Note: signers are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn signers(self: *Self, new_signers: []const Signer) !*Self {
         var cloned_signers = ArrayList(Signer).init(self.allocator);
@@ -160,13 +160,13 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds a single signer (equivalent to Swift signer(_ signer: Signer))
+    /// Adds a single signer)
     /// Note: the signer is deep-cloned into allocator-owned storage; the builder owns its copy.
     pub fn signer(self: *Self, new_signer: Signer) !*Self {
         var owned_signer = try new_signer.cloneOwned(self.allocator);
         errdefer owned_signer.deinit(self.allocator);
 
-        // Neo transactions require unique signer accounts. For Swift API parity,
+        // Neo transactions require unique signer accounts.
         // treat re-adding an existing signer as an update.
         for (self.signers_list.items, 0..) |existing_signer, idx| {
             if (existing_signer.signer_hash.eql(owned_signer.signer_hash)) {
@@ -180,19 +180,19 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Sets additional network fee (equivalent to Swift additionalNetworkFee(_ fee: Int))
+    /// Sets additional network fee)
     pub fn additionalNetworkFee(self: *Self, fee: u64) *Self {
         self.additional_network_fee = fee;
         return self;
     }
 
-    /// Sets additional system fee (equivalent to Swift additionalSystemFee(_ fee: Int))
+    /// Sets additional system fee)
     pub fn additionalSystemFee(self: *Self, fee: u64) *Self {
         self.additional_system_fee = fee;
         return self;
     }
 
-    /// Adds transaction attributes (equivalent to Swift attributes(_ attributes: [TransactionAttribute]))
+    /// Adds transaction attributes)
     /// Note: attributes are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn attributes(self: *Self, new_attributes: []const TransactionAttribute) !*Self {
         // Validate maximum attributes
@@ -220,34 +220,34 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds high priority attribute (equivalent to Swift highPriority())
+    /// Adds high priority attribute)
     pub fn highPriority(self: *Self) !*Self {
         try self.attributes_list.append(TransactionAttribute.initHighPriority());
         return self;
     }
 
-    /// Adds not-valid-before attribute (equivalent to Swift notValidBefore(_ height:))
+    /// Adds not-valid-before attribute)
     pub fn notValidBefore(self: *Self, height: u32) !*Self {
         const attribute = try TransactionAttribute.initNotValidBefore(height, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Adds conflicts attribute (equivalent to Swift conflicts(_ hash:))
+    /// Adds conflicts attribute)
     pub fn conflicts(self: *Self, conflict_hash: Hash256) !*Self {
         const attribute = try TransactionAttribute.initConflicts(conflict_hash, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Adds notary-assisted attribute (equivalent to Swift notaryAssisted(_ nKeys:))
+    /// Adds notary-assisted attribute)
     pub fn notaryAssisted(self: *Self, n_keys: u8) !*Self {
         const attribute = try TransactionAttribute.initNotaryAssisted(n_keys, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Sets the transaction script (equivalent to Swift script(_ script: Bytes))
+    /// Sets the transaction script)
     pub fn script(self: *Self, transaction_script: []const u8) !*Self {
         if (self.script_field == null) {
             self.script_field = ArrayList(u8).init(self.allocator);
@@ -259,7 +259,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Builds NEP-17 token transfer (equivalent to Swift transferToken methods)
+    /// Builds NEP-17 token transfer
     pub fn transferToken(
         self: *Self,
         token_hash: Hash160,
@@ -278,7 +278,7 @@ pub const TransactionBuilder = struct {
         return try self.invokeFunction(token_hash, "transfer", &params);
     }
 
-    /// Invokes a contract function (equivalent to Swift invokeFunction methods)
+    /// Invokes a contract function
     pub fn invokeFunction(
         self: *Self,
         contract_hash: Hash160,
@@ -295,7 +295,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Builds the transaction (equivalent to Swift build())
+    /// Builds the transaction)
     pub fn build(self: *Self) !Transaction {
         // Validate required fields
         if (self.signers_list.items.len == 0) {
@@ -327,7 +327,7 @@ pub const TransactionBuilder = struct {
         );
     }
 
-    /// Signs the transaction (equivalent to Swift sign())
+    /// Signs the transaction)
     pub fn sign(self: *Self, accounts: []const Account, network_magic: u32) !Transaction {
         var transaction = try self.build();
         errdefer transaction.deinit(self.allocator);
@@ -339,8 +339,8 @@ pub const TransactionBuilder = struct {
         // Calculate transaction hash for signing
         const tx_hash = try transaction.getHash(self.allocator);
 
-        // Create signing data with network magic (matches NeoSwift getHashData()).
-        // NeoSwift: networkMagicBytes || sha256(unsignedTxBytes)
+        // Create signing data with network magic (matches NeoClient getHashData()).
+        // NeoClient: networkMagicBytes || sha256(unsignedTxBytes)
         var signing_data: [36]u8 = undefined;
         const magic_bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, network_magic));
         @memcpy(signing_data[0..4], &magic_bytes);
@@ -397,7 +397,7 @@ pub const TransactionBuilder = struct {
         method: []const u8,
         parameters: []const ContractParameter,
     ) !void {
-        // Delegate invocation script building to ScriptBuilder to stay compatible with NeoSwift/NeoVM.
+        // Delegate invocation script building to ScriptBuilder to stay compatible with NeoClient/NeoVM.
         var builder = ScriptBuilder.init(self.allocator);
         defer builder.deinit();
 
@@ -407,7 +407,7 @@ pub const TransactionBuilder = struct {
         try self.script_field.?.appendSlice(builder.toScript());
     }
 
-    /// Checks if transaction has high priority (equivalent to Swift isHighPriority computed property)
+    /// Checks if transaction has high priority
     pub fn isHighPriority(self: *Self) bool {
         for (self.attributes_list.items) |attribute| {
             if (attribute.attribute_type == .HighPriority) {
@@ -417,12 +417,12 @@ pub const TransactionBuilder = struct {
         return false;
     }
 
-    /// Gets current signers (equivalent to Swift signers property)
+    /// Gets current signers
     pub fn getSigners(self: *Self) []const Signer {
         return self.signers_list.items;
     }
 
-    /// Gets current script (equivalent to Swift script property)
+    /// Gets current script
     pub fn getScript(self: *Self) ?[]const u8 {
         if (self.script_field) |current_script| {
             return current_script.items;
@@ -431,7 +431,7 @@ pub const TransactionBuilder = struct {
     }
 };
 
-/// Transaction signer (converted from Swift Signer)
+/// Transaction signer
 pub const Signer = struct {
     signer_hash: Hash160,
     scopes: WitnessScope,
@@ -677,7 +677,7 @@ pub const Signer = struct {
     }
 };
 
-/// Witness scope (converted from Swift WitnessScope)
+/// Witness scope
 pub const WitnessScope = enum(u8) {
     None = 0x00,
     CalledByEntry = 0x01,
@@ -687,7 +687,7 @@ pub const WitnessScope = enum(u8) {
     Global = 0x80,
 };
 
-/// Transaction attribute (converted from Swift TransactionAttribute)
+/// Transaction attribute
 pub const TransactionAttribute = struct {
     attribute_type: AttributeType,
     data: []const u8,
@@ -915,7 +915,7 @@ pub const TransactionAttribute = struct {
     }
 };
 
-/// Attribute types (converted from Swift)
+/// Attribute types
 pub const AttributeType = enum(u8) {
     HighPriority = 0x01,
     OracleResponse = 0x11,
@@ -924,7 +924,7 @@ pub const AttributeType = enum(u8) {
     NotaryAssisted = 0x22,
 };
 
-/// Transaction witness (converted from Swift Witness)
+/// Transaction witness
 pub const Witness = struct {
     invocation_script: []const u8,
     verification_script: []const u8,
@@ -1011,7 +1011,7 @@ pub const WitnessRule = witness_rule_mod.WitnessRule;
 pub const WitnessAction = witness_rule_mod.WitnessAction;
 pub const WitnessCondition = witness_rule_mod.WitnessCondition;
 
-/// Transaction (converted from Swift NeoTransaction)
+/// Transaction
 pub const Transaction = struct {
     version: u8,
     nonce: u32,
@@ -1049,7 +1049,7 @@ pub const Transaction = struct {
         };
     }
 
-    /// Calculates transaction hash (equivalent to Swift getHash())
+    /// Calculates transaction hash)
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
         var writer = BinaryWriter.init(allocator);
         defer writer.deinit();
@@ -1080,7 +1080,7 @@ pub const Transaction = struct {
         return Hash256.sha256(writer.toSlice());
     }
 
-    /// Validates the transaction (equivalent to Swift validation)
+    /// Validates the transaction
     pub fn validate(self: Self) !void {
         if (self.version != constants.CURRENT_TX_VERSION) {
             return errors.TransactionError.InvalidVersion;
@@ -1170,7 +1170,7 @@ fn formatPublicKey(group: [33]u8, allocator: std.mem.Allocator) ![]u8 {
     return result;
 }
 
-// Tests (converted from Swift TransactionBuilderTests)
+// Tests
 test "TransactionBuilder creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -1178,11 +1178,11 @@ test "TransactionBuilder creation and configuration" {
     var builder = TransactionBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test version setting (matches Swift test)
+    // Test version setting
     _ = builder.version(1);
     try testing.expectEqual(@as(u8, 1), builder.version_field);
 
-    // Test nonce setting (matches Swift test)
+    // Test nonce setting
     _ = try builder.nonce(12345);
     try testing.expectEqual(@as(u32, 12345), builder.nonce_field);
 
@@ -1247,7 +1247,7 @@ test "TransactionBuilder signing with account key" {
     try testing.expect(transaction.witnesses[0].invocation_script.len > 0);
     try testing.expect(transaction.witnesses[0].verification_script.len > 0);
 
-    // Ensure signing hash data ordering matches NeoSwift: magicBytes || sha256(unsignedTxBytes),
+    // Ensure signing hash data ordering matches NeoClient: magicBytes || sha256(unsignedTxBytes),
     // then sign sha256(that) deterministically.
     const tx_hash = try transaction.getHash(allocator);
     var signing_data: [36]u8 = undefined;
@@ -1293,7 +1293,7 @@ test "TransactionBuilder token transfer" {
     var builder = TransactionBuilder.init(allocator);
     defer builder.deinit();
 
-    // Build token transfer (matches Swift transferToken functionality)
+    // Build token transfer
     _ = try builder.transferToken(
         TransactionBuilder.GAS_TOKEN_HASH,
         Hash160.ZERO, // from

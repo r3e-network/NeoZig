@@ -1,7 +1,7 @@
 //! Neo Wallet implementation
 //!
-//! Complete conversion from NeoSwift Wallet.swift
-//! Maintains full API compatibility with Swift wallet system.
+//! Neo N3 
+//! Neo N3 wallet implementation.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -15,12 +15,12 @@ const PrivateKey = @import("../crypto/keys.zig").PrivateKey;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 const KeyPair = @import("../crypto/keys.zig").KeyPair;
 
-/// Wallet manages a collection of accounts (converted from Swift Wallet class)
+/// Wallet manages a collection of accounts
 pub const Wallet = struct {
-    /// Default wallet name (matches Swift DEFAULT_WALLET_NAME)
-    pub const DEFAULT_WALLET_NAME = "NeoSwiftWallet";
+    /// Default wallet name
+    pub const DEFAULT_WALLET_NAME = "NeoWallet";
 
-    /// Current wallet version (matches Swift CURRENT_VERSION)
+    /// Current wallet version
     pub const CURRENT_VERSION = "3.0";
 
     allocator: std.mem.Allocator,
@@ -34,7 +34,7 @@ pub const Wallet = struct {
 
     const Self = @This();
 
-    /// Creates new wallet (equivalent to Swift init())
+    /// Creates new wallet)
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
@@ -59,12 +59,12 @@ pub const Wallet = struct {
         if (self.owns_version) self.allocator.free(self.version_field);
     }
 
-    /// Gets wallet name (equivalent to Swift name property)
+    /// Gets wallet name
     pub fn getName(self: Self) []const u8 {
         return self.name_field;
     }
 
-    /// Sets wallet name (equivalent to Swift name(_ name: String))
+    /// Sets wallet name)
     pub fn name(self: *Self, wallet_name: []const u8) *Self {
         if (self.owns_name) {
             self.allocator.free(self.name_field);
@@ -79,12 +79,12 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Gets wallet version (equivalent to Swift version property)
+    /// Gets wallet version
     pub fn getVersion(self: Self) []const u8 {
         return self.version_field;
     }
 
-    /// Sets wallet version (equivalent to Swift version(_ version: String))
+    /// Sets wallet version)
     pub fn version(self: *Self, wallet_version: []const u8) *Self {
         if (self.owns_version) {
             self.allocator.free(self.version_field);
@@ -99,7 +99,7 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Gets scrypt parameters (equivalent to Swift scryptParams property)
+    /// Gets scrypt parameters
     pub fn getScryptParams(self: Self) ScryptParams {
         return self.scrypt_params_field;
     }
@@ -111,13 +111,13 @@ pub const Wallet = struct {
         }
     }
 
-    /// Sets scrypt parameters (equivalent to Swift scryptParams(_ scryptParams: ScryptParams))
+    /// Sets scrypt parameters)
     pub fn scryptParams(self: *Self, params: ScryptParams) *Self {
         self.scrypt_params_field = params;
         return self;
     }
 
-    /// Gets all accounts sorted by script hash (equivalent to Swift accounts property)
+    /// Gets all accounts sorted by script hash
     pub fn getAccounts(self: Self, allocator: std.mem.Allocator) ![]Account {
         var accounts = ArrayList(Account).init(allocator);
         defer accounts.deinit();
@@ -127,13 +127,13 @@ pub const Wallet = struct {
             try accounts.append(entry.value_ptr.*);
         }
 
-        // Sort by script hash (matches Swift sorted behavior)
+        // Sort by script hash
         std.sort.block(Account, accounts.items, {}, accountLessThan);
 
         return try accounts.toOwnedSlice();
     }
 
-    /// Gets default account (equivalent to Swift defaultAccount property)
+    /// Gets default account
     pub fn getDefaultAccount(self: Self) ?Account {
         if (self.default_account_hash) |hash| {
             return self.accounts_map.get(hash);
@@ -141,12 +141,12 @@ pub const Wallet = struct {
         return null;
     }
 
-    /// Sets default account by account (equivalent to Swift defaultAccount(_ account: Account))
+    /// Sets default account by account)
     pub fn defaultAccount(self: *Self, account: Account) !*Self {
         return try self.defaultAccountByHash(account.getScriptHash());
     }
 
-    /// Sets default account by script hash (equivalent to Swift defaultAccount(_ accountHash160: Hash160))
+    /// Sets default account by script hash)
     pub fn defaultAccountByHash(self: *Self, account_hash: Hash160) !*Self {
         if (!self.accounts_map.contains(account_hash)) {
             return errors.throwIllegalArgument("Wallet does not contain account with specified script hash");
@@ -156,18 +156,18 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Checks if account is default (equivalent to Swift isDefault(_ account: Account))
+    /// Checks if account is default)
     pub fn isDefault(self: Self, account: Account) bool {
         return self.isDefaultByHash(account.getScriptHash());
     }
 
-    /// Checks if account hash is default (equivalent to Swift isDefault(_ accountHash: Hash160?))
+    /// Checks if account hash is default)
     pub fn isDefaultByHash(self: Self, account_hash: ?Hash160) bool {
         if (self.default_account_hash == null or account_hash == null) return false;
         return self.default_account_hash.?.eql(account_hash.?);
     }
 
-    /// Adds accounts to wallet (equivalent to Swift addAccounts(_ accounts: [Account]))
+    /// Adds accounts to wallet)
     pub fn addAccounts(self: *Self, accounts: []const Account) !*Self {
         for (accounts) |account| {
             _ = try self.addAccount(account);
@@ -175,7 +175,7 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Adds single account (equivalent to Swift addAccount(_ account: Account))
+    /// Adds single account)
     pub fn addAccount(self: *Self, account: Account) !*Self {
         const script_hash = account.getScriptHash();
 
@@ -194,12 +194,12 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Removes account (equivalent to Swift removeAccount(_ account: Account))
+    /// Removes account)
     pub fn removeAccount(self: *Self, account: Account) !*Self {
         return try self.removeAccountByHash(account.getScriptHash());
     }
 
-    /// Removes account by hash (equivalent to Swift removeAccount(_ accountHash: Hash160))
+    /// Removes account by hash)
     pub fn removeAccountByHash(self: *Self, account_hash: Hash160) !*Self {
         if (!self.accounts_map.contains(account_hash)) {
             return errors.WalletError.AccountNotFound;
@@ -223,7 +223,7 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Checks if wallet contains account (equivalent to Swift containsAccount)
+    /// Checks if wallet contains account
     pub fn containsAccount(self: Self, account: Account) bool {
         return self.containsAccountByHash(account.getScriptHash());
     }
@@ -233,7 +233,7 @@ pub const Wallet = struct {
         return self.accounts_map.contains(account_hash);
     }
 
-    /// Gets account by script hash (equivalent to Swift getAccount)
+    /// Gets account by script hash
     pub fn getAccount(self: Self, script_hash: Hash160) ?Account {
         return self.accounts_map.get(script_hash);
     }
@@ -243,7 +243,7 @@ pub const Wallet = struct {
         return @intCast(self.accounts_map.count());
     }
 
-    /// Creates new account in wallet (equivalent to Swift createAccount)
+    /// Creates new account in wallet
     pub fn createAccount(self: *Self, label: ?[]const u8) !Account {
         const key_pair = try KeyPair.generate(true);
         const account = try Account.initFromKeyPair(self.allocator, key_pair, label);
@@ -251,7 +251,7 @@ pub const Wallet = struct {
         return account;
     }
 
-    /// Imports account from private key (equivalent to Swift methods)
+    /// Imports account from private key
     pub fn importAccount(
         self: *Self,
         private_key: PrivateKey,
@@ -268,7 +268,7 @@ pub const Wallet = struct {
         return account;
     }
 
-    /// Imports account from WIF (equivalent to Swift importAccountFromWIF)
+    /// Imports account from WIF
     pub fn importAccountFromWIF(
         self: *Self,
         wif: []const u8,
@@ -299,10 +299,10 @@ pub const Hash160Context = struct {
     }
 };
 
-/// Scrypt parameters shared with NEP-6 (converted from Swift ScryptParams)
+/// Scrypt parameters shared with NEP-6
 pub const ScryptParams = @import("nep6_wallet.zig").ScryptParams;
 
-/// Account (converted from Swift Account)
+/// Account
 pub const Account = struct {
     allocator: std.mem.Allocator,
     address: Address,
@@ -314,7 +314,7 @@ pub const Account = struct {
 
     const Self = @This();
 
-    /// Creates account from key pair (equivalent to Swift Account creation)
+    /// Creates account from key pair
     pub fn initFromKeyPair(allocator: std.mem.Allocator, key_pair: KeyPair, label: ?[]const u8) !Self {
         const address = try key_pair.public_key.toAddress(constants.AddressConstants.ADDRESS_VERSION);
 
@@ -364,42 +364,42 @@ pub const Account = struct {
         }
     }
 
-    /// Gets script hash (equivalent to Swift getScriptHash())
+    /// Gets script hash)
     pub fn getScriptHash(self: Self) Hash160 {
         return self.address.toHash160();
     }
 
-    /// Gets address (equivalent to Swift getAddress())
+    /// Gets address)
     pub fn getAddress(self: Self) Address {
         return self.address;
     }
 
-    /// Gets label (equivalent to Swift getLabel())
+    /// Gets label)
     pub fn getLabel(self: Self) ?[]const u8 {
         return self.label;
     }
 
-    /// Checks if account is locked (equivalent to Swift isLocked property)
+    /// Checks if account is locked
     pub fn isLocked(self: Self) bool {
         return self.is_locked;
     }
 
-    /// Locks the account (equivalent to Swift lock methods)
+    /// Locks the account
     pub fn lock(self: *Self) void {
         self.is_locked = true;
     }
 
-    /// Unlocks the account (equivalent to Swift unlock methods)
+    /// Unlocks the account
     pub fn unlock(self: *Self) void {
         self.is_locked = false;
     }
 
-    /// Checks if account has private key (equivalent to Swift hasPrivateKey)
+    /// Checks if account has private key
     pub fn hasPrivateKey(self: Self) bool {
         return self.encrypted_private_key != null;
     }
 
-    /// Encrypts and stores private key (equivalent to Swift NEP-2 encryption)
+    /// Encrypts and stores private key
     pub fn encryptPrivateKey(self: *Self, password: []const u8, private_key: PrivateKey, public_key: PublicKey) !void {
         // Use actual NEP-2 encryption implementation
         const key_pair = KeyPair.init(private_key, public_key);
@@ -419,7 +419,7 @@ pub const Account = struct {
         self.encrypted_private_key = encrypted_key;
     }
 
-    /// Decrypts private key (equivalent to Swift getPrivateKey with password)
+    /// Decrypts private key
     pub fn getPrivateKey(self: Self, password: []const u8) !PrivateKey {
         const encrypted_key = self.encrypted_private_key orelse return errors.WalletError.AccountNotFound;
 
@@ -440,7 +440,7 @@ pub const Account = struct {
         return try self.getPrivateKey("");
     }
 
-    /// Creates verification script (equivalent to Swift contract creation)
+    /// Creates verification script
     pub fn createVerificationScript(self: Self, allocator: std.mem.Allocator) ![]u8 {
         // Get public key and create single-sig verification script
         const private_key = try self.getPrivateKeyUnsafe();
@@ -471,7 +471,7 @@ fn copyLabel(allocator: std.mem.Allocator, label: ?[]const u8) !?[]const u8 {
     return null;
 }
 
-/// Contract information (converted from Swift contract data)
+/// Contract information
 pub const ContractInfo = struct {
     script: []const u8,
     parameters: []const ContractParameterType,
@@ -496,7 +496,7 @@ pub const ContractInfo = struct {
 // Import after definitions to avoid circular dependencies
 const ContractParameterType = @import("../types/contract_parameter.zig").ContractParameterType;
 
-// Tests (converted from Swift WalletTests)
+// Tests
 test "Wallet creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -504,11 +504,11 @@ test "Wallet creation and configuration" {
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
-    // Test default properties (matches Swift tests)
+    // Test default properties
     try testing.expectEqualStrings(Wallet.DEFAULT_WALLET_NAME, wallet.getName());
     try testing.expectEqualStrings(Wallet.CURRENT_VERSION, wallet.getVersion());
 
-    // Test name and version setting (matches Swift builder pattern)
+    // Test name and version setting
     _ = wallet.name("Test Wallet").version("3.1");
     try testing.expectEqualStrings("Test Wallet", wallet.getName());
     try testing.expectEqualStrings("3.1", wallet.getVersion());
@@ -542,13 +542,13 @@ test "ScryptParams configuration" {
     var wallet = Wallet.init(allocator);
     defer wallet.deinit();
 
-    // Test default scrypt params (matches Swift .DEFAULT)
+    // Test default scrypt params
     const default_params = wallet.getScryptParams();
     try testing.expectEqual(@as(u32, 16384), default_params.n);
     try testing.expectEqual(@as(u32, 8), default_params.r);
     try testing.expectEqual(@as(u32, 8), default_params.p);
 
-    // Test custom scrypt params (matches Swift scryptParams method)
+    // Test custom scrypt params
     const custom_params = ScryptParams.init(1024, 4, 4);
     _ = wallet.scryptParams(custom_params);
 

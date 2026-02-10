@@ -1,20 +1,20 @@
 //! Neo SendRawTransaction Implementation
 //!
-//! Complete conversion from NeoSwift NeoSendRawTransaction.swift
+//! Neo N3
 //! Provides transaction broadcast response structure.
 
 const std = @import("std");
 
 const Hash256 = @import("../../types/hash256.zig").Hash256;
 
-/// Raw transaction response (converted from Swift RawTransaction)
+/// Raw transaction response
 pub const RawTransaction = struct {
     /// Transaction hash
     hash: Hash256,
 
     const Self = @This();
 
-    /// Creates new RawTransaction (equivalent to Swift init)
+    /// Creates new RawTransaction
     pub fn init(hash: Hash256) Self {
         return Self{ .hash = hash };
     }
@@ -43,7 +43,7 @@ pub const RawTransaction = struct {
     }
 };
 
-/// SendRawTransaction RPC response wrapper (converted from Swift NeoSendRawTransaction)
+/// SendRawTransaction RPC response wrapper
 pub const NeoSendRawTransaction = struct {
     /// The transaction result
     result: ?RawTransaction,
@@ -55,7 +55,7 @@ pub const NeoSendRawTransaction = struct {
         return Self{ .result = result };
     }
 
-    /// Gets the transaction (equivalent to Swift transaction property)
+    /// Gets the transaction
     pub fn getTransaction(self: Self) ?RawTransaction {
         return self.result;
     }
@@ -74,7 +74,7 @@ pub const NeoSendRawTransaction = struct {
     }
 };
 
-// Tests (converted from Swift NeoSendRawTransaction tests)
+// Tests
 test "RawTransaction creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

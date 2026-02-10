@@ -1,6 +1,6 @@
 //! Serializable Transaction Tests
 //!
-//! Complete conversion from NeoSwift SerializableTransactionTest.swift
+//! Serializable transaction tests
 //! Tests transaction serialization and deserialization.
 
 const std = @import("std");

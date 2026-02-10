@@ -1,6 +1,6 @@
 //! Script Builder Tests
 //!
-//! Complete conversion from NeoSwift ScriptBuilderTests.swift
+//! ScriptBuilder tests
 //! Tests script building, opcode generation, and parameter handling.
 
 const std = @import("std");
@@ -13,7 +13,7 @@ const ContractParameter = neo.types.ContractParameter;
 const Hash160 = neo.Hash160;
 const InteropService = neo.script.InteropService;
 
-/// Helper function to create byte arrays (equivalent to Swift byteArray helper)
+/// Helper function to create byte arrays
 fn createByteArray(size: usize, allocator: std.mem.Allocator) ![]u8 {
     const result = try allocator.alloc(u8, size);
     for (result, 0..) |*byte, i| {
@@ -22,7 +22,7 @@ fn createByteArray(size: usize, allocator: std.mem.Allocator) ![]u8 {
     return result;
 }
 
-/// Helper function to verify script builder output (equivalent to Swift assertBuilder)
+/// Helper function to verify script builder output
 fn assertBuilderBytes(builder: *ScriptBuilder, expected: []const u8) !void {
     const script = builder.toScript();
 
@@ -41,30 +41,30 @@ fn assertBuilderLastBytes(builder: *ScriptBuilder, expected: []const u8, total_l
     try testing.expectEqualSlices(u8, expected, script[start_idx..]);
 }
 
-// Test pushing empty array (converted from Swift testPushArrayEmpty)
+// Test pushing empty array
 test "Push empty array" {
     const allocator = testing.allocator;
 
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Push empty array (equivalent to Swift pushArray([]))
+    // Push empty array)
     const empty_array = [_]ContractParameter{};
     _ = try builder.pushArray(&empty_array);
 
-    // Should generate NEWARRAY0 opcode (equivalent to Swift OpCode.newArray0.opcode)
+    // Should generate NEWARRAY0 opcode
     const expected = [_]u8{@intFromEnum(OpCode.NEWARRAY0)};
     try assertBuilderBytes(&builder, &expected);
 }
 
-// Test pushing empty array parameter (converted from Swift testPushParamEmptyArray)
+// Test pushing empty array parameter
 test "Push empty array parameter" {
     const allocator = testing.allocator;
 
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Create empty array parameter (equivalent to Swift ContractParameter(type: .array, value: []))
+    // Create empty array parameter)
     const empty_array_param = ContractParameter.array(&[_]ContractParameter{});
 
     _ = try builder.pushParam(empty_array_param);
@@ -74,11 +74,11 @@ test "Push empty array parameter" {
     try assertBuilderBytes(&builder, &expected);
 }
 
-// Test pushing byte arrays (converted from Swift testPushByteArray)
+// Test pushing byte arrays
 test "Push byte arrays" {
     const allocator = testing.allocator;
 
-    // Test different byte array sizes (equivalent to Swift pushData tests)
+    // Test different byte array sizes
     const test_cases = [_]struct {
         size: usize,
         expected_prefix: []const u8,
@@ -98,7 +98,7 @@ test "Push byte arrays" {
 
         _ = try builder.pushData(byte_array);
 
-        // Verify expected prefix (equivalent to Swift assertBuilder)
+        // Verify expected prefix
         try assertBuilderBytes(&builder, case.expected_prefix);
 
         // Verify total length is prefix + data
@@ -107,11 +107,11 @@ test "Push byte arrays" {
     }
 }
 
-// Test pushing strings (converted from Swift testPushString)
+// Test pushing strings
 test "Push strings" {
     const allocator = testing.allocator;
 
-    // Test empty string (equivalent to Swift pushData(""))
+    // Test empty string)
     var builder1 = ScriptBuilder.init(allocator);
     defer builder1.deinit();
 
@@ -119,7 +119,7 @@ test "Push strings" {
     const expected_empty = [_]u8{ 0x0C, 0x00 }; // PUSHDATA1, length 0
     try assertBuilderBytes(&builder1, &expected_empty);
 
-    // Test single character (equivalent to Swift pushData("a"))
+    // Test single character)
     var builder2 = ScriptBuilder.init(allocator);
     defer builder2.deinit();
 
@@ -127,7 +127,7 @@ test "Push strings" {
     const expected_single = [_]u8{ 0x0C, 0x01, 0x61 }; // PUSHDATA1, length 1, 'a'
     try assertBuilderBytes(&builder2, &expected_single);
 
-    // Test large string (equivalent to Swift 10000 character string)
+    // Test large string
     var builder3 = ScriptBuilder.init(allocator);
     defer builder3.deinit();
 
@@ -140,11 +140,11 @@ test "Push strings" {
     try assertBuilderBytes(&builder3, &expected_large_prefix);
 }
 
-// Test pushing integers (converted from Swift testPushInteger)
+// Test pushing integers
 test "Push integers" {
     const allocator = testing.allocator;
 
-    // Test special integer opcodes (equivalent to Swift pushInteger tests)
+    // Test special integer opcodes
     const integer_test_cases = [_]struct {
         value: i64,
         expected: []const u8,
@@ -194,7 +194,7 @@ test "Push boolean values" {
 test "Contract call script generation" {
     const allocator = testing.allocator;
 
-    // Test contract call (equivalent to Swift contractCall tests)
+    // Test contract call
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
@@ -218,7 +218,7 @@ test "Contract call script generation" {
 test "Syscall generation" {
     const allocator = testing.allocator;
 
-    // Test syscall (equivalent to Swift sysCall tests)
+    // Test syscall
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
@@ -235,7 +235,7 @@ test "Syscall generation" {
 test "Multi-sig verification script sorts public keys" {
     const allocator = testing.allocator;
 
-    // Matches NeoSwift ScriptBuilderTests.testVerificationScriptFromPublicKeys
+    // Matches NeoClient ScriptBuilderTests.testVerificationScriptFromPublicKeys
     const key1_hex = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
     const key2_hex = "03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d";
     const key3_hex = "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e";
@@ -269,7 +269,7 @@ test "Multi-sig verification script sorts public keys" {
 test "OpCode sequence generation" {
     const allocator = testing.allocator;
 
-    // Test multiple opcodes (equivalent to Swift opCode tests)
+    // Test multiple opcodes
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
@@ -290,7 +290,7 @@ test "OpCode sequence generation" {
 test "Script builder method chaining" {
     const allocator = testing.allocator;
 
-    // Test method chaining (equivalent to Swift fluent interface)
+    // Test method chaining
     var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 

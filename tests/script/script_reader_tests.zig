@@ -1,6 +1,6 @@
 //! Script Reader Tests
 //!
-//! Complete conversion from NeoSwift ScriptReaderTests.swift
+//! ScriptReader tests
 //! Tests script analysis and opcode conversion.
 
 const std = @import("std");

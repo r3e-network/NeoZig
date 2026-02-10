@@ -1,6 +1,6 @@
 //! Role Management Contract implementation
 //!
-//! Complete conversion from NeoSwift RoleManagement.swift
+//! Neo N3 
 //! Handles node role designation and management.
 
 const std = @import("std");
@@ -13,18 +13,19 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
+const Role = @import("../types/role.zig").Role;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 
-/// Role management contract (converted from Swift RoleManagement)
+/// Role management contract
 pub const RoleManagement = struct {
-    /// Contract name (matches Swift NAME)
+    /// Contract name
     pub const NAME = "RoleManagement";
 
-    /// Script hash (matches Swift SCRIPT_HASH)
+    /// Script hash
     pub const SCRIPT_HASH: Hash160 = Hash160{ .bytes = constants.NativeContracts.ROLE_MANAGEMENT };
 
-    /// Method names (match Swift constants)
+    /// Method names
     pub const GET_DESIGNATED_BY_ROLE = "getDesignatedByRole";
     pub const DESIGNATE_AS_ROLE = "designateAsRole";
 
@@ -33,10 +34,10 @@ pub const RoleManagement = struct {
 
     const Self = @This();
 
-    /// Creates new RoleManagement instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, neo_swift: ?*anyopaque) Self {
+    /// Creates new RoleManagement instance
+    pub fn init(allocator: std.mem.Allocator, client: ?*anyopaque) Self {
         return Self{
-            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, neo_swift),
+            .smart_contract = SmartContract.init(allocator, SCRIPT_HASH, client),
         };
     }
 
@@ -58,7 +59,7 @@ pub const RoleManagement = struct {
         return self.smart_contract.isNativeContract();
     }
 
-    /// Gets designated nodes by role (equivalent to Swift getDesignatedByRole)
+    /// Gets designated nodes by role
     pub fn getDesignatedByRole(self: Self, role: Role, block_index: u32) ![]PublicKey {
         try self.checkBlockIndexValidity(block_index);
 
@@ -67,17 +68,17 @@ pub const RoleManagement = struct {
             ContractParameter.integer(@intCast(block_index)),
         };
 
-        if (self.smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (self.smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(self.smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(
+        const client: *NeoClient = @ptrCast(@alignCast(self.smart_contract.client.?));
+        var request = try client.invokeFunction(
             SCRIPT_HASH,
             GET_DESIGNATED_BY_ROLE,
             &params,
             &[_]Signer{},
         );
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -100,22 +101,16 @@ pub const RoleManagement = struct {
         return keys;
     }
 
-    /// Validates block index (equivalent to Swift checkBlockIndexValidity)
-    fn checkBlockIndexValidity(self: Self, block_index: u32) !void {
-        _ = self;
-
-        if (block_index < 0) {
-            return errors.throwIllegalArgument("Block index must be positive");
-        }
-
-        // In production, this would check against current block count
-        const max_reasonable_block = 10000000; // Reasonable upper bound
+    /// Validates block index range.
+    fn checkBlockIndexValidity(_: Self, block_index: u32) !void {
+        // u32 is inherently non-negative; only upper-bound check is needed.
+        const max_reasonable_block: u32 = 10_000_000;
         if (block_index > max_reasonable_block) {
             return errors.throwIllegalArgument("Block index too high");
         }
     }
 
-    /// Designates nodes as role (equivalent to Swift designateAsRole)
+    /// Designates nodes as role
     pub fn designateAsRole(self: Self, role: Role, public_keys: []const PublicKey) !TransactionBuilder {
         if (public_keys.len == 0) {
             return errors.throwIllegalArgument("At least one public key required for designation");
@@ -135,7 +130,7 @@ pub const RoleManagement = struct {
             if (key_bytes.len == 33) {
                 var key_array: [33]u8 = undefined;
                 @memcpy(&key_array, key_bytes);
-                try pub_key_params.append(ContractParameter.publicKey(&key_array));
+                try pub_key_params.append(try ContractParameter.publicKey(&key_array));
             }
         }
 
@@ -157,46 +152,7 @@ pub const RoleManagement = struct {
     }
 };
 
-/// Network roles (converted from Swift Role enum)
-pub const Role = enum(u8) {
-    StateValidator = 4,
-    Oracle = 8,
-    NeoFSAlphabetNode = 16,
-
-    const Self = @This();
-
-    /// Gets role byte value (equivalent to Swift .byte property)
-    pub fn getByte(self: Self) u8 {
-        return @intFromEnum(self);
-    }
-
-    /// Gets role name (equivalent to Swift description)
-    pub fn getName(self: Self) []const u8 {
-        return switch (self) {
-            .StateValidator => "StateValidator",
-            .Oracle => "Oracle",
-            .NeoFSAlphabetNode => "NeoFSAlphabetNode",
-        };
-    }
-
-    /// Creates role from byte value
-    pub fn fromByte(byte_value: u8) ?Self {
-        return switch (byte_value) {
-            4 => .StateValidator,
-            8 => .Oracle,
-            16 => .NeoFSAlphabetNode,
-            else => null,
-        };
-    }
-
-    /// Creates role from name
-    pub fn fromName(name: []const u8) ?Self {
-        if (std.mem.eql(u8, name, "StateValidator")) return .StateValidator;
-        if (std.mem.eql(u8, name, "Oracle")) return .Oracle;
-        if (std.mem.eql(u8, name, "NeoFSAlphabetNode")) return .NeoFSAlphabetNode;
-        return null;
-    }
-};
+// Role is imported from types/role.zig (single source of truth)
 
 /// Role assignments structure (utility for managing all roles)
 pub const RoleAssignments = struct {
@@ -237,14 +193,14 @@ pub const RoleAssignments = struct {
     }
 };
 
-// Tests (converted from Swift RoleManagement tests)
+// Tests
 test "RoleManagement creation and constants" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const role_mgmt = RoleManagement.init(allocator, null);
 
-    // Test constants (equivalent to Swift constant tests)
+    // Test constants
     try testing.expectEqualStrings("RoleManagement", RoleManagement.NAME);
     try testing.expectEqualStrings("getDesignatedByRole", RoleManagement.GET_DESIGNATED_BY_ROLE);
     try testing.expectEqualStrings("designateAsRole", RoleManagement.DESIGNATE_AS_ROLE);
@@ -257,15 +213,15 @@ test "RoleManagement creation and constants" {
 test "Role enum operations" {
     const testing = std.testing;
 
-    // Test role values (equivalent to Swift Role tests)
-    try testing.expectEqual(@as(u8, 4), Role.StateValidator.getByte());
-    try testing.expectEqual(@as(u8, 8), Role.Oracle.getByte());
-    try testing.expectEqual(@as(u8, 16), Role.NeoFSAlphabetNode.getByte());
+    // Test role values
+    try testing.expectEqual(@as(u8, 4), Role.StateValidator.toByte());
+    try testing.expectEqual(@as(u8, 8), Role.Oracle.toByte());
+    try testing.expectEqual(@as(u8, 16), Role.NeoFSAlphabetNode.toByte());
 
     // Test role names
-    try testing.expectEqualStrings("StateValidator", Role.StateValidator.getName());
-    try testing.expectEqualStrings("Oracle", Role.Oracle.getName());
-    try testing.expectEqualStrings("NeoFSAlphabetNode", Role.NeoFSAlphabetNode.getName());
+    try testing.expectEqualStrings("StateValidator", Role.StateValidator.toJsonString());
+    try testing.expectEqualStrings("Oracle", Role.Oracle.toJsonString());
+    try testing.expectEqualStrings("NeoFSAlphabetNode", Role.NeoFSAlphabetNode.toJsonString());
 
     // Test role from byte conversion
     try testing.expectEqual(Role.StateValidator, Role.fromByte(4).?);
@@ -273,8 +229,8 @@ test "Role enum operations" {
     try testing.expectEqual(@as(?Role, null), Role.fromByte(99));
 
     // Test role from name conversion
-    try testing.expectEqual(Role.StateValidator, Role.fromName("StateValidator").?);
-    try testing.expectEqual(@as(?Role, null), Role.fromName("InvalidRole"));
+    try testing.expectEqual(Role.StateValidator, Role.fromJsonString("StateValidator").?);
+    try testing.expectEqual(@as(?Role, null), Role.fromJsonString("InvalidRole"));
 }
 
 test "RoleManagement designation operations" {
@@ -283,7 +239,7 @@ test "RoleManagement designation operations" {
 
     const role_mgmt = RoleManagement.init(allocator, null);
 
-    // Test role designation (equivalent to Swift designateAsRole tests)
+    // Test role designation
     const test_pub_keys = [_]PublicKey{}; // Would have actual public keys
 
     if (test_pub_keys.len > 0) {
@@ -304,7 +260,7 @@ test "RoleManagement block validation" {
 
     const role_mgmt = RoleManagement.init(allocator, null);
 
-    // Test block index validation (equivalent to Swift validation tests)
+    // Test block index validation
     try role_mgmt.checkBlockIndexValidity(0); // Should pass
     try role_mgmt.checkBlockIndexValidity(1000); // Should pass
 

@@ -1,12 +1,12 @@
-//! Contract tests converted from Swift
+//! Contract tests
 //!
-//! Complete conversion of NeoSwift contract test suite.
+//! Complete conversion of NeoClient contract test suite.
 
 const std = @import("std");
 
 const neo = @import("neo-zig");
 
-// Tests SmartContract functionality (converted from SmartContractTests.swift)
+// Tests SmartContract functionality
 test "SmartContract creation and invocation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -14,10 +14,10 @@ test "SmartContract creation and invocation" {
     const contract_hash = try neo.Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf");
     const contract = neo.contract.SmartContract.init(allocator, contract_hash, null);
 
-    // Test script hash property (equivalent to Swift scriptHash tests)
+    // Test script hash property
     try testing.expect(contract.getScriptHash().eql(contract_hash));
 
-    // Test function invocation (equivalent to Swift invokeFunction tests)
+    // Test function invocation
     const params = [_]neo.ContractParameter{
         neo.ContractParameter.string("test_parameter"),
         neo.ContractParameter.integer(42),
@@ -30,18 +30,18 @@ test "SmartContract creation and invocation" {
     try testing.expect(tx_builder.getScript().?.len > 0);
 }
 
-// Tests ContractManagement (converted from ContractManagementTests.swift)
+// Tests ContractManagement
 test "ContractManagement deployment operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const contract_mgmt = neo.contract.ContractManagement.init(allocator, null);
 
-    // Test constants (equivalent to Swift constant tests)
+    // Test constants
     try testing.expectEqualStrings("ContractManagement", neo.contract.ContractManagement.NAME);
     try testing.expectEqualStrings("deploy", neo.contract.ContractManagement.DEPLOY);
 
-    // Test contract deployment (equivalent to Swift deploy tests)
+    // Test contract deployment
     const nef_file = [_]u8{ 0x4E, 0x45, 0x46, 0x33 }; // Mock NEF
     const manifest = "{}";
 
@@ -50,18 +50,18 @@ test "ContractManagement deployment operations" {
 
     try testing.expect(deploy_tx.getScript() != null);
 
-    // Test hasMethod (equivalent to Swift hasMethod tests)
+    // Test hasMethod
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, contract_mgmt.hasMethod(neo.Hash160.ZERO, "testMethod", 1));
 }
 
-// Tests GasToken (converted from GasTokenTests.swift)
+// Tests GasToken
 test "GasToken properties and operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const gas_token = neo.contract.GasToken.init(allocator, null);
 
-    // Test token constants (equivalent to Swift constant tests)
+    // Test token constants
     try testing.expectEqualStrings("GasToken", try gas_token.getName());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getDecimals());
@@ -72,26 +72,26 @@ test "GasToken properties and operations" {
     // Test balance operations (requires RPC client)
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getBalanceOf(neo.Hash160.ZERO));
 
-    // Test transfer operations (equivalent to Swift transfer tests)
+    // Test transfer operations
     var transfer_tx = try gas_token.transfer(neo.Hash160.ZERO, neo.Hash160.ZERO, 100000000, null);
     defer transfer_tx.deinit();
 
     try testing.expect(transfer_tx.getScript() != null);
 }
 
-// Tests NeoToken (converted from NeoTokenTests.swift)
+// Tests NeoToken
 test "NeoToken properties and governance" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const neo_token = neo.contract.NeoToken.init(allocator, null);
 
-    // Test token constants (equivalent to Swift constant tests)
+    // Test token constants
     try testing.expectEqualStrings("NeoToken", try neo_token.getName());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, neo_token.getSymbol());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, neo_token.getDecimals());
 
-    // Test governance operations (equivalent to Swift governance tests)
+    // Test governance operations
     const test_public_key = [_]u8{0x02} ++ [_]u8{0xAB} ** 32;
 
     var register_tx = try neo_token.registerCandidate(test_public_key);
@@ -107,7 +107,7 @@ test "NeoToken properties and governance" {
     try testing.expect(unregister_tx.getScript() != null);
 }
 
-// Tests FungibleToken (converted from FungibleTokenTests.swift)
+// Tests FungibleToken
 test "FungibleToken operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -115,10 +115,10 @@ test "FungibleToken operations" {
     const token_hash = try neo.Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf");
     const fungible_token = neo.contract.FungibleToken.init(allocator, token_hash, null);
 
-    // Test balance operations (equivalent to Swift balance tests)
+    // Test balance operations
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, fungible_token.getBalanceOf(neo.Hash160.ZERO));
 
-    // Test transfer operations (equivalent to Swift transfer tests)
+    // Test transfer operations
     var transfer_tx = try fungible_token.transfer(
         neo.Hash160.ZERO, // from
         neo.Hash160.ZERO, // to
@@ -129,7 +129,7 @@ test "FungibleToken operations" {
 
     try testing.expect(transfer_tx.getScript() != null);
 
-    // Test multi-transfer (equivalent to Swift multiTransfer tests)
+    // Test multi-transfer
     const recipients = [_]neo.contract.TransferRecipient{
         neo.contract.TransferRecipient.init(neo.Hash160.ZERO, 1000000, null),
         neo.contract.TransferRecipient.init(neo.Hash160.ZERO, 2000000, null),
@@ -141,7 +141,7 @@ test "FungibleToken operations" {
     try testing.expect(multi_tx.getScript() != null);
 }
 
-// Tests NonFungibleToken (converted from NonFungibleTokenTests.swift)
+// Tests NonFungibleToken
 test "NonFungibleToken NFT operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -149,10 +149,10 @@ test "NonFungibleToken NFT operations" {
     const nft_hash = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const nft = neo.contract.NonFungibleToken.init(allocator, nft_hash, null);
 
-    // Test NFT balance (equivalent to Swift balanceOf tests)
+    // Test NFT balance
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, nft.balanceOf(neo.Hash160.ZERO));
 
-    // Test NFT transfer (equivalent to Swift transfer tests)
+    // Test NFT transfer
     const token_id = "test_nft_001";
     var transfer_tx = try nft.transfer(
         neo.Hash160.ZERO, // from
@@ -164,7 +164,7 @@ test "NonFungibleToken NFT operations" {
 
     try testing.expect(transfer_tx.getScript() != null);
 
-    // Test divisible NFT transfer (equivalent to Swift divisible transfer tests)
+    // Test divisible NFT transfer
     var divisible_tx = try nft.transferDivisible(
         neo.Hash160.ZERO, // from
         neo.Hash160.ZERO, // to
@@ -177,7 +177,7 @@ test "NonFungibleToken NFT operations" {
     try testing.expect(divisible_tx.getScript() != null);
 }
 
-// Tests Token base class (converted from TokenTests.swift)
+// Tests Token base class
 test "Token base functionality" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -185,10 +185,10 @@ test "Token base functionality" {
     const token_hash = neo.Hash160.ZERO;
     const token = neo.contract.Token.init(allocator, token_hash, null);
 
-    // Test script hash (equivalent to Swift scriptHash tests)
+    // Test script hash
     try testing.expect(token.getScriptHash().eql(token_hash));
 
-    // Test token info methods (equivalent to Swift token info tests)
+    // Test token info methods
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, token.getSymbol());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, token.getDecimals());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, token.getTotalSupply());
@@ -202,7 +202,7 @@ test "Script building for contracts" {
     var builder = neo.script.ScriptBuilder.init(allocator);
     defer builder.deinit();
 
-    // Test contract call script building (equivalent to Swift script tests)
+    // Test contract call script building
     const contract_hash = neo.Hash160.ZERO;
     const params = [_]neo.ContractParameter{
         neo.ContractParameter.string("test"),
@@ -222,13 +222,13 @@ test "Script building for contracts" {
 test "OpCode definitions and properties" {
     const testing = std.testing;
 
-    // Test opcode values (equivalent to Swift opcode tests)
+    // Test opcode values
     try testing.expectEqual(@as(u8, 0x10), @intFromEnum(neo.script.OpCode.PUSH0));
     try testing.expectEqual(@as(u8, 0x11), @intFromEnum(neo.script.OpCode.PUSH1));
     try testing.expectEqual(@as(u8, 0x41), @intFromEnum(neo.script.OpCode.SYSCALL));
     try testing.expectEqual(@as(u8, 0x40), @intFromEnum(neo.script.OpCode.RET));
 
-    // Test push value extraction (equivalent to Swift push value tests)
+    // Test push value extraction
     try testing.expectEqual(@as(i32, 0), neo.script.OpCode.PUSH0.getPushValue().?);
     try testing.expectEqual(@as(i32, 16), neo.script.OpCode.PUSH16.getPushValue().?);
     try testing.expectEqual(@as(?i32, null), neo.script.OpCode.SYSCALL.getPushValue());
@@ -238,7 +238,7 @@ test "OpCode definitions and properties" {
 test "CallFlags permissions and combinations" {
     const testing = std.testing;
 
-    // Test permission flags (equivalent to Swift CallFlags tests)
+    // Test permission flags
     try testing.expectEqual(@as(u8, 0x0F), @intFromEnum(neo.types.CallFlags.All));
     try testing.expectEqual(@as(u8, 0x00), @intFromEnum(neo.types.CallFlags.None));
     try testing.expectEqual(@as(u8, 0x03), @intFromEnum(neo.types.CallFlags.States));

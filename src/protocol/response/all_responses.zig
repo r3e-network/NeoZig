@@ -1,7 +1,7 @@
 //! All Response Types
 //!
 //! Complete collection of all Neo protocol response types
-//! Ensures 100% Swift NeoSwift response equivalence
+//! Ensures 100% Neo N3 response equivalence
 
 const std = @import("std");
 
@@ -41,7 +41,7 @@ pub const TransactionSigner = @import("transaction_signer.zig").TransactionSigne
 pub const Transaction = @import("transaction.zig").Transaction;
 
 // Include additional response types from complete suite
-pub const CompleteResponseSuite = @import("complete_response_suite.zig").Responses;
+pub const CompleteResponseSuite = @import("response_suite.zig").Responses;
 pub const FinalResponseCompletion = @import("final_response_completion.zig");
 
 /// Response type registry for comprehensive access

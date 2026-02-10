@@ -1,6 +1,6 @@
 //! NEP-2 encrypted private key implementation
 //!
-//! Complete conversion from NeoSwift NEP2.swift
+//! Neo N3
 //! Provides password-based private key encryption/decryption.
 
 const std = @import("std");
@@ -25,16 +25,16 @@ fn constantTimeEqual(a: []const u8, b: []const u8) bool {
     return diff == 0;
 }
 
-/// NEP-2 encryption/decryption (converted from Swift NEP2)
+/// NEP-2 encryption/decryption
 pub const NEP2 = struct {
-    /// Constants (match Swift constants)
+    /// Constants
     pub const DKLEN: u32 = 64;
     pub const NEP2_PRIVATE_KEY_LENGTH: u32 = 39;
     pub const NEP2_PREFIX_1: u8 = 0x01;
     pub const NEP2_PREFIX_2: u8 = 0x42;
     pub const NEP2_FLAGBYTE: u8 = 0xE0;
 
-    /// Decrypts NEP-2 encrypted private key (equivalent to Swift decrypt)
+    /// Decrypts NEP-2 encrypted private key
     pub fn decrypt(
         password: []const u8,
         nep2_string: []const u8,
@@ -107,7 +107,7 @@ pub const NEP2 = struct {
         return key_pair;
     }
 
-    /// Encrypts private key with NEP-2 (equivalent to Swift encrypt)
+    /// Encrypts private key with NEP-2
     pub fn encrypt(
         password: []const u8,
         key_pair: KeyPair,
@@ -152,7 +152,7 @@ pub const NEP2 = struct {
         return try base58.encodeCheck(&nep2_data, allocator);
     }
 
-    /// Generates derived scrypt key (equivalent to Swift generateDerivedScryptKey)
+    /// Generates derived scrypt key
     fn generateDerivedScryptKey(
         password: []const u8,
         address_hash: []const u8,
@@ -170,7 +170,7 @@ pub const NEP2 = struct {
         );
     }
 
-    /// Performs AES encryption/decryption (equivalent to Swift performCipher)
+    /// Performs AES encryption/decryption
     fn performCipher(
         data: []const u8,
         key: []const u8,
@@ -189,7 +189,7 @@ pub const NEP2 = struct {
         return result;
     }
 
-    /// Gets address hash for validation (equivalent to Swift getAddressHash)
+    /// Gets address hash for validation
     fn getAddressHash(key_pair: KeyPair, allocator: std.mem.Allocator) ![]u8 {
         const address = try key_pair.public_key.toAddress(constants.AddressConstants.ADDRESS_VERSION);
         const address_str = try address.toString(allocator);
@@ -199,7 +199,7 @@ pub const NEP2 = struct {
         return try allocator.dupe(u8, address_hash.toSlice()[0..4]);
     }
 
-    /// AES encryption (equivalent to Swift AES operations)
+    /// AES encryption
     fn aesEncrypt(data: []u8, key: []const u8) !void {
         if (data.len != 32 or key.len != 32) {
             return errors.CryptoError.InvalidKey;
@@ -222,7 +222,7 @@ pub const NEP2 = struct {
         @memcpy(data[16..32], &encrypted2);
     }
 
-    /// AES decryption (equivalent to Swift AES operations)
+    /// AES decryption
     fn aesDecrypt(data: []u8, key: []const u8) !void {
         if (data.len != 32 or key.len != 32) {
             return errors.CryptoError.InvalidKey;
@@ -249,7 +249,7 @@ pub const NEP2 = struct {
 /// Scrypt parameters (imported from wallet)
 const ScryptParams = @import("../wallet/nep6_wallet.zig").ScryptParams;
 
-// Tests (converted from Swift NEP2Tests)
+// Tests
 test "NEP2 encryption and decryption" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -264,20 +264,20 @@ test "NEP2 encryption and decryption" {
     const password = "test_password_123";
     const params = ScryptParams.DEFAULT;
 
-    // Encrypt private key (equivalent to Swift encrypt tests)
+    // Encrypt private key
     const encrypted_key = try NEP2.encrypt(password, key_pair, params, allocator);
     defer allocator.free(encrypted_key);
 
     try testing.expect(encrypted_key.len > 0);
 
-    // Decrypt private key (equivalent to Swift decrypt tests)
+    // Decrypt private key
     const decrypted_key_pair = try NEP2.decrypt(password, encrypted_key, params, allocator);
     defer {
         var mutable_decrypted = decrypted_key_pair;
         mutable_decrypted.zeroize();
     }
 
-    // Verify round-trip (equivalent to Swift round-trip tests)
+    // Verify round-trip
     try testing.expect(key_pair.private_key.eql(decrypted_key_pair.private_key));
     try testing.expect(key_pair.public_key.eql(decrypted_key_pair.public_key));
 }
@@ -286,11 +286,11 @@ test "NEP2 format validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test invalid NEP-2 format (equivalent to Swift validation tests)
+    // Test invalid NEP-2 format
     const invalid_nep2 = "invalid_nep2_string";
     try testing.expectError(errors.CryptoError.InvalidKey, NEP2.decrypt("password", invalid_nep2, ScryptParams.DEFAULT, allocator));
 
-    // Test wrong password (equivalent to Swift wrong password tests)
+    // Test wrong password
     const key_pair = try KeyPair.generate(true);
     defer {
         var mutable_key_pair = key_pair;
@@ -310,7 +310,7 @@ test "NEP2 scrypt parameter variations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test with different scrypt parameters (equivalent to Swift parameter tests)
+    // Test with different scrypt parameters
     const key_pair = try KeyPair.generate(true);
     defer {
         var mutable_key_pair = key_pair;

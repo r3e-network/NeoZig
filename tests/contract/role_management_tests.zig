@@ -1,6 +1,6 @@
 //! Role Management Tests
 //!
-//! Complete conversion from NeoSwift RoleManagementTests.swift
+//!
 //! Tests role management contract functionality.
 
 const std = @import("std");
@@ -13,10 +13,10 @@ const TestUtils = @import("../helpers/test_utilities.zig");
 test "Role management contract creation" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
-    const role_management = RoleManagement.init(allocator, &neo_swift);
+    const role_management = RoleManagement.init(allocator, &client);
 
     try role_management.validate();
     try testing.expect(role_management.isNativeContract());

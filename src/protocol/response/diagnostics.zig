@@ -1,6 +1,6 @@
 //! Diagnostics Implementation
 //!
-//! Complete conversion from NeoSwift Diagnostics.swift
+//! Neo N3
 
 const std = @import("std");
 

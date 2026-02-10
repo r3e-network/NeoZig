@@ -1,6 +1,6 @@
 //! Sign Tests
 //!
-//! Complete conversion from NeoSwift SignTests.swift
+//! Signature tests
 //! Tests message signing, signature verification, and recovery functionality.
 
 const std = @import("std");

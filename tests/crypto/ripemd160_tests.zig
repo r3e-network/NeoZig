@@ -1,6 +1,6 @@
 //! RIPEMD160 Tests
 //!
-//! Complete conversion from NeoSwift RIPEMD160Tests.swift
+//! RIPEMD-160 tests
 //! Tests RIPEMD160 hashing functionality.
 
 const std = @import("std");

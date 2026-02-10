@@ -1,13 +1,13 @@
 //! NEP-17 Contract Implementation
 //!
-//! Complete conversion from NeoSwift Nep17Contract.swift
+//! Neo N3
 //! Provides NEP-17 token contract representation.
 
 const std = @import("std");
 
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 
-/// NEP-17 token contract (converted from Swift Nep17Contract)
+/// NEP-17 token contract
 pub const Nep17Contract = struct {
     /// Contract script hash
     script_hash: Hash160,
@@ -18,7 +18,7 @@ pub const Nep17Contract = struct {
 
     const Self = @This();
 
-    /// Creates new NEP-17 contract (equivalent to Swift init)
+    /// Creates new NEP-17 contract
     pub fn init(script_hash: Hash160, symbol: []const u8, decimals: u32) Self {
         return Self{
             .script_hash = script_hash,
@@ -27,14 +27,14 @@ pub const Nep17Contract = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.script_hash.eql(other.script_hash) and
             std.mem.eql(u8, self.symbol, other.symbol) and
             self.decimals == other.decimals;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.script_hash.toSlice());
@@ -71,7 +71,7 @@ pub const Nep17Contract = struct {
         try self.script_hash.validate();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const script_hash_string = try self.script_hash.toString(allocator);
         defer allocator.free(script_hash_string);
@@ -79,7 +79,7 @@ pub const Nep17Contract = struct {
         return try std.fmt.allocPrint(allocator, "{{\"scriptHash\":\"{s}\",\"symbol\":\"{s}\",\"decimals\":{}}}", .{ script_hash_string, self.symbol, self.decimals });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -136,12 +136,12 @@ pub const Nep17Contract = struct {
     }
 };
 
-// Tests (converted from Swift Nep17Contract tests)
+// Tests
 test "Nep17Contract creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test contract creation (equivalent to Swift init tests)
+    // Test contract creation
     const script_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
     const symbol = "TEST";
     const decimals = 8;
@@ -161,7 +161,7 @@ test "Nep17Contract creation and properties" {
 test "Nep17Contract equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const script_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
     const contract1 = Nep17Contract.init(script_hash, "TEST", 8);
     const contract2 = Nep17Contract.init(script_hash, "TEST", 8);
@@ -201,7 +201,7 @@ test "Nep17Contract JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const script_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
     const original_contract = Nep17Contract.init(script_hash, "TEST", 8);
 

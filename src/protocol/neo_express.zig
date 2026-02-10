@@ -1,6 +1,6 @@
 //! Neo Express protocol implementation
 //!
-//! Complete conversion from NeoSwift NeoExpress.swift protocol
+//! Neo N3
 //! Provides Neo Express private blockchain functionality.
 
 const std = @import("std");
@@ -11,60 +11,60 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Request = @import("../rpc/request.zig").Request;
 const TransactionAttribute = @import("../transaction/transaction_builder.zig").TransactionAttribute;
 
-/// Neo Express protocol interface (converted from Swift NeoExpress)
+/// Neo Express protocol interface
 pub const NeoExpress = struct {
     /// Service implementation
-    service: *@import("../rpc/neo_swift_service.zig").NeoSwiftService,
+    service: *@import("../rpc/neo_service.zig").NeoService,
 
     const Self = @This();
 
     /// Creates Neo Express protocol
-    pub fn init(service: *@import("../rpc/neo_swift_service.zig").NeoSwiftService) Self {
+    pub fn init(service: *@import("../rpc/neo_service.zig").NeoService) Self {
         return Self{ .service = service };
     }
 
-    /// Gets populated blocks (equivalent to Swift expressGetPopulatedBlocks())
-    pub fn expressGetPopulatedBlocks(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/complete_responses.zig").PopulatedBlocks) {
+    /// Gets populated blocks)
+    pub fn expressGetPopulatedBlocks(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/extended_responses.zig").PopulatedBlocks) {
         const allocator = self.service.getAllocator();
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/complete_responses.zig").PopulatedBlocks).withNoParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetPopulatedBlocks, @import("../rpc/extended_responses.zig").PopulatedBlocks).withNoParams(
             allocator,
             "expressgetpopulatedblocks",
         );
     }
 
-    /// Gets NEP-17 contracts (equivalent to Swift expressGetNep17Contracts())
-    pub fn expressGetNep17Contracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/complete_responses.zig").Nep17Contract) {
+    /// Gets NEP-17 contracts)
+    pub fn expressGetNep17Contracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/extended_responses.zig").Nep17Contract) {
         const allocator = self.service.getAllocator();
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/complete_responses.zig").Nep17Contract).withNoParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetNep17Contracts, []const @import("../rpc/extended_responses.zig").Nep17Contract).withNoParams(
             allocator,
             "expressgetnep17contracts",
         );
     }
 
-    /// Gets contract storage (equivalent to Swift expressGetContractStorage(_ contractHash: Hash160))
-    pub fn expressGetContractStorage(self: Self, contract_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/complete_responses.zig").ContractStorageEntry) {
+    /// Gets contract storage)
+    pub fn expressGetContractStorage(self: Self, contract_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/extended_responses.zig").ContractStorageEntry) {
         const allocator = self.service.getAllocator();
         const hash_hex = try contract_hash.string(allocator);
         defer allocator.free(hash_hex);
 
         const string_params = [_][]const u8{hash_hex};
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/complete_responses.zig").ContractStorageEntry).withStringParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressGetContractStorage, []const @import("../rpc/extended_responses.zig").ContractStorageEntry).withStringParams(
             allocator,
             "expressgetcontractstorage",
             &string_params,
         );
     }
 
-    /// Lists contracts (equivalent to Swift expressListContracts())
-    pub fn expressListContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/complete_responses.zig").ExpressContractState) {
+    /// Lists contracts)
+    pub fn expressListContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/extended_responses.zig").ExpressContractState) {
         const allocator = self.service.getAllocator();
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/complete_responses.zig").ExpressContractState).withNoParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListContracts, []const @import("../rpc/extended_responses.zig").ExpressContractState).withNoParams(
             allocator,
             "expresslistcontracts",
         );
     }
 
-    /// Creates checkpoint (equivalent to Swift expressCreateCheckpoint(_ filename: String))
+    /// Creates checkpoint)
     pub fn expressCreateCheckpoint(self: Self, filename: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoExpressCreateCheckpoint, []const u8) {
         const allocator = self.service.getAllocator();
         const string_params = [_][]const u8{filename};
@@ -75,20 +75,20 @@ pub const NeoExpress = struct {
         );
     }
 
-    /// Lists oracle requests (equivalent to Swift expressListOracleRequests())
-    pub fn expressListOracleRequests(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/complete_responses.zig").OracleRequest) {
+    /// Lists oracle requests)
+    pub fn expressListOracleRequests(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/extended_responses.zig").OracleRequest) {
         const allocator = self.service.getAllocator();
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/complete_responses.zig").OracleRequest).withNoParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressListOracleRequests, []const @import("../rpc/extended_responses.zig").OracleRequest).withNoParams(
             allocator,
             "expresslistoraclerequests",
         );
     }
 
-    /// Creates oracle response transaction (equivalent to Swift expressCreateOracleResponseTx)
+    /// Creates oracle response transaction
     pub fn expressCreateOracleResponseTx(self: Self, oracle_response: TransactionAttribute) !Request(@import("../rpc/response_aliases.zig").NeoExpressCreateOracleResponseTx, []const u8) {
         const allocator = self.service.getAllocator();
         // Serialize oracle response attribute
-        var writer = @import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter.init(allocator);
+        var writer = @import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter.init(allocator);
         defer writer.deinit();
 
         try writer.writeByte(@intFromEnum(oracle_response.attribute_type));
@@ -105,10 +105,10 @@ pub const NeoExpress = struct {
         );
     }
 
-    /// Shuts down Express blockchain (equivalent to Swift expressShutdown())
-    pub fn expressShutdown(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/complete_responses.zig").ExpressShutdown) {
+    /// Shuts down Express blockchain)
+    pub fn expressShutdown(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/extended_responses.zig").ExpressShutdown) {
         const allocator = self.service.getAllocator();
-        return try Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/complete_responses.zig").ExpressShutdown).withNoParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoExpressShutdown, @import("../rpc/extended_responses.zig").ExpressShutdown).withNoParams(
             allocator,
             "expressshutdown",
         );
@@ -329,7 +329,7 @@ pub const ExpressFactory = struct {
         const express_url = try ExpressUtils.createExpressUrl(null, port, allocator);
         defer allocator.free(express_url);
 
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.custom(
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.custom(
             allocator,
             express_url,
             30000, // 30 second timeout
@@ -349,7 +349,7 @@ pub const ExpressFactory = struct {
         const express_url = try ExpressUtils.createExpressUrl(host, port, allocator);
         defer allocator.free(express_url);
 
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.custom(
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.custom(
             allocator,
             express_url,
             timeout_ms,
@@ -360,13 +360,13 @@ pub const ExpressFactory = struct {
     }
 };
 
-// Tests (converted from Swift NeoExpress tests)
+// Tests
 test "NeoExpress creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     // Test Express protocol creation
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     const neo_express = NeoExpress.init(&service);
 
     // Test Express method requests
@@ -384,7 +384,7 @@ test "NeoExpress checkpoint operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     const neo_express = NeoExpress.init(&service);
 
     // Test checkpoint creation
@@ -413,7 +413,7 @@ test "NeoExpress oracle operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     const neo_express = NeoExpress.init(&service);
 
     // Test oracle request listing

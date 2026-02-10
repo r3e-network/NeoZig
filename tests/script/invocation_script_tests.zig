@@ -1,6 +1,6 @@
 //! Invocation Script Tests
 //!
-//! Complete conversion from NeoSwift InvocationScriptTests.swift
+//! InvocationScript tests
 //! Tests invocation script creation and signature handling.
 
 const std = @import("std");

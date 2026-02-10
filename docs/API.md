@@ -23,18 +23,18 @@ const neo = @import("neo-zig");
 
 Available submodules:
 
-| Module | Purpose |
-|--------|---------|
-| `neo.core` | Constants, errors, and core types |
-| `neo.types` | Hash160, Hash256, Address, ContractParameter |
-| `neo.crypto` | Cryptographic operations (keys, signatures, NEP-2, WIF, BIP32) |
-| `neo.rpc` | JSON-RPC client (NeoSwift, HTTP transport) |
-| `neo.transaction` | Transaction building and signing |
-| `neo.contract` | Smart contract wrappers (NEP-17, NEP-11, native contracts) |
-| `neo.wallet` | NEP-6 wallets, BIP-39 accounts |
-| `neo.script` | Neo VM script construction |
-| `neo.serialization` | Binary serialization framework |
-| `neo.utils` | Logging, validation, string/array utilities |
+| Module              | Purpose                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `neo.core`          | Constants, errors, and core types                              |
+| `neo.types`         | Hash160, Hash256, Address, ContractParameter                   |
+| `neo.crypto`        | Cryptographic operations (keys, signatures, NEP-2, WIF, BIP32) |
+| `neo.rpc`           | JSON-RPC client (NeoClient, HTTP transport)                    |
+| `neo.transaction`   | Transaction building and signing                               |
+| `neo.contract`      | Smart contract wrappers (NEP-17, NEP-11, native contracts)     |
+| `neo.wallet`        | NEP-6 wallets, BIP-39 accounts                                 |
+| `neo.script`        | Neo VM script construction                                     |
+| `neo.serialization` | Binary serialization framework                                 |
+| `neo.utils`         | Logging, validation, string/array utilities                    |
 
 ## Core Types
 
@@ -233,30 +233,30 @@ const hash160 = try neo.crypto.hash160(data);
 
 ## RPC Client
 
-### NeoSwift Service
+### NeoClient Service
 
 ```zig
 // Create service
-var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
 
 // Configure
 service.setMaxResponseBytes(32 * 1024 * 1024);  // 32 MiB default
 const config = service.getConfiguration();
 ```
 
-### NeoSwift Client
+### NeoClient Client
 
 ```zig
 // Build client
-const config = neo.rpc.NeoSwiftConfig.init();
-var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+const config = neo.rpc.NeoConfig.init();
+var client = neo.rpc.NeoClient.build(allocator, &service, config);
 defer client.deinit();
 
 // Or with custom config
-var custom_config = neo.rpc.NeoSwiftConfig.init();
+var custom_config = neo.rpc.NeoConfig.init();
 custom_config.timeout_ms = 30000;
 custom_config.max_retries = 3;
-var client = neo.rpc.NeoSwift.build(allocator, &service, custom_config);
+var client = neo.rpc.NeoClient.build(allocator, &service, custom_config);
 ```
 
 ### RPC Methods
@@ -660,19 +660,19 @@ const address = try neo.Address.fromString(allocator, str);
 
 ## Memory Management Summary
 
-| Type | Ownership | Cleanup |
-|------|-----------|---------|
-| `KeyPair` | Caller owns | `key_pair.zeroize()` |
-| `PrivateKey` | Caller owns | `private_key.zeroize()` |
-| `WifResult` | Caller owns | `result.deinit()` |
-| `Address` | Caller owns | `address.deinit(allocator)` |
-| `Hash160` | Caller owns | `hash.deinit(allocator)` |
-| `Hash256` | Caller owns | `hash.deinit(allocator)` |
-| `Transaction` | Caller owns | `transaction.deinit(allocator)` |
-| `TransactionBuilder` | Caller owns | `builder.deinit()` |
-| `NeoSwiftClient` | Caller owns | `client.deinit()` |
-| `Wallet` | Caller owns | `wallet.deinit()` |
-| `Bip39Account` | Caller owns | `account.deinit()` |
-| `NEP6Wallet` | Caller owns | `wallet.deinit()` |
-| `Allocated strings` | Caller owns | `allocator.free(str)` |
-| `JSON Values` | Caller owns | Use `json_utils.freeValue()` |
+| Type                 | Ownership   | Cleanup                         |
+| -------------------- | ----------- | ------------------------------- |
+| `KeyPair`            | Caller owns | `key_pair.zeroize()`            |
+| `PrivateKey`         | Caller owns | `private_key.zeroize()`         |
+| `WifResult`          | Caller owns | `result.deinit()`               |
+| `Address`            | Caller owns | `address.deinit(allocator)`     |
+| `Hash160`            | Caller owns | `hash.deinit(allocator)`        |
+| `Hash256`            | Caller owns | `hash.deinit(allocator)`        |
+| `Transaction`        | Caller owns | `transaction.deinit(allocator)` |
+| `TransactionBuilder` | Caller owns | `builder.deinit()`              |
+| `NeoClient`          | Caller owns | `client.deinit()`               |
+| `Wallet`             | Caller owns | `wallet.deinit()`               |
+| `Bip39Account`       | Caller owns | `account.deinit()`              |
+| `NEP6Wallet`         | Caller owns | `wallet.deinit()`               |
+| `Allocated strings`  | Caller owns | `allocator.free(str)`           |
+| `JSON Values`        | Caller owns | Use `json_utils.freeValue()`    |

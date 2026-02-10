@@ -1,6 +1,6 @@
 //! Native ContractState Implementation
 //!
-//! Complete conversion from NeoSwift NativeContractState.swift
+//! Neo N3
 
 const std = @import("std");
 

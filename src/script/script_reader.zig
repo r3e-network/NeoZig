@@ -1,6 +1,6 @@
 //! Script Reader implementation
 //!
-//! Complete conversion from NeoSwift ScriptReader.swift
+//! Neo N3 
 //! Provides script analysis and human-readable conversion capabilities.
 
 const std = @import("std");
@@ -10,12 +10,12 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const OpCode = @import("op_code.zig").OpCode;
 const InteropService = @import("script_builder.zig").InteropService;
-const BinaryReader = @import("../serialization/binary_reader_complete.zig").CompleteBinaryReader;
+const BinaryReader = @import("../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
-/// Script reader for NeoVM script analysis (converted from Swift ScriptReader)
+/// Script reader for NeoVM script analysis
 pub const ScriptReader = struct {
-    /// Gets interop service by hash (equivalent to Swift getInteropServiceCode)
+    /// Gets interop service by hash
     pub fn getInteropServiceCode(hash_string: []const u8) ?InteropService {
         if (hash_string.len != 8) return null;
 
@@ -33,7 +33,7 @@ pub const ScriptReader = struct {
         return null;
     }
 
-    /// Converts script to OpCode string (equivalent to Swift convertToOpCodeString(_ script: String))
+    /// Converts script to OpCode string)
     pub fn convertToOpCodeString(script_hex: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const script_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(script_hex, allocator);
         defer allocator.free(script_bytes);
@@ -41,7 +41,7 @@ pub const ScriptReader = struct {
         return try convertToOpCodeStringFromBytes(script_bytes, allocator);
     }
 
-    /// Converts script bytes to OpCode string (equivalent to Swift convertToOpCodeString(_ script: Bytes))
+    /// Converts script bytes to OpCode string)
     pub fn convertToOpCodeStringFromBytes(script: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var reader = BinaryReader.init(script);
         var result = ArrayList(u8).init(allocator);
@@ -263,12 +263,12 @@ fn isArithmeticOpCode(opcode: OpCode) bool {
     };
 }
 
-// Tests (converted from Swift ScriptReader tests)
+// Tests
 test "ScriptReader opcode conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test OpCode string conversion (equivalent to Swift convertToOpCodeString tests)
+    // Test OpCode string conversion
     const simple_script_hex = "1011"; // PUSH0, PUSH1
     const opcode_string = try ScriptReader.convertToOpCodeString(simple_script_hex, allocator);
     defer allocator.free(opcode_string);
@@ -288,7 +288,7 @@ test "ScriptReader opcode conversion" {
 test "ScriptReader interop service detection" {
     const testing = std.testing;
 
-    // Test interop service detection (equivalent to Swift getInteropServiceCode tests)
+    // Test interop service detection
     const contract_call_hash = "627d5b52"; // SYSTEM_CONTRACT_CALL
     const service = ScriptReader.getInteropServiceCode(contract_call_hash);
     try testing.expect(service != null);
@@ -308,7 +308,7 @@ test "ScriptReader script analysis" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test script analysis (equivalent to Swift script analysis tests)
+    // Test script analysis
     const test_script = [_]u8{
         0x10, // PUSH0
         0x11, // PUSH1

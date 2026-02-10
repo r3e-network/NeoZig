@@ -1,6 +1,6 @@
 //! Witness Rule implementation
 //!
-//! Complete conversion from NeoSwift WitnessRule.swift, WitnessAction.swift, WitnessCondition.swift
+//! Neo N3 WitnessAction and WitnessCondition definitions
 //! Provides complete witness rule system for advanced transaction validation.
 
 const std = @import("std");
@@ -11,14 +11,14 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 
-/// Witness rule (converted from Swift WitnessRule)
+/// Witness rule
 pub const WitnessRule = struct {
     action: WitnessAction,
     condition: WitnessCondition,
 
     const Self = @This();
 
-    /// Creates witness rule (equivalent to Swift init)
+    /// Creates witness rule
     pub fn init(action: WitnessAction, condition: WitnessCondition) Self {
         return Self{
             .action = action,
@@ -26,18 +26,18 @@ pub const WitnessRule = struct {
         };
     }
 
-    /// Gets serialized size (equivalent to Swift .size property)
+    /// Gets serialized size
     pub fn size(self: Self) usize {
         return 1 + self.condition.size();
     }
 
-    /// Serializes witness rule (equivalent to Swift serialize(_ writer: BinaryWriter))
+    /// Serializes witness rule)
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         try writer.writeByte(@intFromEnum(self.action));
         try self.condition.serialize(writer);
     }
 
-    /// Deserializes witness rule (equivalent to Swift deserialize(_ reader: BinaryReader))
+    /// Deserializes witness rule)
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const action_byte = try reader.readByte();
         const action = WitnessAction.fromByte(action_byte) orelse {
@@ -91,19 +91,19 @@ pub const WitnessRule = struct {
     }
 };
 
-/// Witness action (converted from Swift WitnessAction)
+/// Witness action
 pub const WitnessAction = enum(u8) {
     Deny = 0x00,
     Allow = 0x01,
 
     const Self = @This();
 
-    /// Gets byte value (equivalent to Swift .byte property)
+    /// Gets byte value
     pub fn getByte(self: Self) u8 {
         return @intFromEnum(self);
     }
 
-    /// Creates from byte value (equivalent to Swift throwingValueOf)
+    /// Creates from byte value
     pub fn fromByte(byte_value: u8) ?Self {
         return switch (byte_value) {
             0x00 => .Deny,
@@ -112,7 +112,7 @@ pub const WitnessAction = enum(u8) {
         };
     }
 
-    /// Gets JSON value (equivalent to Swift JSON encoding)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .Deny => "Deny",
@@ -127,13 +127,13 @@ pub const WitnessAction = enum(u8) {
         return null;
     }
 
-    /// Gets all cases (equivalent to Swift CaseIterable)
+    /// Gets all cases
     pub fn getAllCases() []const Self {
         return &[_]Self{ .Deny, .Allow };
     }
 };
 
-/// Witness condition (converted from Swift WitnessCondition)
+/// Witness condition
 pub const WitnessCondition = union(enum(u8)) {
     Boolean: bool,
     Not: struct {
@@ -172,12 +172,12 @@ pub const WitnessCondition = union(enum(u8)) {
     }
 
     /// Creates AND condition
-    pub fn and_condition(conditions: []WitnessCondition) Self {
+    pub fn andCondition(conditions: []WitnessCondition) Self {
         return Self{ .And = .{ .conditions = conditions, .owns_conditions = false } };
     }
 
     /// Creates OR condition
-    pub fn or_condition(conditions: []WitnessCondition) Self {
+    pub fn orCondition(conditions: []WitnessCondition) Self {
         return Self{ .Or = .{ .conditions = conditions, .owns_conditions = false } };
     }
 
@@ -206,7 +206,7 @@ pub const WitnessCondition = union(enum(u8)) {
         return Self{ .CalledByGroup = group_key };
     }
 
-    /// Gets serialized size (equivalent to Swift .size property)
+    /// Gets serialized size
     pub fn size(self: Self) usize {
         var total_size: usize = 1; // Type byte
 
@@ -233,7 +233,7 @@ pub const WitnessCondition = union(enum(u8)) {
         return total_size;
     }
 
-    /// Serializes condition (equivalent to Swift serialize)
+    /// Serializes condition
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         const condition_type: u8 = switch (self) {
             .Boolean => 0x00,
@@ -272,7 +272,7 @@ pub const WitnessCondition = union(enum(u8)) {
         }
     }
 
-    /// Deserializes condition (equivalent to Swift deserialize)
+    /// Deserializes condition
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const condition_type = try reader.readByte();
 
@@ -573,11 +573,11 @@ fn getVarIntSize(value: usize) usize {
     return 9;
 }
 
-// Tests (converted from Swift WitnessRule, WitnessAction, WitnessCondition tests)
+// Tests
 test "WitnessAction operations" {
     const testing = std.testing;
 
-    // Test witness action values (equivalent to Swift WitnessAction tests)
+    // Test witness action values
     try testing.expectEqual(@as(u8, 0x00), WitnessAction.Deny.getByte());
     try testing.expectEqual(@as(u8, 0x01), WitnessAction.Allow.getByte());
 
@@ -599,7 +599,7 @@ test "WitnessCondition creation and basic operations" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test basic condition creation (equivalent to Swift WitnessCondition tests)
+    // Test basic condition creation
     const bool_condition = WitnessCondition.boolean(true);
     try testing.expectEqual(.Boolean, std.meta.activeTag(bool_condition));
 
@@ -619,15 +619,15 @@ test "WitnessCondition compound operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test compound conditions (equivalent to Swift compound condition tests)
+    // Test compound conditions
     const conditions = try allocator.alloc(WitnessCondition, 2);
     defer allocator.free(conditions);
 
     conditions[0] = WitnessCondition.boolean(true);
     conditions[1] = WitnessCondition.calledByEntry();
 
-    const and_condition = WitnessCondition.and_condition(conditions);
-    const or_condition = WitnessCondition.or_condition(conditions);
+    const and_condition = WitnessCondition.andCondition(conditions);
+    const or_condition = WitnessCondition.orCondition(conditions);
 
     // Test size includes all sub-conditions
     const and_size = and_condition.size();
@@ -653,7 +653,7 @@ test "WitnessCondition deserialize frees owned memory" {
         WitnessCondition.boolean(true),
         not_condition,
     };
-    const and_condition = WitnessCondition.and_condition(&conditions);
+    const and_condition = WitnessCondition.andCondition(&conditions);
 
     var writer = BinaryWriter.init(allocator);
     defer writer.deinit();
@@ -678,7 +678,7 @@ test "WitnessRule creation and operations" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test witness rule creation (equivalent to Swift WitnessRule tests)
+    // Test witness rule creation
     const condition = WitnessCondition.boolean(true);
     const rule = WitnessRule.init(WitnessAction.Allow, condition);
 
@@ -703,7 +703,7 @@ test "WitnessRule serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test witness rule serialization (equivalent to Swift serialization tests)
+    // Test witness rule serialization
     const condition = WitnessCondition.scriptHash(Hash160.ZERO);
     const rule = WitnessRule.init(WitnessAction.Allow, condition);
 
@@ -759,7 +759,7 @@ test "WitnessRule evaluation" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test rule evaluation (equivalent to Swift rule evaluation tests)
+    // Test rule evaluation
     var context = WitnessContext.init();
     context.setIsEntryScript(true);
 

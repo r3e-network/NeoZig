@@ -1,7 +1,7 @@
 //! String extension utilities
 //!
-//! Complete conversion from NeoSwift String.swift extensions
-//! Provides all Swift string utility methods.
+//! Neo N3 
+//! String utility methods.
 
 const std = @import("std");
 
@@ -9,20 +9,20 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 
-/// String utility functions (converted from Swift String extensions)
+/// String utility functions
 pub const StringUtils = struct {
-    /// Converts hex string to bytes (equivalent to Swift .bytesFromHex)
+    /// Converts hex string to bytes
     pub fn bytesFromHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const cleaned = cleanedHexPrefix(hex_str);
         return try @import("bytes.zig").fromHex(cleaned, allocator);
     }
 
-    /// Removes "0x" prefix (equivalent to Swift .cleanedHexPrefix)
+    /// Removes "0x" prefix
     pub fn cleanedHexPrefix(hex_str: []const u8) []const u8 {
         return if (std.mem.startsWith(u8, hex_str, "0x")) hex_str[2..] else hex_str;
     }
 
-    /// Base64 decoding (equivalent to Swift .base64Decoded)
+    /// Base64 decoding
     pub fn base64Decoded(encoded: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const decoder = std.base64.standard.Decoder;
         const decoded_len = try decoder.calcSizeForSlice(encoded);
@@ -33,7 +33,7 @@ pub const StringUtils = struct {
         return result;
     }
 
-    /// Base64 encoding (equivalent to Swift .base64Encoded)
+    /// Base64 encoding
     pub fn base64Encoded(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const encoder = std.base64.standard.Encoder;
         const encoded_len = encoder.calcSize(data.len);
@@ -44,30 +44,30 @@ pub const StringUtils = struct {
         return result;
     }
 
-    /// Base58 decoding (equivalent to Swift .base58Decoded)
+    /// Base58 decoding
     pub fn base58Decoded(encoded: []const u8, allocator: std.mem.Allocator) !?[]u8 {
         const base58 = @import("base58.zig");
         return base58.decode(encoded, allocator) catch null;
     }
 
-    /// Base58Check decoding (equivalent to Swift .base58CheckDecoded)
+    /// Base58Check decoding
     pub fn base58CheckDecoded(encoded: []const u8, allocator: std.mem.Allocator) !?[]u8 {
         const base58 = @import("base58.zig");
         return base58.decodeCheck(encoded, allocator) catch null;
     }
 
-    /// Base58 encoding (equivalent to Swift .base58Encoded)
+    /// Base58 encoding
     pub fn base58Encoded(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const base58 = @import("base58.zig");
         return try base58.encode(data, allocator);
     }
 
-    /// Variable size calculation (equivalent to Swift .varSize)
+    /// Variable size calculation
     pub fn varSize(str: []const u8) usize {
         return @import("../serialization/varint.zig").VarInt.size(str.len);
     }
 
-    /// Address validation (equivalent to Swift .isValidAddress)
+    /// Address validation
     pub fn isValidAddress(address_str: []const u8, allocator: std.mem.Allocator) bool {
         const base58_data = base58Decoded(address_str, allocator) catch return false;
         defer if (base58_data) |data| allocator.free(data);
@@ -87,7 +87,7 @@ pub const StringUtils = struct {
         return std.mem.eql(u8, checksum, double_hash.toSlice()[0..4]);
     }
 
-    /// Hex validation (equivalent to Swift .isValidHex)
+    /// Hex validation
     pub fn isValidHex(hex_str: []const u8) bool {
         const cleaned = cleanedHexPrefix(hex_str);
 
@@ -102,7 +102,7 @@ pub const StringUtils = struct {
         return true;
     }
 
-    /// Converts address to script hash (equivalent to Swift .addressToScriptHash())
+    /// Converts address to script hash)
     pub fn addressToScriptHash(address_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         if (!isValidAddress(address_str, allocator)) {
             return errors.throwIllegalArgument("Not a valid NEO address");
@@ -111,7 +111,7 @@ pub const StringUtils = struct {
         const base58_data = (try base58Decoded(address_str, allocator)).?;
         defer allocator.free(base58_data);
 
-        // Extract script hash and reverse (Swift does .reversed())
+        // Extract script hash and reverse to big-endian
         const script_hash = try allocator.alloc(u8, 20);
         @memcpy(script_hash, base58_data[1..21]);
         std.mem.reverse(u8, script_hash);
@@ -119,7 +119,7 @@ pub const StringUtils = struct {
         return script_hash;
     }
 
-    /// Reverses hex string (equivalent to Swift .reversedHex)
+    /// Reverses hex string
     pub fn reversedHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const bytes = try bytesFromHex(hex_str, allocator);
         defer allocator.free(bytes);
@@ -130,12 +130,12 @@ pub const StringUtils = struct {
         return try @import("bytes.zig").toHex(reversed_bytes, allocator);
     }
 
-    /// Converts string to bytes (equivalent to Swift .bytes)
+    /// Converts string to bytes
     pub fn toBytes(str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         return try allocator.dupe(u8, str);
     }
 
-    /// Hex string to address conversion (equivalent to Swift .toAddress())
+    /// Hex string to address conversion)
     pub fn toAddress(script_hash_hex: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const script_hash_bytes = try bytesFromHex(script_hash_hex, allocator);
         defer allocator.free(script_hash_bytes);
@@ -152,22 +152,22 @@ pub const StringUtils = struct {
     }
 };
 
-// Tests (converted from Swift String extension tests)
+// Tests
 test "String hex conversion utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test hex prefix cleaning (equivalent to Swift cleanedHexPrefix tests)
+    // Test hex prefix cleaning
     try testing.expectEqualStrings("1234abcd", StringUtils.cleanedHexPrefix("0x1234abcd"));
     try testing.expectEqualStrings("1234abcd", StringUtils.cleanedHexPrefix("1234abcd"));
 
-    // Test hex validation (equivalent to Swift isValidHex tests)
+    // Test hex validation
     try testing.expect(StringUtils.isValidHex("1234abcd"));
     try testing.expect(StringUtils.isValidHex("0x1234abcd"));
     try testing.expect(!StringUtils.isValidHex("1234abcg")); // Invalid hex char
     try testing.expect(!StringUtils.isValidHex("123")); // Odd length
 
-    // Test hex to bytes conversion (equivalent to Swift bytesFromHex tests)
+    // Test hex to bytes conversion
     const hex_str = "1234abcd";
     const bytes = try StringUtils.bytesFromHex(hex_str, allocator);
     defer allocator.free(bytes);
@@ -185,13 +185,13 @@ test "String Base64 utilities" {
 
     const test_data = "Hello Neo Blockchain";
 
-    // Test Base64 encoding (equivalent to Swift base64Encoded tests)
+    // Test Base64 encoding
     const encoded = try StringUtils.base64Encoded(test_data, allocator);
     defer allocator.free(encoded);
 
     try testing.expect(encoded.len > 0);
 
-    // Test Base64 decoding (equivalent to Swift base64Decoded tests)
+    // Test Base64 decoding
     const decoded = try StringUtils.base64Decoded(encoded, allocator);
     defer allocator.free(decoded);
 
@@ -202,7 +202,7 @@ test "String address validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test valid address format (equivalent to Swift isValidAddress tests)
+    // Test valid address format
     const valid_address = "NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7"; // Example Neo address
 
     // Note: This test depends on proper Base58 implementation
@@ -210,7 +210,7 @@ test "String address validation" {
     const is_valid = StringUtils.isValidAddress(valid_address, allocator);
     _ = is_valid; // Result depends on Base58 implementation
 
-    // Test invalid addresses (equivalent to Swift invalid address tests)
+    // Test invalid addresses
     try testing.expect(!StringUtils.isValidAddress("", allocator));
     try testing.expect(!StringUtils.isValidAddress("invalid", allocator));
     try testing.expect(!StringUtils.isValidAddress("123", allocator));
@@ -220,7 +220,7 @@ test "String hex reversal" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test hex string reversal (equivalent to Swift reversedHex tests)
+    // Test hex string reversal
     const hex_str = "1234abcd";
     const reversed = try StringUtils.reversedHex(hex_str, allocator);
     defer allocator.free(reversed);

@@ -4,7 +4,7 @@ Thank you for your interest in contributing to the Neo Zig SDK! This guide helps
 
 ## 🎯 Project Overview
 
-The Neo Zig SDK targets NeoSwift API familiarity while adopting Zig conventions:
+The Neo Zig SDK targets NeoClient API familiarity while adopting Zig conventions:
 
 - explicit memory management (`deinit`, allocators)
 - explicit error propagation (`try`)

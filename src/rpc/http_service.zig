@@ -1,6 +1,6 @@
 //! HTTP Service implementation
 //!
-//! Complete conversion from NeoSwift HttpService.swift
+//! Neo N3
 //! Provides HTTP service implementation for Neo RPC communication.
 
 const std = @import("std");
@@ -9,12 +9,12 @@ const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 
-/// HTTP service for Neo RPC communication (converted from Swift HttpService)
+/// HTTP service for Neo RPC communication
 pub const HttpService = struct {
-    /// JSON media type constant (matches Swift JSON_MEDIA_TYPE)
+    /// JSON media type constant
     pub const JSON_MEDIA_TYPE = "application/json; charset=utf-8";
 
-    /// Default URL constant (matches Swift DEFAULT_URL)
+    /// Default URL constant
     pub const DEFAULT_URL = "http://localhost:20332/";
 
     /// Service URL
@@ -32,7 +32,7 @@ pub const HttpService = struct {
 
     const Self = @This();
 
-    /// Creates HTTP service (equivalent to Swift init)
+    /// Creates HTTP service
     pub fn init(
         allocator: std.mem.Allocator,
         url: ?[]const u8,
@@ -83,7 +83,7 @@ pub const HttpService = struct {
         }
     }
 
-    /// Performs I/O operation (equivalent to Swift performIO)
+    /// Performs I/O operation
     pub fn performIO(self: *Self, payload: []const u8) ![]u8 {
         self.http_client.withSender(sendWithHeaders, self);
         return self.http_client.post(payload);
@@ -168,7 +168,7 @@ pub const HttpService = struct {
         };
     }
 
-    /// Adds HTTP header (equivalent to Swift addHeader)
+    /// Adds HTTP header
     pub fn addHeader(self: *Self, key: []const u8, value: []const u8) !void {
         const key_copy = try self.allocator.dupe(u8, key);
         const value_copy = try self.allocator.dupe(u8, value);
@@ -182,7 +182,7 @@ pub const HttpService = struct {
         try self.headers.put(key_copy, value_copy);
     }
 
-    /// Adds multiple HTTP headers (equivalent to Swift addHeaders)
+    /// Adds multiple HTTP headers
     pub fn addHeaders(self: *Self, headers_to_add: std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage)) !void {
         var iterator = headers_to_add.iterator();
         while (iterator.next()) |entry| {
@@ -190,7 +190,7 @@ pub const HttpService = struct {
         }
     }
 
-    /// Removes HTTP header (equivalent to Swift header removal)
+    /// Removes HTTP header
     pub fn removeHeader(self: *Self, key: []const u8) bool {
         if (self.headers.fetchRemove(key)) |removed| {
             self.allocator.free(removed.key);
@@ -200,7 +200,7 @@ pub const HttpService = struct {
         return false;
     }
 
-    /// Gets header value (equivalent to Swift header access)
+    /// Gets header value
     pub fn getHeader(self: Self, key: []const u8) ?[]const u8 {
         return self.headers.get(key);
     }
@@ -269,7 +269,7 @@ pub const ServiceConfiguration = struct {
     }
 };
 
-/// Service interface (converted from Swift Service protocol)
+/// Service interface
 pub const Service = struct {
     /// Performs I/O operation
     pub fn performIO(self: anytype, payload: []const u8) ![]u8 {
@@ -325,12 +325,12 @@ pub const HttpServiceFactory = struct {
     }
 };
 
-// Tests (converted from Swift HttpService tests)
+// Tests
 test "HttpService creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test default service creation (equivalent to Swift HttpService tests)
+    // Test default service creation
     var service = HttpService.init(allocator, null, false);
     defer service.deinit();
 
@@ -353,7 +353,7 @@ test "HttpService header management" {
     var service = HttpService.init(allocator, null, false);
     defer service.deinit();
 
-    // Test adding headers (equivalent to Swift addHeader tests)
+    // Test adding headers
     try service.addHeader("Authorization", "Bearer test_token");
     try service.addHeader("X-Custom-Header", "custom_value");
 
@@ -379,7 +379,7 @@ test "HttpService factory methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test network presets (equivalent to Swift factory tests)
+    // Test network presets
     var mainnet_service = HttpServiceFactory.mainnet(allocator);
     defer mainnet_service.deinit();
 

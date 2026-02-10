@@ -1,6 +1,6 @@
 //! Hash256 Tests
 //!
-//! Complete conversion from NeoSwift Hash256Tests.swift
+//! Hash256 tests
 //! Tests Hash256 creation, validation, and operations.
 
 const std = @import("std");
@@ -9,11 +9,11 @@ const testing = std.testing;
 const neo = @import("neo-zig");
 const Hash256 = neo.Hash256;
 
-// Test creating Hash256 from valid hash strings (converted from Swift testFromValidHash)
+// Test creating Hash256 from valid hash strings
 test "Hash256 from valid hash strings" {
     const allocator = testing.allocator;
 
-    // Test hash creation with 0x prefix (equivalent to Swift Hash256("0x...") test)
+    // Test hash creation with 0x prefix test)
     const hash_with_prefix = try Hash256.initWithString("0xb804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21a");
     const hash_string_with_prefix = try hash_with_prefix.toString(allocator);
     defer allocator.free(hash_string_with_prefix);
@@ -27,7 +27,7 @@ test "Hash256 from valid hash strings" {
 
     try testing.expectEqualStrings(expected_without_prefix, actual_without_prefix);
 
-    // Test hash creation without 0x prefix (equivalent to Swift Hash256("...") test)
+    // Test hash creation without 0x prefix test)
     const hash_without_prefix = try Hash256.initWithString("b804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21a");
     const hash_string_without_prefix = try hash_without_prefix.toString(allocator);
     defer allocator.free(hash_string_without_prefix);
@@ -43,9 +43,9 @@ test "Hash256 from valid hash strings" {
     try testing.expect(hash_with_prefix.eql(hash_without_prefix));
 }
 
-// Test Hash256 creation error conditions (converted from Swift testCreationThrows)
+// Test Hash256 creation error conditions
 test "Hash256 creation error conditions" {
-    // Test invalid hex characters (equivalent to Swift "String argument is not hexadecimal" errors)
+    // Test invalid hex characters
     const invalid_hex_cases = [_][]const u8{
         "g804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21a", // Invalid hex character 'g'
         "b804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21ae", // Odd length
@@ -55,7 +55,7 @@ test "Hash256 creation error conditions" {
         try testing.expectError(neo.NeoError.IllegalArgument, Hash256.initWithString(invalid_hex));
     }
 
-    // Test wrong length cases (equivalent to Swift "Hash must be 32 bytes long" errors)
+    // Test wrong length cases
     const wrong_length_cases = [_][]const u8{
         "0xb804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a2", // 31 bytes
         "0xb804a98220c69ab4674e97142beeeb00909113d417b9d6a67c12b71a3974a21a12", // 33 bytes

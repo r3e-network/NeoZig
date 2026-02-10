@@ -1,46 +1,46 @@
-//! Neo Swift Express Implementation
+//! Neo Express Implementation
 //!
-//! Complete conversion from NeoSwift NeoSwiftExpress.swift
+//! Neo N3
 //! Provides Neo-express specific RPC methods for development.
 
 const std = @import("std");
 
 const Hash160 = @import("../types/hash160.zig").Hash160;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 
-/// Neo-express development client (converted from Swift NeoSwiftExpress)
-pub const NeoSwiftExpress = struct {
-    /// Base NeoSwift client
-    neo_swift: NeoSwift,
+/// Neo-express development client
+pub const NeoExpressClient = struct {
+    /// Base NeoClient client
+    client: NeoClient,
 
     const Self = @This();
 
-    /// Creates Neo-express client (equivalent to Swift NeoSwiftExpress inheritance)
-    pub fn init(neo_swift: NeoSwift) Self {
+    /// Creates Neo-express client
+    pub fn init(client: NeoClient) Self {
         return Self{
-            .neo_swift = neo_swift,
+            .client = client,
         };
     }
 
-    /// Gets populated blocks (equivalent to Swift expressGetPopulatedBlocks)
+    /// Gets populated blocks
     pub fn expressGetPopulatedBlocks(self: Self) !ExpressRequest(PopulatedBlocks) {
         return ExpressRequest(PopulatedBlocks).initBorrowed(
             "expressgetpopulatedblocks",
             "[]",
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Gets NEP-17 contracts (equivalent to Swift expressGetNep17Contracts)
+    /// Gets NEP-17 contracts
     pub fn expressGetNep17Contracts(self: Self) !ExpressRequest([]Nep17Contract) {
         return ExpressRequest([]Nep17Contract).initBorrowed(
             "expressgetnep17contracts",
             "[]",
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Gets contract storage (equivalent to Swift expressGetContractStorage)
+    /// Gets contract storage
     pub fn expressGetContractStorage(self: Self, contract_hash: Hash160, allocator: std.mem.Allocator) !ExpressRequest([]ContractStorageEntry) {
         const hash_string = try contract_hash.toString(allocator);
         defer allocator.free(hash_string);
@@ -51,20 +51,20 @@ pub const NeoSwiftExpress = struct {
         return ExpressRequest([]ContractStorageEntry).init(
             "expressgetcontractstorage",
             try allocator.dupe(u8, params),
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Lists all contracts (equivalent to Swift expressListContracts)
+    /// Lists all contracts
     pub fn expressListContracts(self: Self) !ExpressRequest([]ExpressContractState) {
         return ExpressRequest([]ExpressContractState).initBorrowed(
             "expresslistcontracts",
             "[]",
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Creates checkpoint (equivalent to Swift expressCreateCheckpoint)
+    /// Creates checkpoint
     pub fn expressCreateCheckpoint(self: Self, filename: []const u8, allocator: std.mem.Allocator) !ExpressRequest([]u8) {
         const params = try std.fmt.allocPrint(allocator, "[\"{s}\"]", .{filename});
         defer allocator.free(params);
@@ -72,20 +72,20 @@ pub const NeoSwiftExpress = struct {
         return ExpressRequest([]u8).init(
             "expresscreatecheckpoint",
             try allocator.dupe(u8, params),
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Lists checkpoints (equivalent to Swift expressListCheckpoints)
+    /// Lists checkpoints
     pub fn expressListCheckpoints(self: Self) !ExpressRequest([][]u8) {
         return ExpressRequest([][]u8).initBorrowed(
             "expresslistcheckpoints",
             "[]",
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Resets blockchain to checkpoint (equivalent to Swift expressReset)
+    /// Resets blockchain to checkpoint
     pub fn expressReset(self: Self, checkpoint_filename: []const u8, allocator: std.mem.Allocator) !ExpressRequest(bool) {
         const params = try std.fmt.allocPrint(allocator, "[\"{s}\"]", .{checkpoint_filename});
         defer allocator.free(params);
@@ -93,11 +93,11 @@ pub const NeoSwiftExpress = struct {
         return ExpressRequest(bool).init(
             "expressreset",
             try allocator.dupe(u8, params),
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Creates Oracle response transaction (equivalent to Swift expressOracleResponse)
+    /// Creates Oracle response transaction
     pub fn expressOracleResponse(
         self: Self,
         request_id: u64,
@@ -111,16 +111,16 @@ pub const NeoSwiftExpress = struct {
         return ExpressRequest([]u8).init(
             "expressoracleresponse",
             try allocator.dupe(u8, params),
-            self.neo_swift,
+            self.client,
         );
     }
 
-    /// Shuts down Neo-express node (equivalent to Swift expressShutdown)
+    /// Shuts down Neo-express node
     pub fn expressShutdown(self: Self) !ExpressRequest(bool) {
         return ExpressRequest(bool).initBorrowed(
             "expressshutdown",
             "[]",
-            self.neo_swift,
+            self.client,
         );
     }
 
@@ -172,31 +172,31 @@ pub fn ExpressRequest(comptime T: type) type {
     return struct {
         method: []const u8,
         params: []const u8,
-        neo_swift: NeoSwift,
+        client: NeoClient,
         owns_params: bool,
 
         const Self = @This();
 
-        pub fn init(method: []const u8, params: []const u8, neo_swift: NeoSwift) Self {
+        pub fn init(method: []const u8, params: []const u8, client: NeoClient) Self {
             return Self{
                 .method = method,
                 .params = params,
-                .neo_swift = neo_swift,
+                .client = client,
                 .owns_params = true,
             };
         }
 
-        pub fn initBorrowed(method: []const u8, params: []const u8, neo_swift: NeoSwift) Self {
+        pub fn initBorrowed(method: []const u8, params: []const u8, client: NeoClient) Self {
             return Self{
                 .method = method,
                 .params = params,
-                .neo_swift = neo_swift,
+                .client = client,
                 .owns_params = false,
             };
         }
 
         pub fn send(self: Self) !T {
-            return try self.neo_swift.sendExpressRequest(T, self.method, self.params);
+            return try self.client.sendExpressRequest(T, self.method, self.params);
         }
 
         pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
@@ -246,25 +246,25 @@ pub const ExpressContractState = struct {
     }
 };
 
-// Tests (converted from Swift NeoSwiftExpress tests)
-test "NeoSwiftExpress creation and method availability" {
+// Tests
+test "NeoExpressClient creation and method availability" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test express client creation (equivalent to Swift tests)
-    // Note: Would need actual NeoSwift instance for full testing
-    const mock_neo_swift = undefined; // stub
+    // Test express client creation
+    // Note: Would need actual NeoClient instance for full testing
+    const mock_client = undefined; // stub
     _ = allocator;
-    _ = mock_neo_swift;
+    _ = mock_client;
 
     // Test express method detection
-    try testing.expect(NeoSwiftExpress.isExpressMethod("expressgetpopulatedblocks"));
-    try testing.expect(NeoSwiftExpress.isExpressMethod("expressgetnep17contracts"));
-    try testing.expect(!NeoSwiftExpress.isExpressMethod("getversion"));
-    try testing.expect(!NeoSwiftExpress.isExpressMethod("getblock"));
+    try testing.expect(NeoExpressClient.isExpressMethod("expressgetpopulatedblocks"));
+    try testing.expect(NeoExpressClient.isExpressMethod("expressgetnep17contracts"));
+    try testing.expect(!NeoExpressClient.isExpressMethod("getversion"));
+    try testing.expect(!NeoExpressClient.isExpressMethod("getblock"));
 
     // Test method list
-    const express_methods = NeoSwiftExpress.getExpressMethods();
+    const express_methods = NeoExpressClient.getExpressMethods();
     try testing.expect(express_methods.len >= 9); // Should have all express methods
 
     var found_populated_blocks = false;
@@ -284,17 +284,17 @@ test "ExpressRequest creation" {
     const allocator = testing.allocator;
 
     // Test express request creation
-    const mock_neo_swift = undefined; // stub
+    const mock_client = undefined; // stub
 
     const method = "expressgetpopulatedblocks";
     const params = "[]";
 
-    var request = ExpressRequest(PopulatedBlocks).init(method, params, mock_neo_swift);
+    var request = ExpressRequest(PopulatedBlocks).init(method, params, mock_client);
 
     try testing.expectEqualStrings(method, request.method);
     try testing.expectEqualStrings(params, request.params);
 
-    // Note: Cannot test send() without actual NeoSwift implementation
+    // Note: Cannot test send() without actual NeoClient implementation
     _ = allocator;
 }
 

@@ -171,8 +171,8 @@ Complete transaction building and signing system:
 
 JSON-RPC client implementation:
 
-- **NeoSwiftService**: HTTP transport with timeout and retry support
-- **NeoSwift**: Main client with typed request builders
+- **NeoService**: HTTP transport with timeout and retry support
+- **NeoClient**: Main client with typed request builders
 - **responses.zig**: Typed response structures
 - **response_parser.zig**: JSON parsing with Neo protocol compatibility
 
@@ -218,10 +218,10 @@ Binary serialization framework:
 User Code
     |
     v
-NeoSwift.build(allocator, &service, config)
+NeoClient.build(allocator, &service, config)
     |
     v
-NeoSwift (client instance)
+NeoClient (client instance)
     |
     +-- getBlockCount() --> RPCRequest { method, params }
     |
@@ -355,7 +355,7 @@ In `src/rpc/neo_client.zig`:
 
 ```zig
 pub fn getMyMethod(
-    self: *NeoSwift,
+    self: *NeoClient,
     param1: []const u8,
 ) !RPCRequest(MyResponse) {
     const params = protocol.MyParams{ .param1 = param1 };

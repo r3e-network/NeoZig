@@ -1,6 +1,6 @@
 //! Variable Size Tests
 //!
-//! Complete conversion from NeoSwift VarSizeTests.swift
+//! VarSize tests
 //! Tests variable-length encoding and decoding.
 
 const std = @import("std");

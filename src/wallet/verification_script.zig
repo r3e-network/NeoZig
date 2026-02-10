@@ -1,6 +1,6 @@
 //! Verification Script implementation
 //!
-//! Complete conversion from NeoSwift VerificationScript functionality
+//! Neo N3 
 //! Handles account verification scripts for single-sig and multi-sig accounts.
 
 const std = @import("std");

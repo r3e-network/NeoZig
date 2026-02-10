@@ -1,6 +1,6 @@
 //! Neo ApplicationLog Implementation
 //!
-//! Complete conversion from NeoSwift NeoApplicationLog.swift
+//! Neo N3
 //! Provides application execution log structure.
 
 const std = @import("std");
@@ -13,7 +13,7 @@ const StackItem = @import("../../types/stack_item.zig").StackItem;
 const Notification = @import("notification.zig").Notification;
 const errors = @import("../../core/errors.zig");
 
-/// Application execution (converted from Swift ApplicationExecution)
+/// Application execution
 pub const ApplicationExecution = struct {
     /// Trigger type
     trigger: []const u8,
@@ -137,7 +137,7 @@ pub const ApplicationExecution = struct {
     }
 };
 
-/// Application log (converted from Swift NeoApplicationLog)
+/// Application log
 pub const NeoApplicationLog = struct {
     /// Transaction hash
     tx_id: Hash256,

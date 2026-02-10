@@ -1,6 +1,6 @@
 //! EC Key Pair Tests
 //!
-//! Complete conversion from NeoSwift ECKeyPairTests.swift
+//! EC key pair tests
 //! Tests elliptic curve key pair creation, validation, and operations.
 
 const std = @import("std");
@@ -10,24 +10,24 @@ const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../../src/crypto/keys.zig").PublicKey;
 const PrivateKey = @import("../../src/crypto/keys.zig").PrivateKey;
 
-// Test creating public key from compressed point (converted from Swift testNewPublicKeyFromPoint)
+// Test creating public key from compressed point
 test "Create public key from compressed point" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift encodedPoint)
+    // Test data
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
 
-    // Create public key from hex string (equivalent to Swift ECPublicKey(encodedPoint))
+    // Create public key from hex string)
     const public_key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(encoded_point, allocator);
     defer allocator.free(public_key_bytes);
 
     const public_key = try PublicKey.initFromBytes(public_key_bytes);
 
-    // Verify encoded form (equivalent to Swift getEncoded(compressed: true))
+    // Verify encoded form)
     const encoded_compressed = public_key.toSlice();
     try testing.expectEqualSlices(u8, public_key_bytes, encoded_compressed);
 
-    // Verify hex string form (equivalent to Swift getEncodedCompressedHex())
+    // Verify hex string form)
     const encoded_hex = try public_key.toHexString(allocator);
     defer allocator.free(encoded_hex);
 
@@ -39,21 +39,21 @@ test "Create public key from compressed point" {
     try testing.expectEqualStrings(encoded_point, hex_without_prefix);
 }
 
-// Test creating public key from uncompressed point (converted from Swift testNewPublicKeyFromUncompressedPoint)
+// Test creating public key from uncompressed point
 test "Create public key from uncompressed point" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift uncompressedPoint)
+    // Test data
     const uncompressed_point = "04b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e1368165f4f7fb1c5862465543c06dd5a2aa414f6583f92a5cc3e1d4259df79bf6839c9";
     const expected_compressed = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
 
-    // Create public key from uncompressed hex (equivalent to Swift ECPublicKey(uncompressedPoint))
+    // Create public key from uncompressed hex)
     const uncompressed_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(uncompressed_point, allocator);
     defer allocator.free(uncompressed_bytes);
 
     const public_key = try PublicKey.initFromUncompressedBytes(uncompressed_bytes);
 
-    // Verify compressed encoding (equivalent to Swift getEncodedCompressedHex())
+    // Verify compressed encoding)
     const compressed_hex = try public_key.toHexString(allocator);
     defer allocator.free(compressed_hex);
 
@@ -65,15 +65,15 @@ test "Create public key from uncompressed point" {
     try testing.expectEqualStrings(expected_compressed, hex_without_prefix);
 }
 
-// Test public key creation with invalid size (converted from Swift testNewPublicKeyFromStringWithInvalidSize)
+// Test public key creation with invalid size
 test "Create public key with invalid size" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift tooSmall)
+    // Test data
     const valid_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const too_small_point = valid_point[0 .. valid_point.len - 2]; // Drop last 2 characters
 
-    // Should throw error for invalid size (equivalent to Swift XCTAssertThrowsError)
+    // Should throw error for invalid size
     const too_small_bytes = @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(too_small_point, allocator) catch {
         // If hex parsing fails, that's also valid - the data is invalid
         return;
@@ -84,11 +84,11 @@ test "Create public key with invalid size" {
         PublicKey.initFromBytes(too_small_bytes));
 }
 
-// Test public key creation with hex prefix (converted from Swift testNewPublicKeyFromPointWithHexPrefix)
+// Test public key creation with hex prefix
 test "Create public key with hex prefix" {
     const allocator = testing.allocator;
 
-    // Test data with 0x prefix (equivalent to Swift prefixed)
+    // Test data with 0x prefix
     const prefixed_point = "0x03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const expected_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
 
@@ -103,7 +103,7 @@ test "Create public key with hex prefix" {
 
     const public_key = try PublicKey.initFromBytes(public_key_bytes);
 
-    // Verify encoded hex form (equivalent to Swift getEncodedCompressedHex())
+    // Verify encoded hex form)
     const encoded_hex = try public_key.toHexString(allocator);
     defer allocator.free(encoded_hex);
 
@@ -115,11 +115,11 @@ test "Create public key with hex prefix" {
     try testing.expectEqualStrings(expected_point, hex_without_prefix);
 }
 
-// Test public key serialization (converted from Swift testSerializePublicKey)
+// Test public key serialization
 test "Public key serialization" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift encodedPoint)
+    // Test data
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
 
     // Create public key
@@ -128,10 +128,10 @@ test "Public key serialization" {
 
     const public_key = try PublicKey.initFromBytes(public_key_bytes);
 
-    // Test serialization (equivalent to Swift toArray())
+    // Test serialization)
     const serialized_bytes = public_key.toSlice();
 
-    // Verify serialization matches original bytes (equivalent to Swift XCTAssertEqual)
+    // Verify serialization matches original bytes
     try testing.expectEqualSlices(u8, public_key_bytes, serialized_bytes);
 }
 

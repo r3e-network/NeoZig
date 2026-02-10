@@ -1,6 +1,6 @@
 //! Witness Implementation
 //!
-//! Complete conversion from NeoSwift Witness.swift
+//! Neo N3
 //! Provides witness (invocation and verification scripts) for transaction validation.
 
 const std = @import("std");
@@ -31,7 +31,7 @@ pub const InvocationScript = struct {
         return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
 
-    /// Creates invocation script from message and key pair (equivalent to Swift fromMessageAndKeyPair)
+    /// Creates invocation script from message and key pair
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const signature = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
 
@@ -102,7 +102,7 @@ pub const VerificationScript = struct {
         return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
 
-    /// Creates verification script from public key (equivalent to Swift init(_ publicKey:))
+    /// Creates verification script from public key)
     pub fn fromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
         const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
             public_key.toSlice(),
@@ -111,7 +111,7 @@ pub const VerificationScript = struct {
         return Self{ .script = script, .owns_script = true };
     }
 
-    /// Creates multi-sig verification script (equivalent to Swift init(_ publicKeys:, _ signingThreshold:))
+    /// Creates multi-sig verification script)
     pub fn fromMultiSig(public_keys: []const PublicKey, signing_threshold: u32, allocator: std.mem.Allocator) !Self {
         var key_slices = try allocator.alloc([]const u8, public_keys.len);
         defer allocator.free(key_slices);
@@ -147,14 +147,14 @@ pub const VerificationScript = struct {
     }
 };
 
-/// Witness structure (converted from Swift Witness)
+/// Witness structure
 pub const Witness = struct {
     invocation_script: InvocationScript,
     verification_script: VerificationScript,
 
     const Self = @This();
 
-    /// Creates empty witness (equivalent to Swift init())
+    /// Creates empty witness)
     pub fn init() Self {
         return Self{
             .invocation_script = InvocationScript.init(),
@@ -162,7 +162,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from bytes (equivalent to Swift init(_ invocationScript: Bytes, _ verificationScript: Bytes))
+    /// Creates witness from bytes)
     pub fn initWithBytes(invocation_bytes: []const u8, verification_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
             .invocation_script = try InvocationScript.initFromBytes(invocation_bytes, allocator),
@@ -170,7 +170,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from scripts (equivalent to Swift init(_ invocationScript: InvocationScript, _ verificationScript: VerificationScript))
+    /// Creates witness from scripts)
     pub fn initWithScripts(invocation_script: InvocationScript, verification_script: VerificationScript) Self {
         return Self{
             .invocation_script = invocation_script,
@@ -178,7 +178,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from message and key pair (equivalent to Swift create(_ messageToSign:, _ keyPair:))
+    /// Creates witness from message and key pair)
     pub fn create(message_to_sign: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const invocation_script = try InvocationScript.fromMessageAndKeyPair(message_to_sign, key_pair, allocator);
         const verification_script = try VerificationScript.fromPublicKey(key_pair.getPublicKey(), allocator);
@@ -189,7 +189,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates multi-sig witness (equivalent to Swift creatMultiSigWitness)
+    /// Creates multi-sig witness
     pub fn createMultiSigWitness(
         signing_threshold: u32,
         signatures: []const SignatureData,
@@ -205,7 +205,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates multi-sig witness with verification script (equivalent to Swift creatMultiSigWitness(_ signatures:, _ verificationScript:))
+    /// Creates multi-sig witness with verification script)
     pub fn createMultiSigWitnessWithScript(
         signatures: []const SignatureData,
         verification_script: VerificationScript,
@@ -255,13 +255,13 @@ pub const Witness = struct {
         }
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.invocation_script.script, other.invocation_script.script) and
             std.mem.eql(u8, self.verification_script.script, other.verification_script.script);
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.invocation_script.script);
@@ -270,7 +270,7 @@ pub const Witness = struct {
     }
 
     /// Serializes witness to bytes
-    pub fn serialize(self: Self, writer: *@import("../serialization/binary_writer_complete.zig").CompleteBinaryWriter) !void {
+    pub fn serialize(self: Self, writer: *@import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter) !void {
         // Write invocation script
         try writer.writeVarBytes(self.invocation_script.script);
 
@@ -279,7 +279,7 @@ pub const Witness = struct {
     }
 
     /// Deserializes witness from bytes
-    pub fn deserialize(reader: *@import("../serialization/binary_reader_complete.zig").CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
+    pub fn deserialize(reader: *@import("../serialization/binary_reader_ext.zig").CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
         // Read invocation script
         const invocation_bytes = try reader.readVarBytes(allocator);
         const invocation_script = InvocationScript{ .script = invocation_bytes, .owns_script = true };
@@ -314,12 +314,12 @@ pub const Witness = struct {
     }
 };
 
-// Tests (converted from Swift Witness tests)
+// Tests
 test "Witness creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test empty witness creation (equivalent to Swift init() tests)
+    // Test empty witness creation tests)
     var empty_witness = Witness.init();
     defer empty_witness.deinit(allocator);
     try testing.expect(empty_witness.isEmpty());
@@ -345,7 +345,7 @@ test "Witness equality and hashing" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const invocation1 = [_]u8{ 0x01, 0x02 };
     const verification1 = [_]u8{ 0x03, 0x04 };
 
@@ -436,7 +436,7 @@ test "Witness size uses varint prefixes at boundaries" {
     try testing.expectEqual(@as(usize, 512), witness.getSize());
 }
 
-test "Multi-sig scripts match NeoSwift expectations" {
+test "Multi-sig scripts match NeoClient expectations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 

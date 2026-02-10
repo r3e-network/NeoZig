@@ -1,6 +1,6 @@
 //! Verification Script Tests
 //!
-//! Complete conversion from NeoSwift VerificationScriptTests.swift
+//! VerificationScript tests
 //! Tests verification script creation from public keys and multi-signature setups.
 
 const std = @import("std");
@@ -10,26 +10,26 @@ const neo = @import("neo-zig");
 const VerificationScript = neo.transaction.VerificationScript;
 const PublicKey = neo.crypto.PublicKey;
 
-// Test verification script from single public key (converted from Swift testFromPublicKey)
+// Test verification script from single public key
 test "Verification script from public key" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift key constant)
+    // Test data
     const key_hex = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
 
-    // Create public key (equivalent to Swift ECPublicKey(key))
+    // Create public key)
     const key_bytes = try neo.utils.StringUtils.bytesFromHex(key_hex, allocator);
     defer allocator.free(key_bytes);
 
     const public_key = try PublicKey.initFromBytes(key_bytes);
 
-    // Create verification script (equivalent to Swift VerificationScript(ecKey))
+    // Create verification script)
     var verification_script = try VerificationScript.fromPublicKey(public_key, allocator);
     defer verification_script.deinit(allocator);
 
     const script_bytes = verification_script.getScript();
 
-    // Verify script structure (equivalent to Swift expected string check)
+    // Verify script structure
     try testing.expect(script_bytes.len > 0);
     try testing.expect(script_bytes.len >= 40); // Should contain PUSHDATA1 + pubkey + SYSCALL + hash
 
@@ -41,16 +41,16 @@ test "Verification script from public key" {
     try testing.expect(!verification_script.isEmpty());
 }
 
-// Test verification script from multiple public keys (converted from Swift testFromPublicKeys)
+// Test verification script from multiple public keys
 test "Verification script from multiple public keys" {
     const allocator = testing.allocator;
 
-    // Test data (equivalent to Swift key1, key2, key3)
+    // Test data
     const key1_hex = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
     const key2_hex = "03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d";
     const key3_hex = "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e";
 
-    // Create public keys (equivalent to Swift ECPublicKey array)
+    // Create public keys
     const key1_bytes = try neo.utils.StringUtils.bytesFromHex(key1_hex, allocator);
     defer allocator.free(key1_bytes);
     const key2_bytes = try neo.utils.StringUtils.bytesFromHex(key2_hex, allocator);
@@ -66,13 +66,13 @@ test "Verification script from multiple public keys" {
 
     const signing_threshold: u32 = 2; // 2-of-3 multi-sig
 
-    // Create multi-sig verification script (equivalent to Swift VerificationScript(publicKeys, 2))
+    // Create multi-sig verification script)
     var multi_sig_script = try VerificationScript.fromMultiSig(&public_keys, signing_threshold, allocator);
     defer multi_sig_script.deinit(allocator);
 
     const script_bytes = multi_sig_script.getScript();
 
-    // Verify multi-sig script structure (equivalent to Swift expected string check)
+    // Verify multi-sig script structure
     try testing.expect(script_bytes.len > 0);
     try testing.expect(script_bytes.len >= 110); // Threshold + 3 pubkeys + count + syscall
 

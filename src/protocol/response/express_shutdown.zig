@@ -1,18 +1,18 @@
 //! Express Shutdown Implementation
 //!
-//! Complete conversion from NeoSwift ExpressShutdown.swift
+//! Neo N3
 //! Provides shutdown response for Neo-express development nodes.
 
 const std = @import("std");
 
-/// Express shutdown response (converted from Swift ExpressShutdown)
+/// Express shutdown response
 pub const ExpressShutdown = struct {
     /// Process ID of the shutdown node
     process_id: u32,
 
     const Self = @This();
 
-    /// Creates new ExpressShutdown (equivalent to Swift init)
+    /// Creates new ExpressShutdown
     pub fn init(process_id: u32) Self {
         return Self{
             .process_id = process_id,
@@ -29,24 +29,24 @@ pub const ExpressShutdown = struct {
         return self.process_id > 0;
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.process_id == other.process_id;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.process_id));
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "{{\"process-id\":{}}}", .{self.process_id});
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -64,13 +64,13 @@ pub const ExpressShutdown = struct {
         return Self.init(process_id);
     }
 
-    /// Decodes from string (equivalent to Swift StringDecode property wrapper)
+    /// Decodes from string
     pub fn decodeFromString(process_id_str: []const u8) !Self {
         const process_id = try std.fmt.parseInt(u32, process_id_str, 10);
         return Self.init(process_id);
     }
 
-    /// Encodes to string (equivalent to Swift StringDecode property wrapper)
+    /// Encodes to string
     pub fn encodeToString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "{}", .{self.process_id});
     }
@@ -115,12 +115,12 @@ pub const ExpressShutdown = struct {
     }
 };
 
-// Tests (converted from Swift ExpressShutdown tests)
+// Tests
 test "ExpressShutdown creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test shutdown creation (equivalent to Swift tests)
+    // Test shutdown creation
     const shutdown = ExpressShutdown.init(12345);
 
     try testing.expectEqual(@as(u32, 12345), shutdown.getProcessId());
@@ -143,7 +143,7 @@ test "ExpressShutdown creation and properties" {
 test "ExpressShutdown equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const shutdown1 = ExpressShutdown.init(111);
     const shutdown2 = ExpressShutdown.init(111);
     const shutdown3 = ExpressShutdown.init(222);
@@ -164,7 +164,7 @@ test "ExpressShutdown JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const original_shutdown = ExpressShutdown.init(54321);
 
     const json_str = try original_shutdown.encodeToJson(allocator);
@@ -182,7 +182,7 @@ test "ExpressShutdown string conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test string encoding/decoding (equivalent to Swift StringDecode tests)
+    // Test string encoding/decoding
     const shutdown = ExpressShutdown.init(67890);
 
     const string_value = try shutdown.encodeToString(allocator);

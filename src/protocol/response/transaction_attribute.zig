@@ -1,12 +1,12 @@
 //! Transaction Attribute Implementation
 //!
-//! Complete conversion from NeoSwift TransactionAttribute.swift
+//! Neo N3
 //! Provides transaction attribute types for Neo blockchain.
 
 const std = @import("std");
 
-const BinaryWriter = @import("../../serialization/binary_writer_complete.zig").CompleteBinaryWriter;
-const BinaryReader = @import("../../serialization/binary_reader_complete.zig").CompleteBinaryReader;
+const BinaryWriter = @import("../../serialization/binary_writer_ext.zig").CompleteBinaryWriter;
+const BinaryReader = @import("../../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 const constants = @import("../../core/constants.zig");
 const errors = @import("../../core/errors.zig");
 const Hash256 = @import("../../types/hash256.zig").Hash256;
@@ -24,7 +24,7 @@ pub const OracleResponseCode = enum(u8) {
     ContentTypeNotSupported = 0x1f,
     Error = 0xff,
 
-    /// Gets the byte value (equivalent to Swift byte property)
+    /// Gets the byte value
     pub fn toByte(self: OracleResponseCode) u8 {
         return @intFromEnum(self);
     }
@@ -47,7 +47,7 @@ pub const OracleResponseCode = enum(u8) {
     }
 };
 
-/// Transaction attribute types (converted from Swift TransactionAttribute)
+/// Transaction attribute types
 pub const TransactionAttribute = union(enum) {
     /// High priority transaction
     HighPriority: void,
@@ -76,7 +76,7 @@ pub const TransactionAttribute = union(enum) {
 
     const Self = @This();
 
-    /// Gets JSON value (equivalent to Swift jsonValue)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .HighPriority => "HighPriority",
@@ -87,7 +87,7 @@ pub const TransactionAttribute = union(enum) {
         };
     }
 
-    /// Gets byte value (equivalent to Swift byte property)
+    /// Gets byte value
     pub fn getByte(self: Self) u8 {
         return switch (self) {
             .HighPriority => 0x01,
@@ -140,7 +140,7 @@ pub const TransactionAttribute = union(enum) {
         return null;
     }
 
-    /// Gets all cases (equivalent to Swift CaseIterable.allCases)
+    /// Gets all cases
     pub fn getAllCases(allocator: std.mem.Allocator) ![]Self {
         const oracle_result = try allocator.dupe(u8, "");
         errdefer allocator.free(oracle_result);
@@ -160,7 +160,7 @@ pub const TransactionAttribute = union(enum) {
         return try allocator.dupe(Self, &cases);
     }
 
-    /// Gets serialization size (equivalent to Swift size property)
+    /// Gets serialization size
     pub fn getSize(self: Self) usize {
         return switch (self) {
             .HighPriority => 1,
@@ -175,7 +175,7 @@ pub const TransactionAttribute = union(enum) {
         };
     }
 
-    /// Serializes transaction attribute (equivalent to Swift serialize)
+    /// Serializes transaction attribute
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         try writer.writeByte(self.getByte());
 
@@ -209,7 +209,7 @@ pub const TransactionAttribute = union(enum) {
         }
     }
 
-    /// Deserializes transaction attribute (equivalent to Swift deserialize)
+    /// Deserializes transaction attribute
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const attr_type = try reader.readByte();
 
@@ -263,7 +263,7 @@ pub const TransactionAttribute = union(enum) {
         }
     }
 
-    /// JSON encoding (equivalent to Swift Codable encode)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         switch (self) {
             .HighPriority => {
@@ -286,7 +286,7 @@ pub const TransactionAttribute = union(enum) {
         }
     }
 
-    /// JSON decoding (equivalent to Swift Codable init(from:))
+    /// JSON decoding)
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -447,12 +447,12 @@ fn parseJsonInt(comptime T: type, value: std.json.Value) !T {
     };
 }
 
-// Tests (converted from Swift TransactionAttribute tests)
+// Tests
 test "TransactionAttribute creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test HighPriority attribute (equivalent to Swift tests)
+    // Test HighPriority attribute
     const high_priority = TransactionAttribute{ .HighPriority = {} };
     try testing.expectEqualStrings("HighPriority", high_priority.getJsonValue());
     try testing.expectEqual(@as(u8, 0x01), high_priority.getByte());
@@ -491,7 +491,7 @@ test "TransactionAttribute creation and properties" {
 test "TransactionAttribute byte conversion" {
     const testing = std.testing;
 
-    // Test fromByte conversion (equivalent to Swift valueOf tests)
+    // Test fromByte conversion
     const high_priority_opt = TransactionAttribute.fromByte(0x01);
     try testing.expect(high_priority_opt != null);
 

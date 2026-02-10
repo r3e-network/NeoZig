@@ -1,6 +1,6 @@
 //! RecordState Implementation
 //!
-//! Complete conversion from NeoSwift RecordState.swift
+//! Neo N3
 
 const std = @import("std");
 

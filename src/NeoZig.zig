@@ -1,108 +1,108 @@
 //! NeoZig - Main Neo Zig SDK Client
 //!
-//! Complete conversion from NeoSwift NeoSwift.swift
+//! Neo N3 SDK entry point
 //! Provides the main client interface for Neo blockchain interaction.
 
 const std = @import("std");
 
 const Hash160 = @import("types/hash160.zig").Hash160;
-const NeoSwiftConfig = @import("rpc/neo_swift_config.zig").NeoSwiftConfig;
-const NeoSwiftService = @import("rpc/neo_swift_service.zig").NeoSwiftService;
-const ServiceImplementation = @import("rpc/neo_swift_service.zig").ServiceImplementation;
+const NeoConfig = @import("rpc/neo_config.zig").NeoConfig;
+const NeoService = @import("rpc/neo_service.zig").NeoService;
+const ServiceImplementation = @import("rpc/neo_service.zig").ServiceImplementation;
 const HttpService = @import("rpc/http_service.zig").HttpService;
 const JsonRpc2_0Rx = @import("protocol/json_rpc_2_0_rx.zig").JsonRpc2_0Rx;
 const Neo = @import("protocol/neo_protocol.zig").NeoProtocol;
-const NeoSwiftRx = @import("protocol/neo_swift_rx.zig").NeoSwiftRx;
+const NeoRx = @import("protocol/neo_rx.zig").NeoRx;
 const response_aliases = @import("rpc/response_aliases.zig");
 const errors = @import("core/errors.zig");
 const constants = @import("core/constants.zig");
 
-/// Main Neo Zig SDK client (converted from Swift NeoSwift class)
+/// Main Neo Zig SDK client
 pub const NeoZig = struct {
     /// Configuration
-    config: NeoSwiftConfig,
+    config: NeoConfig,
     /// Neo service for RPC communication
-    neo_swift_service: NeoSwiftService,
+    neo_service: NeoService,
     /// Reactive client (lazy initialized)
-    neo_swift_rx: ?JsonRpc2_0Rx,
+    neo_rx: ?JsonRpc2_0Rx,
     /// Allocator for memory management
     allocator: std.mem.Allocator,
 
     const Self = @This();
 
-    /// Creates new NeoZig instance (equivalent to Swift required init).
+    /// Creates new NeoZig instance.
     ///
-    /// Ownership: this function takes ownership of `neo_swift_service`. Treat
+    /// Ownership: this function takes ownership of `neo_service`. Treat
     /// the passed value as moved into the returned client.
-    pub fn init(config: NeoSwiftConfig, neo_swift_service: NeoSwiftService, allocator: std.mem.Allocator) Self {
+    pub fn init(config: NeoConfig, neo_service: NeoService, allocator: std.mem.Allocator) Self {
         return Self{
             .config = config,
-            .neo_swift_service = neo_swift_service,
-            .neo_swift_rx = null,
+            .neo_service = neo_service,
+            .neo_rx = null,
             .allocator = allocator,
         };
     }
 
     /// Creates a NeoZig instance by moving ownership of a service pointer.
     ///
-    /// This mirrors `neo.rpc.NeoSwift.build` and invalidates the passed-in
+    /// This mirrors `neo.rpc.NeoClient.build` and invalidates the passed-in
     /// `service` pointer to prevent accidental double-free.
-    pub fn initFromService(config: NeoSwiftConfig, service: *NeoSwiftService, allocator: std.mem.Allocator) Self {
+    pub fn initFromService(config: NeoConfig, service: *NeoService, allocator: std.mem.Allocator) Self {
         const owned_service = service.*;
         service.relinquish();
         service.service_impl.http_service = undefined;
         return Self.init(config, owned_service, allocator);
     }
 
-    /// Builder method (equivalent to Swift build static func).
+    /// Builder method.
     ///
-    /// Ownership: takes ownership of `neo_swift_service` by value.
-    pub fn build(neo_swift_service: NeoSwiftService, config: ?NeoSwiftConfig, allocator: std.mem.Allocator) Self {
-        const final_config = config orelse NeoSwiftConfig.init();
-        return Self.init(final_config, neo_swift_service, allocator);
+    /// Ownership: takes ownership of `neo_service` by value.
+    pub fn build(neo_service: NeoService, config: ?NeoConfig, allocator: std.mem.Allocator) Self {
+        const final_config = config orelse NeoConfig.init();
+        return Self.init(final_config, neo_service, allocator);
     }
 
     /// Builder method that moves ownership from a service pointer.
-    pub fn buildFromService(service: *NeoSwiftService, config: ?NeoSwiftConfig, allocator: std.mem.Allocator) Self {
-        const final_config = config orelse NeoSwiftConfig.init();
+    pub fn buildFromService(service: *NeoService, config: ?NeoConfig, allocator: std.mem.Allocator) Self {
+        const final_config = config orelse NeoConfig.init();
         return Self.initFromService(final_config, service, allocator);
     }
 
-    /// Gets NNS resolver (equivalent to Swift nnsResolver property)
+    /// Gets NNS resolver
     pub fn getNnsResolver(self: Self) Hash160 {
         return self.config.nns_resolver;
     }
 
-    /// Gets block interval (equivalent to Swift blockInterval property)
+    /// Gets block interval
     pub fn getBlockInterval(self: Self) u32 {
         return self.config.block_interval;
     }
 
-    /// Gets polling interval (equivalent to Swift pollingInterval property)
+    /// Gets polling interval
     pub fn getPollingInterval(self: Self) u32 {
         return self.config.polling_interval;
     }
 
-    /// Gets max valid until block increment (equivalent to Swift maxValidUntilBlockIncrement property)
+    /// Gets max valid until block increment
     pub fn getMaxValidUntilBlockIncrement(self: Self) u32 {
         return self.config.max_valid_until_block_increment;
     }
 
-    /// Allow transmission on fault (equivalent to Swift allowTransmissionOnFault)
+    /// Allow transmission on fault
     pub fn allowTransmissionOnFault(self: *Self) void {
         _ = self.config.allowTransmissionOnFault();
     }
 
-    /// Prevent transmission on fault (equivalent to Swift preventTransmissionOnFault)
+    /// Prevent transmission on fault
     pub fn preventTransmissionOnFault(self: *Self) void {
         _ = self.config.preventTransmissionOnFault();
     }
 
-    /// Gets reactive client (equivalent to Swift lazy neoSwiftRx)
-    pub fn getNeoSwiftRx(self: *Self) *JsonRpc2_0Rx {
-        if (self.neo_swift_rx == null) {
+    /// Gets reactive client
+    pub fn getNeoRx(self: *Self) *JsonRpc2_0Rx {
+        if (self.neo_rx == null) {
             const self_ptr: *anyopaque = @ptrCast(self);
-            self.neo_swift_rx = JsonRpc2_0Rx.init(
+            self.neo_rx = JsonRpc2_0Rx.init(
                 self_ptr,
                 getBlockCountCallback,
                 getBlockByIndexCallback,
@@ -110,21 +110,21 @@ pub const NeoZig = struct {
                 self.allocator,
             );
         }
-        return &self.neo_swift_rx.?;
+        return &self.neo_rx.?;
     }
 
     /// Gets configuration
-    pub fn getConfig(self: Self) NeoSwiftConfig {
+    pub fn getConfig(self: Self) NeoConfig {
         return self.config;
     }
 
     /// Gets mutable reference to underlying service
-    pub fn getService(self: *Self) *NeoSwiftService {
-        return &self.neo_swift_service;
+    pub fn getService(self: *Self) *NeoService {
+        return &self.neo_service;
     }
 
     /// Updates configuration
-    pub fn updateConfig(self: *Self, new_config: NeoSwiftConfig) void {
+    pub fn updateConfig(self: *Self, new_config: NeoConfig) void {
         self.config = new_config;
     }
 
@@ -136,7 +136,7 @@ pub const NeoZig = struct {
     /// Sets block interval
     pub fn setBlockInterval(self: *Self, interval: u32) void {
         self.config.block_interval = interval;
-        self.config.max_valid_until_block_increment = NeoSwiftConfig.MAX_VALID_UNTIL_BLOCK_INCREMENT_BASE / interval;
+        self.config.max_valid_until_block_increment = NeoConfig.MAX_VALID_UNTIL_BLOCK_INCREMENT_BASE / interval;
     }
 
     /// Sets polling interval
@@ -164,7 +164,7 @@ pub const NeoZig = struct {
 
         if (response.protocol) |protocol_settings| {
             _ = self.config.setNetworkMagic(protocol_settings.network);
-            NeoSwiftConfig.setAddressVersion(@intCast(protocol_settings.address_version));
+            NeoConfig.setAddressVersion(@intCast(protocol_settings.address_version));
             if (protocol_settings.ms_per_block) |ms_per_block| {
                 self.config.block_interval = ms_per_block;
             }
@@ -229,18 +229,18 @@ pub const NeoZig = struct {
 
     /// Cleanup allocated resources
     pub fn deinit(self: *Self) void {
-        if (self.neo_swift_rx) |*rx| {
+        if (self.neo_rx) |*rx| {
             rx.deinit();
-            self.neo_swift_rx = null;
+            self.neo_rx = null;
         }
-        self.neo_swift_service.deinit();
+        self.neo_service.deinit();
     }
 
     /// Clone client with new configuration
-    pub fn cloneWithConfig(self: Self, new_config: NeoSwiftConfig) Self {
+    pub fn cloneWithConfig(self: Self, new_config: NeoConfig) Self {
         // Borrow the underlying service to avoid double-free. The returned
         // client does not own the transport and must not outlive `self`.
-        var service_copy = self.neo_swift_service;
+        var service_copy = self.neo_service;
         service_copy.relinquish();
         return Self.init(new_config, service_copy, self.allocator);
     }
@@ -260,50 +260,50 @@ pub const NeoZig = struct {
     /// Factory methods for common configurations
     pub const Factory = struct {
         /// Creates NeoZig client for MainNet
-        pub fn createMainNet(service: NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createMainNetConfig();
+        pub fn createMainNet(service: NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createMainNetConfig();
             return Self.init(config, service, allocator);
         }
 
         /// Creates NeoZig client for MainNet, moving from a service pointer.
-        pub fn createMainNetFromService(service: *NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createMainNetConfig();
+        pub fn createMainNetFromService(service: *NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createMainNetConfig();
             return Self.initFromService(config, service, allocator);
         }
 
         /// Creates NeoZig client for TestNet
-        pub fn createTestNet(service: NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createTestNetConfig();
+        pub fn createTestNet(service: NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createTestNetConfig();
             return Self.init(config, service, allocator);
         }
 
         /// Creates NeoZig client for TestNet, moving from a service pointer.
-        pub fn createTestNetFromService(service: *NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createTestNetConfig();
+        pub fn createTestNetFromService(service: *NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createTestNetConfig();
             return Self.initFromService(config, service, allocator);
         }
 
         /// Creates NeoZig client for development
-        pub fn createDev(service: NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createDevConfig();
+        pub fn createDev(service: NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createDevConfig();
             return Self.init(config, service, allocator);
         }
 
         /// Creates NeoZig client for development, moving from a service pointer.
-        pub fn createDevFromService(service: *NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createDevConfig();
+        pub fn createDevFromService(service: *NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createDevConfig();
             return Self.initFromService(config, service, allocator);
         }
 
         /// Creates NeoZig client for production
-        pub fn createProduction(service: NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createProductionConfig();
+        pub fn createProduction(service: NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createProductionConfig();
             return Self.init(config, service, allocator);
         }
 
         /// Creates NeoZig client for production, moving from a service pointer.
-        pub fn createProductionFromService(service: *NeoSwiftService, allocator: std.mem.Allocator) Self {
-            const config = NeoSwiftConfig.createProductionConfig();
+        pub fn createProductionFromService(service: *NeoService, allocator: std.mem.Allocator) Self {
+            const config = NeoConfig.createProductionConfig();
             return Self.initFromService(config, service, allocator);
         }
     };
@@ -325,29 +325,29 @@ fn getBlockByIndexCallback(
     return client.getBlockByIndex(block_index, full_transactions);
 }
 
-// Tests (converted from Swift NeoSwift tests)
-fn createTestService(allocator: std.mem.Allocator) !NeoSwiftService {
+// Tests
+fn createTestService(allocator: std.mem.Allocator) !NeoService {
     const http_service = try allocator.create(HttpService);
     errdefer allocator.destroy(http_service);
     http_service.* = HttpService.init(allocator, "http://localhost:20332", false);
     const impl = ServiceImplementation.init(http_service, allocator, true);
-    return NeoSwiftService.init(impl);
+    return NeoService.init(impl);
 }
 
 test "NeoZig creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test client creation (equivalent to Swift NeoSwift tests)
-    const config = NeoSwiftConfig.init();
+    // Test client creation
+    const config = NeoConfig.init();
     var service = try createTestService(allocator);
 
     var client = NeoZig.initFromService(config, &service, allocator);
     defer client.deinit();
 
     // Test configuration properties
-    try testing.expectEqual(NeoSwiftConfig.DEFAULT_BLOCK_TIME, client.getBlockInterval());
-    try testing.expectEqual(NeoSwiftConfig.DEFAULT_BLOCK_TIME, client.getPollingInterval());
+    try testing.expectEqual(NeoConfig.DEFAULT_BLOCK_TIME, client.getBlockInterval());
+    try testing.expectEqual(NeoConfig.DEFAULT_BLOCK_TIME, client.getPollingInterval());
     try testing.expect(!client.isTransmissionOnFaultAllowed());
 
     // Test validation
@@ -358,7 +358,7 @@ test "NeoZig factory methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test factory methods (equivalent to Swift factory tests)
+    // Test factory methods
     // Test MainNet client
     var mainnet_service = try createTestService(allocator);
     var mainnet_client = NeoZig.Factory.createMainNetFromService(&mainnet_service, allocator);
@@ -449,10 +449,10 @@ test "NeoZig reactive client access" {
     defer client.deinit();
 
     // Test lazy initialization of reactive client
-    const rx_client = client.getNeoSwiftRx();
+    const rx_client = client.getNeoRx();
     try testing.expect(rx_client.*.getDefaultPollingInterval() > 0);
 
     // Second access should return same instance
-    const rx_client2 = client.getNeoSwiftRx();
+    const rx_client2 = client.getNeoRx();
     try testing.expectEqual(@as(*JsonRpc2_0Rx, rx_client), @as(*JsonRpc2_0Rx, rx_client2));
 }

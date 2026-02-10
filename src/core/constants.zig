@@ -1,7 +1,7 @@
 //! Neo blockchain constants and configuration values
 //!
-//! Complete conversion from NeoSwift/Sources/NeoSwift/NeoConstants.swift
-//! All constants match the original Swift implementation for compatibility.
+//! Neo N3 constants
+//! Core protocol constants for the Neo N3 blockchain.
 //!
 //! ## Neo N3 Version Compatibility
 //!
@@ -20,7 +20,7 @@ const std = @import("std");
 /// Maximum number of public keys that can take part in a multi-signature address
 pub const MAX_PUBLIC_KEYS_PER_MULTISIG_ACCOUNT: u32 = 1024;
 
-/// Hash and key sizes (matching Swift constants)
+/// Hash and key sizes
 pub const HASH160_SIZE: usize = 20;
 pub const HASH256_SIZE: usize = 32;
 pub const PRIVATE_KEY_SIZE: usize = 32;
@@ -35,6 +35,7 @@ pub const MAX_TRANSACTION_ATTRIBUTES: u8 = 16;
 pub const MAX_SIGNER_SUBITEMS: u8 = 16;
 pub const MAX_MANIFEST_SIZE: u32 = 0xFFFF;
 pub const MAX_ITERATOR_ITEMS_DEFAULT: u32 = 100;
+pub const MAX_VAR_STRING_SIZE: u32 = 1024 * 1024; // 1MB
 
 /// Network magic numbers
 pub const NetworkMagic = struct {
@@ -64,7 +65,7 @@ pub const NeoVersion = struct {
 /// Default magic used when the RPC endpoint does not report protocol metadata
 pub const DEFAULT_NETWORK_MAGIC: u32 = NetworkMagic.MAINNET;
 
-/// secp256r1 curve parameters (converted from Swift)
+/// secp256r1 curve parameters
 pub const Secp256r1 = struct {
     /// Field prime p
     pub const P: u256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF;
@@ -169,7 +170,7 @@ pub const InteropServices = struct {
 test "constants validation" {
     const testing = std.testing;
 
-    // Validate key sizes match original Swift implementation
+    // Validate key sizes match Neo N3 specification
     try testing.expectEqual(@as(usize, 20), HASH160_SIZE);
     try testing.expectEqual(@as(usize, 32), HASH256_SIZE);
     try testing.expectEqual(@as(usize, 32), PRIVATE_KEY_SIZE);

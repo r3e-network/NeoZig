@@ -1,12 +1,12 @@
 //! Scrypt Parameters Implementation
 //!
-//! Complete conversion from NeoSwift ScryptParams.swift
+//! Neo N3
 //! Provides scrypt algorithm parameters for NEP-2 encryption.
 
 const std = @import("std");
 const json_utils = @import("../utils/json_utils.zig");
 
-/// Scrypt algorithm parameters (converted from Swift ScryptParams)
+/// Scrypt algorithm parameters
 pub const ScryptParams = struct {
     /// Standard N parameter (cost factor)
     pub const N_STANDARD: u32 = 1 << 14; // 16384
@@ -24,7 +24,7 @@ pub const ScryptParams = struct {
 
     const Self = @This();
 
-    /// Creates new ScryptParams (equivalent to Swift init)
+    /// Creates new ScryptParams
     pub fn init(n: u32, r: u32, p: u32) Self {
         return Self{
             .n = n,
@@ -33,7 +33,7 @@ pub const ScryptParams = struct {
         };
     }
 
-    /// Creates default ScryptParams (equivalent to Swift DEFAULT)
+    /// Creates default ScryptParams
     pub fn default() Self {
         return Self.init(N_STANDARD, R_STANDARD, P_STANDARD);
     }
@@ -53,12 +53,12 @@ pub const ScryptParams = struct {
         return Self.init(1 << 16, 16, 16); // 65536, 16, 16
     }
 
-    /// Equality comparison (equivalent to Swift ==)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.n == other.n and self.r == other.r and self.p == other.p;
     }
 
-    /// Hash function (equivalent to Swift hash(into:))
+    /// Hash function)
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.n));
@@ -104,7 +104,7 @@ pub const ScryptParams = struct {
         return our_ops / default_ops;
     }
 
-    /// JSON encoding (equivalent to Swift Codable encode)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var json_obj = std.json.ObjectMap.init(allocator);
         defer json_obj.deinit();
@@ -122,14 +122,14 @@ pub const ScryptParams = struct {
         return try json_string.toOwnedSlice();
     }
 
-    /// JSON decoding (equivalent to Swift Codable init(from:))
+    /// JSON decoding)
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
 
         const json_obj = parsed.value.object;
 
-        // Try different key names for compatibility (like Swift implementation)
+        // Try different key names for compatibility
         const n = blk: {
             if (json_obj.get("cost")) |value| break :blk @as(u32, @intCast(value.integer));
             if (json_obj.get("n")) |value| break :blk @as(u32, @intCast(value.integer));
@@ -170,11 +170,11 @@ pub const ScryptParams = struct {
     }
 };
 
-// Tests (converted from Swift ScryptParams tests)
+// Tests
 test "ScryptParams creation and properties" {
     const testing = std.testing;
 
-    // Test default parameters (equivalent to Swift DEFAULT tests)
+    // Test default parameters
     const default_params = ScryptParams.default();
     try testing.expectEqual(@as(u32, ScryptParams.N_STANDARD), default_params.n);
     try testing.expectEqual(@as(u32, ScryptParams.R_STANDARD), default_params.r);
@@ -194,7 +194,7 @@ test "ScryptParams creation and properties" {
 test "ScryptParams equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift == tests)
+    // Test equality
     const params1 = ScryptParams.init(1024, 8, 8);
     const params2 = ScryptParams.init(1024, 8, 8);
     const params3 = ScryptParams.init(2048, 8, 8);
@@ -202,7 +202,7 @@ test "ScryptParams equality and hashing" {
     try testing.expect(params1.eql(params2));
     try testing.expect(!params1.eql(params3));
 
-    // Test hashing (equivalent to Swift hash(into:) tests)
+    // Test hashing tests)
     const hash1 = params1.hash();
     const hash2 = params2.hash();
     const hash3 = params3.hash();
@@ -258,7 +258,7 @@ test "ScryptParams JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const original_params = ScryptParams.init(2048, 4, 2);
 
     const json_str = try original_params.encodeToJson(allocator);
@@ -276,7 +276,7 @@ test "ScryptParams JSON compatibility" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test compatibility with different JSON key names (like Swift implementation)
+    // Test compatibility with different JSON key names
     const cost_json = "{\"cost\": 1024, \"blockSize\": 8, \"parallel\": 1}";
     const params1 = try ScryptParams.decodeFromJson(cost_json, allocator);
     try testing.expectEqual(@as(u32, 1024), params1.n);

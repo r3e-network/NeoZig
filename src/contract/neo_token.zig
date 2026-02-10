@@ -1,6 +1,6 @@
 //! NEO Token implementation
 //!
-//! Complete conversion from NeoSwift NeoToken.swift
+//! Neo N3 
 //! Represents the native NEO token contract with governance features.
 
 const std = @import("std");
@@ -12,25 +12,25 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const FungibleToken = @import("fungible_token.zig").FungibleToken;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const StackItem = @import("../types/stack_item.zig").StackItem;
 
-/// NEO token contract (converted from Swift NeoToken)
+/// NEO token contract
 pub const NeoToken = struct {
-    /// Contract name (matches Swift NAME)
+    /// Contract name
     pub const NAME = "NeoToken";
 
-    /// Script hash (matches Swift SCRIPT_HASH)
+    /// Script hash
     pub const SCRIPT_HASH: Hash160 = Hash160{ .bytes = constants.NativeContracts.NEO_TOKEN };
 
-    /// Token decimals (matches Swift DECIMALS)
+    /// Token decimals
     pub const DECIMALS: u8 = 0; // NEO is indivisible
 
-    /// Token symbol (matches Swift SYMBOL)
+    /// Token symbol
     pub const SYMBOL = "NEO";
 
-    /// Method names (match Swift constants)
+    /// Method names
     pub const GET_CANDIDATES = "getCandidates";
     pub const GET_COMMITTEE = "getCommittee";
     pub const GET_NEXT_BLOCK_VALIDATORS = "getNextBlockValidators";
@@ -49,25 +49,25 @@ pub const NeoToken = struct {
 
     const Self = @This();
 
-    /// Creates new NeoToken instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, neo_swift: ?*anyopaque) Self {
+    /// Creates new NeoToken instance
+    pub fn init(allocator: std.mem.Allocator, client: ?*anyopaque) Self {
         return Self{
-            .fungible_token = FungibleToken.init(allocator, SCRIPT_HASH, neo_swift),
+            .fungible_token = FungibleToken.init(allocator, SCRIPT_HASH, client),
         };
     }
 
-    /// Gets token name (equivalent to Swift getName() override)
+    /// Gets token name override)
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return NAME;
     }
 
-    /// Gets token symbol (equivalent to Swift getSymbol() override)
+    /// Gets token symbol override)
     pub fn getSymbol(self: Self) ![]const u8 {
         return try self.fungible_token.getSymbol();
     }
 
-    /// Gets token decimals (equivalent to Swift getDecimals() override)
+    /// Gets token decimals override)
     pub fn getDecimals(self: Self) !u8 {
         return try self.fungible_token.getDecimals();
     }
@@ -119,18 +119,18 @@ pub const NeoToken = struct {
     }
 
     // ============================================================================
-    // GOVERNANCE METHODS (converted from Swift governance functionality)
+    // GOVERNANCE METHODS
     // ============================================================================
 
-    /// Gets all candidates (equivalent to Swift getCandidates)
+    /// Gets all candidates
     pub fn getCandidates(self: Self) ![]Candidate {
         const smart_contract = self.fungible_token.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(SCRIPT_HASH, GET_CANDIDATES, &[_]ContractParameter{}, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(SCRIPT_HASH, GET_CANDIDATES, &[_]ContractParameter{}, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -149,29 +149,31 @@ pub const NeoToken = struct {
         return candidates;
     }
 
-    /// Gets committee members (equivalent to Swift getCommittee)
+    /// Gets committee members
     pub fn getCommittee(self: Self) ![][33]u8 {
         return try self.getPublicKeyList(GET_COMMITTEE);
     }
 
-    /// Gets next block validators (equivalent to Swift getNextBlockValidators)
+    /// Gets next block validators
     pub fn getNextBlockValidators(self: Self) ![][33]u8 {
         return try self.getPublicKeyList(GET_NEXT_BLOCK_VALIDATORS);
     }
 
-    /// Registers candidate (equivalent to Swift registerCandidate)
+    /// Registers candidate
     pub fn registerCandidate(self: Self, public_key: [33]u8) !TransactionBuilder {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
+        const pk = try ContractParameter.publicKey(public_key[0..]);
+        const params = [_]ContractParameter{pk};
         return try self.fungible_token.token.smart_contract.invokeFunction(REGISTER_CANDIDATE, &params);
     }
 
-    /// Unregisters candidate (equivalent to Swift unregisterCandidate)
+    /// Unregisters candidate
     pub fn unregisterCandidate(self: Self, public_key: [33]u8) !TransactionBuilder {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
+        const pk = try ContractParameter.publicKey(public_key[0..]);
+        const params = [_]ContractParameter{pk};
         return try self.fungible_token.token.smart_contract.invokeFunction(UNREGISTER_CANDIDATE, &params);
     }
 
-    /// Votes for candidate (equivalent to Swift vote)
+    /// Votes for candidate
     pub fn vote(self: Self, voter: Hash160, candidate: ?[33]u8) !TransactionBuilder {
         var params = ArrayList(ContractParameter).init(self.fungible_token.token.smart_contract.allocator);
         defer params.deinit();
@@ -179,31 +181,31 @@ pub const NeoToken = struct {
         try params.append(ContractParameter.hash160(voter));
 
         if (candidate) |pub_key| {
-            try params.append(ContractParameter.publicKey(pub_key[0..]));
+            try params.append(try ContractParameter.publicKey(pub_key[0..]));
         } else {
-            try params.append(ContractParameter.void_param());
+            try params.append(ContractParameter.voidParam());
         }
 
         return try self.fungible_token.token.smart_contract.invokeFunction(VOTE, params.items);
     }
 
-    /// Gets candidate vote count (equivalent to Swift getCandidateVote)
+    /// Gets candidate vote count
     pub fn getCandidateVote(self: Self, public_key: [33]u8) !i64 {
-        const params = [_]ContractParameter{ContractParameter.publicKey(public_key[0..])};
-        return try self.fungible_token.token.smart_contract.callFunctionReturningInt(GET_CANDIDATE_VOTE, &params);
+        const pk = try ContractParameter.publicKey(public_key[0..]);
+        const params = [_]ContractParameter{pk};        return try self.fungible_token.token.smart_contract.callFunctionReturningInt(GET_CANDIDATE_VOTE, &params);
     }
 
-    /// Gets account state (equivalent to Swift getAccountState)
+    /// Gets account state
     pub fn getAccountState(self: Self, script_hash: Hash160) !AccountState {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
 
         const smart_contract = self.fungible_token.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(SCRIPT_HASH, GET_ACCOUNT_STATE, &params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(SCRIPT_HASH, GET_ACCOUNT_STATE, &params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -214,23 +216,23 @@ pub const NeoToken = struct {
         return try AccountState.fromStackItem(stack_item);
     }
 
-    /// Gets GAS per block (equivalent to Swift getGasPerBlock)
+    /// Gets GAS per block
     pub fn getGasPerBlock(self: Self) !i64 {
         return try self.fungible_token.token.smart_contract.callFunctionReturningInt(GET_GAS_PER_BLOCK, &[_]ContractParameter{});
     }
 
-    /// Sets GAS per block (equivalent to Swift setGasPerBlock)
+    /// Sets GAS per block
     pub fn setGasPerBlock(self: Self, gas_per_block: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(gas_per_block)};
         return try self.fungible_token.token.smart_contract.invokeFunction(SET_GAS_PER_BLOCK, &params);
     }
 
-    /// Gets candidate registration price (equivalent to Swift getRegisterPrice)
+    /// Gets candidate registration price
     pub fn getRegisterPrice(self: Self) !i64 {
         return try self.fungible_token.token.smart_contract.callFunctionReturningInt(GET_REGISTER_PRICE, &[_]ContractParameter{});
     }
 
-    /// Sets candidate registration price (equivalent to Swift setRegisterPrice)
+    /// Sets candidate registration price
     pub fn setRegisterPrice(self: Self, register_price: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(register_price)};
         return try self.fungible_token.token.smart_contract.invokeFunction(SET_REGISTER_PRICE, &params);
@@ -238,12 +240,12 @@ pub const NeoToken = struct {
 
     fn getPublicKeyList(self: Self, function_name: []const u8) ![][33]u8 {
         const smart_contract = self.fungible_token.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(SCRIPT_HASH, function_name, &[_]ContractParameter{}, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(SCRIPT_HASH, function_name, &[_]ContractParameter{}, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -271,7 +273,7 @@ pub const NeoToken = struct {
     }
 };
 
-/// Candidate structure (converted from Swift Candidate)
+/// Candidate structure
 pub const Candidate = struct {
     public_key: [33]u8,
     votes: i64,
@@ -307,7 +309,7 @@ pub const Candidate = struct {
     }
 };
 
-/// Account state structure (converted from Swift account state)
+/// Account state structure
 pub const AccountState = struct {
     balance: i64,
     height: u32,
@@ -363,19 +365,19 @@ pub const AccountState = struct {
     }
 };
 
-// Tests (converted from Swift NeoToken tests)
+// Tests
 test "NeoToken constants and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const neo_token = NeoToken.init(allocator, null);
 
-    // Test constant values (equivalent to Swift constant tests)
+    // Test constant values
     try testing.expectEqualStrings("NeoToken", try neo_token.getName());
     try testing.expectError(errors.NeoError.InvalidConfiguration, neo_token.getSymbol());
     try testing.expectError(errors.NeoError.InvalidConfiguration, neo_token.getDecimals());
 
-    // Test script hash (equivalent to Swift SCRIPT_HASH test)
+    // Test script hash
     const script_hash = neo_token.fungible_token.token.getScriptHash();
     try testing.expect(std.mem.eql(u8, &constants.NativeContracts.NEO_TOKEN, &script_hash.toArray()));
 }
@@ -386,7 +388,7 @@ test "NeoToken governance operations" {
 
     const neo_token = NeoToken.init(allocator, null);
 
-    // Test candidate registration (equivalent to Swift registerCandidate tests)
+    // Test candidate registration
     const test_public_key = [_]u8{0x02} ++ [_]u8{0xAB} ** 32;
     var register_tx = try neo_token.registerCandidate(test_public_key);
     defer register_tx.deinit();
@@ -407,7 +409,7 @@ test "NeoToken fee and price operations" {
 
     const neo_token = NeoToken.init(allocator, null);
 
-    // Test GAS per block operations (equivalent to Swift GAS per block tests)
+    // Test GAS per block operations
     try testing.expectError(errors.NeoError.InvalidConfiguration, neo_token.getGasPerBlock());
     var set_gas_tx = try neo_token.setGasPerBlock(500000000);
     defer set_gas_tx.deinit();

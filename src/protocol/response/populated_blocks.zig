@@ -1,12 +1,12 @@
 //! Populated Blocks Implementation
 //!
-//! Complete conversion from NeoSwift PopulatedBlocks.swift
+//! Neo N3
 //! Provides populated blocks response representation.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
-/// Populated blocks response (converted from Swift PopulatedBlocks)
+/// Populated blocks response
 pub const PopulatedBlocks = struct {
     /// Cache identifier
     cache_id: []const u8,
@@ -15,7 +15,7 @@ pub const PopulatedBlocks = struct {
 
     const Self = @This();
 
-    /// Creates new PopulatedBlocks (equivalent to Swift init)
+    /// Creates new PopulatedBlocks
     pub fn init(cache_id: []const u8, blocks: []u32) Self {
         return Self{
             .cache_id = cache_id,
@@ -23,7 +23,7 @@ pub const PopulatedBlocks = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         if (!std.mem.eql(u8, self.cache_id, other.cache_id)) {
             return false;
@@ -42,7 +42,7 @@ pub const PopulatedBlocks = struct {
         return true;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.cache_id);
@@ -120,7 +120,7 @@ pub const PopulatedBlocks = struct {
         return true;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var blocks_json = ArrayList(u8).init(allocator);
         defer blocks_json.deinit();
@@ -137,7 +137,7 @@ pub const PopulatedBlocks = struct {
         return try std.fmt.allocPrint(allocator, "{{\"cacheId\":\"{s}\",\"blocks\":{s}}}", .{ self.cache_id, blocks_json.items });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -206,12 +206,12 @@ pub const PopulatedBlocks = struct {
     }
 };
 
-// Tests (converted from Swift PopulatedBlocks tests)
+// Tests
 test "PopulatedBlocks creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test creation (equivalent to Swift init tests)
+    // Test creation
     const cache_id = "test_cache_123";
     const blocks = [_]u32{ 1, 2, 3, 5, 7 };
 
@@ -230,7 +230,7 @@ test "PopulatedBlocks creation and properties" {
 test "PopulatedBlocks equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const cache_id = "test_cache";
     const blocks1 = [_]u32{ 1, 2, 3 };
     const blocks2 = [_]u32{ 1, 2, 3 };
@@ -289,7 +289,7 @@ test "PopulatedBlocks JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const cache_id = "test_cache_456";
     const blocks = [_]u32{ 10, 20, 30 };
 

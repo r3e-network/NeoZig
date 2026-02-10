@@ -1,6 +1,6 @@
 //! Binary reader for Neo deserialization
 //!
-//! Converted from Swift BinaryReader with full API compatibility.
+//! Neo N3 binary reader.
 
 const std = @import("std");
 
@@ -84,7 +84,7 @@ pub const BinaryReader = struct {
     pub fn readVarString(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         const length = try self.readVarInt();
 
-        if (length > 1024 * 1024) {
+        if (length > constants.MAX_VAR_STRING_SIZE) {
             return errors.SerializationError.DataTooLarge;
         }
 

@@ -1,6 +1,6 @@
 //! Neo Protocol implementation
 //!
-//! Complete conversion from NeoSwift Neo.swift protocol
+//! Neo N3
 //! Provides complete Neo blockchain protocol interface.
 
 const std = @import("std");
@@ -15,7 +15,7 @@ const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const Request = @import("../rpc/request.zig").Request;
 const parameter_utils = @import("../contract/parameter_utils.zig");
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
-const TransactionSendToken = @import("../rpc/complete_responses.zig").TransactionSendToken;
+const TransactionSendToken = @import("../rpc/extended_responses.zig").TransactionSendToken;
 
 const JsonArrayHolder = struct {
     value: std.json.Value,
@@ -119,15 +119,15 @@ fn encodeTransactionSendTokens(tokens: []const TransactionSendToken, allocator: 
     };
 }
 
-/// Neo protocol interface (converted from Swift Neo protocol)
+/// Neo protocol interface
 pub const NeoProtocol = struct {
     /// Service implementation
-    service: *@import("../rpc/neo_swift_service.zig").NeoSwiftService,
+    service: *@import("../rpc/neo_service.zig").NeoService,
 
     const Self = @This();
 
     /// Creates Neo protocol implementation
-    pub fn init(service: *@import("../rpc/neo_swift_service.zig").NeoSwiftService) Self {
+    pub fn init(service: *@import("../rpc/neo_service.zig").NeoService) Self {
         return Self{ .service = service };
     }
 
@@ -136,10 +136,10 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // BLOCKCHAIN METHODS (converted from Swift blockchain methods)
+    // BLOCKCHAIN METHODS
     // ============================================================================
 
-    /// Gets best block hash (equivalent to Swift getBestBlockHash())
+    /// Gets best block hash)
     pub fn getBestBlockHash(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256) {
         return try Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256).withNoParams(
             self.getAllocator(),
@@ -147,7 +147,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets block hash by index (equivalent to Swift getBlockHash(_ blockIndex: Int))
+    /// Gets block hash by index)
     pub fn getBlockHash(self: Self, block_index: u32) !Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256) {
         const int_params = [_]i64{@as(i64, @intCast(block_index))};
         return try Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256).withIntegerParams(
@@ -157,7 +157,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets block by hash (equivalent to Swift getBlock(_ blockHash: Hash256, _ returnFullTransactionObjects: Bool))
+    /// Gets block by hash)
     pub fn getBlock(
         self: Self,
         block_hash: Hash256,
@@ -179,7 +179,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets block by index (equivalent to Swift getBlock(_ blockIndex: Int, _ returnFullTransactionObjects: Bool))
+    /// Gets block by index)
     pub fn getBlockByIndex(
         self: Self,
         block_index: u32,
@@ -198,7 +198,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets raw block by hash (equivalent to Swift getRawBlock(_ blockHash: Hash256))
+    /// Gets raw block by hash)
     pub fn getRawBlock(self: Self, block_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8) {
         const hash_hex = try block_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
@@ -215,7 +215,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets block count (equivalent to Swift getBlockCount())
+    /// Gets block count)
     pub fn getBlockCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockCount, u32) {
         return try Request(@import("../rpc/response_aliases.zig").NeoBlockCount, u32).withNoParams(
             self.getAllocator(),
@@ -285,7 +285,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets block header count (equivalent to Swift getBlockHeaderCount())
+    /// Gets block header count)
     pub fn getBlockHeaderCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockHeaderCount, u32) {
         return try Request(@import("../rpc/response_aliases.zig").NeoBlockHeaderCount, u32).withNoParams(
             self.getAllocator(),
@@ -293,15 +293,15 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets native contracts (equivalent to Swift getNativeContracts())
-    pub fn getNativeContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/complete_responses.zig").NativeContractState) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/complete_responses.zig").NativeContractState).withNoParams(
+    /// Gets native contracts)
+    pub fn getNativeContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/extended_responses.zig").NativeContractState) {
+        return try Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/extended_responses.zig").NativeContractState).withNoParams(
             self.getAllocator(),
             "getnativecontracts",
         );
     }
 
-    /// Gets contract state (equivalent to Swift getContractState(_ contractHash: Hash160))
+    /// Gets contract state)
     pub fn getContractState(self: Self, contract_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoGetContractState, @import("../rpc/responses.zig").ContractState) {
         const hash_hex = try contract_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
@@ -324,10 +324,10 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets memory pool (equivalent to Swift getMemPool())
-    pub fn getMemPool(self: Self) !Request(@import("../rpc/complete_responses.zig").NeoGetMemPool, @import("../rpc/complete_responses.zig").NeoGetMemPool) {
+    /// Gets memory pool)
+    pub fn getMemPool(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetMemPool, @import("../rpc/extended_responses.zig").NeoGetMemPool) {
         const verbose_params = [_]i64{1};
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetMemPool, @import("../rpc/complete_responses.zig").NeoGetMemPool).withIntegerParams(
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetMemPool, @import("../rpc/extended_responses.zig").NeoGetMemPool).withIntegerParams(
             self.getAllocator(),
             "getrawmempool",
             &verbose_params,
@@ -342,7 +342,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets transaction (equivalent to Swift getTransaction(_ txHash: Hash256))
+    /// Gets transaction)
     pub fn getTransaction(self: Self, tx_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetTransaction, @import("../rpc/responses.zig").Transaction) {
         const hash_hex = try tx_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
@@ -377,10 +377,10 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // NODE METHODS (converted from Swift node methods)
+    // NODE METHODS
     // ============================================================================
 
-    /// Gets connection count (equivalent to Swift getConnectionCount())
+    /// Gets connection count)
     pub fn getConnectionCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoConnectionCount, u32) {
         return try Request(@import("../rpc/response_aliases.zig").NeoConnectionCount, u32).withNoParams(
             self.getAllocator(),
@@ -388,15 +388,15 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets peers (equivalent to Swift getPeers())
-    pub fn getPeers(self: Self) !Request(@import("../rpc/complete_responses.zig").NeoGetPeers, @import("../rpc/complete_responses.zig").NeoGetPeers) {
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetPeers, @import("../rpc/complete_responses.zig").NeoGetPeers).withNoParams(
+    /// Gets peers)
+    pub fn getPeers(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetPeers, @import("../rpc/extended_responses.zig").NeoGetPeers) {
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetPeers, @import("../rpc/extended_responses.zig").NeoGetPeers).withNoParams(
             self.getAllocator(),
             "getpeers",
         );
     }
 
-    /// Gets version (equivalent to Swift getVersion())
+    /// Gets version)
     pub fn getVersion(self: Self) !Request(@import("../rpc/remaining_responses.zig").NeoGetVersion, @import("../rpc/remaining_responses.zig").NeoGetVersion) {
         return try Request(@import("../rpc/remaining_responses.zig").NeoGetVersion, @import("../rpc/remaining_responses.zig").NeoGetVersion).withNoParams(
             self.getAllocator(),
@@ -404,7 +404,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Sends raw transaction (equivalent to Swift sendRawTransaction(_ rawTransactionHex: String))
+    /// Sends raw transaction)
     pub fn sendRawTransaction(self: Self, raw_transaction_hex: []const u8) !Request(@import("../rpc/remaining_responses.zig").NeoSendRawTransaction, @import("../rpc/remaining_responses.zig").NeoSendRawTransaction) {
         const string_params = [_][]const u8{raw_transaction_hex};
         return try Request(@import("../rpc/remaining_responses.zig").NeoSendRawTransaction, @import("../rpc/remaining_responses.zig").NeoSendRawTransaction).withStringParams(
@@ -425,10 +425,10 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // SMART CONTRACT METHODS (converted from Swift smart contract methods)
+    // SMART CONTRACT METHODS
     // ============================================================================
 
-    /// Invokes function (equivalent to Swift invokeFunction methods)
+    /// Invokes function
     pub fn invokeFunction(
         self: Self,
         contract_hash: Hash160,
@@ -540,7 +540,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Invokes script (equivalent to Swift invokeScript)
+    /// Invokes script
     pub fn invokeScript(
         self: Self,
         script_hex: []const u8,
@@ -593,7 +593,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Traverses iterator (equivalent to Swift traverseIterator)
+    /// Traverses iterator
     pub fn traverseIterator(
         self: Self,
         session_id: []const u8,
@@ -613,7 +613,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Terminates session (equivalent to Swift terminateSession)
+    /// Terminates session
     pub fn terminateSession(self: Self, session_id: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoTerminateSession, bool) {
         const string_params = [_][]const u8{session_id};
         return try Request(@import("../rpc/response_aliases.zig").NeoTerminateSession, bool).withStringParams(
@@ -623,13 +623,13 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets unclaimed GAS (equivalent to Swift getUnclaimedGas)
-    pub fn getUnclaimedGas(self: Self, script_hash: Hash160) !Request(@import("../rpc/complete_responses.zig").NeoGetUnclaimedGas, @import("../rpc/complete_responses.zig").NeoGetUnclaimedGas) {
+    /// Gets unclaimed GAS
+    pub fn getUnclaimedGas(self: Self, script_hash: Hash160) !Request(@import("../rpc/extended_responses.zig").NeoGetUnclaimedGas, @import("../rpc/extended_responses.zig").NeoGetUnclaimedGas) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const string_params = [_][]const u8{address};
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetUnclaimedGas, @import("../rpc/complete_responses.zig").NeoGetUnclaimedGas).withStringParams(
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetUnclaimedGas, @import("../rpc/extended_responses.zig").NeoGetUnclaimedGas).withStringParams(
             self.getAllocator(),
             "getunclaimedgas",
             &string_params,
@@ -637,21 +637,21 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // UTILITY METHODS (converted from Swift utility methods)
+    // UTILITY METHODS
     // ============================================================================
 
-    /// Lists plugins (equivalent to Swift listPlugins())
-    pub fn listPlugins(self: Self) !Request(@import("../rpc/complete_responses.zig").NeoListPlugins, @import("../rpc/complete_responses.zig").NeoListPlugins) {
-        return try Request(@import("../rpc/complete_responses.zig").NeoListPlugins, @import("../rpc/complete_responses.zig").NeoListPlugins).withNoParams(
+    /// Lists plugins)
+    pub fn listPlugins(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoListPlugins, @import("../rpc/extended_responses.zig").NeoListPlugins) {
+        return try Request(@import("../rpc/extended_responses.zig").NeoListPlugins, @import("../rpc/extended_responses.zig").NeoListPlugins).withNoParams(
             self.getAllocator(),
             "listplugins",
         );
     }
 
-    /// Validates address (equivalent to Swift validateAddress)
-    pub fn validateAddress(self: Self, address: []const u8) !Request(@import("../rpc/complete_responses.zig").NeoValidateAddress, @import("../rpc/complete_responses.zig").NeoValidateAddress) {
+    /// Validates address
+    pub fn validateAddress(self: Self, address: []const u8) !Request(@import("../rpc/extended_responses.zig").NeoValidateAddress, @import("../rpc/extended_responses.zig").NeoValidateAddress) {
         const string_params = [_][]const u8{address};
-        return try Request(@import("../rpc/complete_responses.zig").NeoValidateAddress, @import("../rpc/complete_responses.zig").NeoValidateAddress).withStringParams(
+        return try Request(@import("../rpc/extended_responses.zig").NeoValidateAddress, @import("../rpc/extended_responses.zig").NeoValidateAddress).withStringParams(
             self.getAllocator(),
             "validateaddress",
             &string_params,
@@ -659,10 +659,10 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // WALLET METHODS (converted from Swift wallet methods)
+    // WALLET METHODS
     // ============================================================================
 
-    /// Closes wallet (equivalent to Swift closeWallet())
+    /// Closes wallet)
     pub fn closeWallet(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoCloseWallet, bool) {
         return try Request(@import("../rpc/response_aliases.zig").NeoCloseWallet, bool).withNoParams(
             self.getAllocator(),
@@ -670,7 +670,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Dumps private key for account (equivalent to Swift dumpPrivKey)
+    /// Dumps private key for account
     pub fn dumpPrivKey(self: Self, script_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoDumpPrivKey, []const u8) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
@@ -683,7 +683,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Opens wallet (equivalent to Swift openWallet)
+    /// Opens wallet
     pub fn openWallet(self: Self, wallet_path: []const u8, password: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoOpenWallet, bool) {
         const string_params = [_][]const u8{ wallet_path, password };
         return try Request(@import("../rpc/response_aliases.zig").NeoOpenWallet, bool).withStringParams(
@@ -693,7 +693,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets wallet balance for token (equivalent to Swift getWalletBalance)
+    /// Gets wallet balance for token
     pub fn getWalletBalance(self: Self, token_hash: Hash160) !Request(@import("../rpc/protocol_responses.zig").NeoGetWalletBalance, @import("../rpc/protocol_responses.zig").NeoGetWalletBalance) {
         const token_hex = try token_hash.string(self.getAllocator());
         defer self.getAllocator().free(token_hex);
@@ -706,7 +706,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets new address (equivalent to Swift getNewAddress)
+    /// Gets new address
     pub fn getNewAddress(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetNewAddress, []const u8) {
         return try Request(@import("../rpc/response_aliases.zig").NeoGetNewAddress, []const u8).withNoParams(
             self.getAllocator(),
@@ -714,7 +714,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets unclaimed GAS for wallet (equivalent to Swift getWalletUnclaimedGas)
+    /// Gets unclaimed GAS for wallet
     pub fn getWalletUnclaimedGas(self: Self) !Request(@import("../rpc/remaining_responses.zig").NeoGetWalletUnclaimedGas, []const u8) {
         return try Request(@import("../rpc/remaining_responses.zig").NeoGetWalletUnclaimedGas, []const u8).withNoParams(
             self.getAllocator(),
@@ -722,25 +722,25 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Imports private key (equivalent to Swift importPrivKey)
-    pub fn importPrivKey(self: Self, private_key_wif: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/complete_responses.zig").NeoAddress) {
+    /// Imports private key
+    pub fn importPrivKey(self: Self, private_key_wif: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/extended_responses.zig").NeoAddress) {
         const string_params = [_][]const u8{private_key_wif};
-        return try Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/complete_responses.zig").NeoAddress).withStringParams(
+        return try Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/extended_responses.zig").NeoAddress).withStringParams(
             self.getAllocator(),
             "importprivkey",
             &string_params,
         );
     }
 
-    /// Lists addresses (equivalent to Swift listAddresses)
-    pub fn listAddresses(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/complete_responses.zig").NeoAddress) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/complete_responses.zig").NeoAddress).withNoParams(
+    /// Lists addresses
+    pub fn listAddresses(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/extended_responses.zig").NeoAddress) {
+        return try Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/extended_responses.zig").NeoAddress).withNoParams(
             self.getAllocator(),
             "listaddress",
         );
     }
 
-    /// Sends token from specific account (equivalent to Swift sendFrom)
+    /// Sends token from specific account
     pub fn sendFrom(self: Self, token_hash: Hash160, from: Hash160, to: Hash160, amount: i64) !Request(@import("../rpc/response_aliases.zig").NeoSendFrom, @import("../rpc/responses.zig").Transaction) {
         const allocator = self.getAllocator();
 
@@ -767,14 +767,14 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Convenience overload using TransactionSendToken (equivalent to Swift sendFrom(_, _ txSendToken:))
+    /// Convenience overload using TransactionSendToken)
     pub fn sendFromToken(self: Self, from: Hash160, token: TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendFrom, @import("../rpc/responses.zig").Transaction) {
         const allocator = self.getAllocator();
         const to_hash = try Hash160.fromAddress(token.address, allocator);
         return self.sendFrom(token.asset, from, to_hash, token.value);
     }
 
-    /// Sends multiple transfers from wallet (equivalent to Swift sendMany)
+    /// Sends multiple transfers from wallet
     pub fn sendMany(self: Self, tokens: []const TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction) {
         const allocator = self.getAllocator();
         var tokens_json = try encodeTransactionSendTokens(tokens, allocator);
@@ -791,7 +791,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Sends multiple transfers from specific account (equivalent to Swift sendMany(_:from:))
+    /// Sends multiple transfers from specific account)
     pub fn sendManyFrom(self: Self, from: Hash160, tokens: []const TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction) {
         const allocator = self.getAllocator();
         var tokens_json = try encodeTransactionSendTokens(tokens, allocator);
@@ -812,7 +812,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Sends token from wallet to address (equivalent to Swift sendToAddress)
+    /// Sends token from wallet to address
     pub fn sendToAddress(self: Self, token_hash: Hash160, to: Hash160, amount: i64) !Request(@import("../rpc/response_aliases.zig").NeoSendToAddress, @import("../rpc/responses.zig").Transaction) {
         const allocator = self.getAllocator();
 
@@ -836,10 +836,10 @@ pub const NeoProtocol = struct {
     }
 
     // ============================================================================
-    // ADDITIONAL METHODS (converted from remaining Swift methods)
+    // ADDITIONAL METHODS
     // ============================================================================
 
-    /// Gets storage (equivalent to Swift getStorage)
+    /// Gets storage
     pub fn getStorage(self: Self, contract_hash: Hash160, key_hex_string: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetStorage, []const u8) {
         const hash_hex = try contract_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
@@ -974,7 +974,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets NEP-11 token properties (equivalent to Swift getNep11Properties)
+    /// Gets NEP-11 token properties
     pub fn getNep11Properties(self: Self, script_hash: Hash160, token_id: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetNep11Properties, @import("../rpc/response_aliases.zig").NeoGetNep11Properties) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
@@ -991,7 +991,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets transaction height (equivalent to Swift getTransactionHeight)
+    /// Gets transaction height
     pub fn getTransactionHeight(self: Self, tx_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetTransactionHeight, u32) {
         const hash_hex = try tx_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
@@ -1005,14 +1005,14 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets next block validators
-    pub fn getNextBlockValidators(self: Self) !Request(@import("../rpc/complete_responses.zig").NeoGetNextBlockValidators, @import("../rpc/complete_responses.zig").NeoGetNextBlockValidators) {
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetNextBlockValidators, @import("../rpc/complete_responses.zig").NeoGetNextBlockValidators).withNoParams(
+    pub fn getNextBlockValidators(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetNextBlockValidators, @import("../rpc/extended_responses.zig").NeoGetNextBlockValidators) {
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetNextBlockValidators, @import("../rpc/extended_responses.zig").NeoGetNextBlockValidators).withNoParams(
             self.getAllocator(),
             "getnextblockvalidators",
         );
     }
 
-    /// Gets committee (equivalent to Swift getCommittee)
+    /// Gets committee
     pub fn getCommittee(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetCommittee, []const []const u8) {
         return try Request(@import("../rpc/response_aliases.zig").NeoGetCommittee, []const []const u8).withNoParams(
             self.getAllocator(),
@@ -1034,17 +1034,17 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets state root (equivalent to Swift getStateRoot)
-    pub fn getStateRoot(self: Self, block_index: u32) !Request(@import("../rpc/complete_responses.zig").NeoGetStateRoot, @import("../rpc/complete_responses.zig").NeoGetStateRoot) {
+    /// Gets state root
+    pub fn getStateRoot(self: Self, block_index: u32) !Request(@import("../rpc/extended_responses.zig").NeoGetStateRoot, @import("../rpc/extended_responses.zig").NeoGetStateRoot) {
         const int_params = [_]i64{@as(i64, @intCast(block_index))};
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetStateRoot, @import("../rpc/complete_responses.zig").NeoGetStateRoot).withIntegerParams(
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetStateRoot, @import("../rpc/extended_responses.zig").NeoGetStateRoot).withIntegerParams(
             self.getAllocator(),
             "getstateroot",
             &int_params,
         );
     }
 
-    /// Gets proof for state (equivalent to Swift getProof)
+    /// Gets proof for state
     pub fn getProof(self: Self, root_hash: Hash256, contract_hash: Hash160, storage_key_hex: []const u8) !Request(@import("../rpc/remaining_responses.zig").ResponseAliases.NeoGetProof, []const u8) {
         const allocator = self.getAllocator();
 
@@ -1070,7 +1070,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Verifies proof (equivalent to Swift verifyProof)
+    /// Verifies proof
     pub fn verifyProof(self: Self, root_hash: Hash256, proof_data_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoVerifyProof, []const u8) {
         const allocator = self.getAllocator();
 
@@ -1092,15 +1092,15 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Gets state height (equivalent to Swift getStateHeight)
-    pub fn getStateHeight(self: Self) !Request(@import("../rpc/complete_responses.zig").NeoGetStateHeight, @import("../rpc/complete_responses.zig").NeoGetStateHeight) {
-        return try Request(@import("../rpc/complete_responses.zig").NeoGetStateHeight, @import("../rpc/complete_responses.zig").NeoGetStateHeight).withNoParams(
+    /// Gets state height
+    pub fn getStateHeight(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetStateHeight, @import("../rpc/extended_responses.zig").NeoGetStateHeight) {
+        return try Request(@import("../rpc/extended_responses.zig").NeoGetStateHeight, @import("../rpc/extended_responses.zig").NeoGetStateHeight).withNoParams(
             self.getAllocator(),
             "getstateheight",
         );
     }
 
-    /// Gets state entry (equivalent to Swift getState)
+    /// Gets state entry
     pub fn getState(self: Self, root_hash: Hash256, contract_hash: Hash160, key_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetState, []const u8) {
         const allocator = self.getAllocator();
 
@@ -1126,7 +1126,7 @@ pub const NeoProtocol = struct {
         );
     }
 
-    /// Finds states (equivalent to Swift findStates)
+    /// Finds states
     pub fn findStates(
         self: Self,
         root_hash: Hash256,
@@ -1212,19 +1212,19 @@ pub const NeoProtocol = struct {
 pub const NeoProtocolFactory = struct {
     /// Creates protocol for MainNet
     pub fn mainnet(allocator: std.mem.Allocator) !NeoProtocol {
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.mainnet(allocator);
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.mainnet(allocator);
         return NeoProtocol.init(&service);
     }
 
     /// Creates protocol for TestNet
     pub fn testnet(allocator: std.mem.Allocator) !NeoProtocol {
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.testnet(allocator);
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.testnet(allocator);
         return NeoProtocol.init(&service);
     }
 
     /// Creates protocol for local node
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoProtocol {
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, port);
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, port);
         return NeoProtocol.init(&service);
     }
 
@@ -1235,7 +1235,7 @@ pub const NeoProtocolFactory = struct {
         timeout_ms: u32,
         max_retries: u32,
     ) !NeoProtocol {
-        var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.custom(
+        var service = try @import("../rpc/neo_service.zig").ServiceFactory.custom(
             allocator,
             endpoint,
             timeout_ms,
@@ -1245,13 +1245,13 @@ pub const NeoProtocolFactory = struct {
     }
 };
 
-// Tests (converted from Swift Neo protocol tests)
+// Tests
 test "NeoProtocol creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     // Test protocol creation
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1273,7 +1273,7 @@ test "NeoProtocol parameterized requests" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1434,7 +1434,7 @@ test "NeoProtocol smart contract methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1483,7 +1483,7 @@ test "NeoProtocol utility methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 

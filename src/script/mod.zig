@@ -1,6 +1,6 @@
 //! Script module
 //!
-//! Complete Neo VM script system converted from Swift.
+//! Complete Neo VM script system.
 
 const std = @import("std");
 

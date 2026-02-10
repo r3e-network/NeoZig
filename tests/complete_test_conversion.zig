@@ -1,20 +1,20 @@
-//! Complete Swift Test Conversion
+//! Complete Test Conversion
 //!
-//! Comprehensive conversion of ALL Swift test files to Zig
-//! Ensures 100% test coverage matching Swift test scenarios.
+//! Comprehensive test coverage for all SDK modules
+//! Ensures 100% test coverage.
 
 const std = @import("std");
 
 const neo = @import("neo-zig");
 
-// /// Complete witness system tests (converted from WitnessTests.swift, WitnessScopeTests.swift)
+// /// Complete witness system tests
 test "complete witness system test conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🧪 Converting ALL Witness System Tests...", .{});
 
-    // WitnessTests.swift conversion
+    // Test conversion
     var empty_witness = neo.transaction.CompleteWitness.init();
     defer empty_witness.deinit();
 
@@ -35,7 +35,7 @@ test "complete witness system test conversion" {
     try testing.expect(witness_from_keypair.invocation_script.script.len > 0);
     try testing.expect(witness_from_keypair.verification_script.script.len > 0);
 
-    // WitnessScopeTests.swift conversion
+    // Test conversion
     try testing.expectEqual(@as(u8, 0x00), @intFromEnum(neo.transaction.CompleteWitnessScope.None));
     try testing.expectEqual(@as(u8, 0x01), @intFromEnum(neo.transaction.CompleteWitnessScope.CalledByEntry));
     try testing.expectEqual(@as(u8, 0x80), @intFromEnum(neo.transaction.CompleteWitnessScope.Global));
@@ -53,19 +53,19 @@ test "complete witness system test conversion" {
     std.log.info("✅ ALL Witness System Tests Converted", .{});
 }
 
-// /// Complete signer tests (converted from SignerTests.swift, AccountSignerTests.swift)
+// /// Complete signer tests
 test "complete signer system test conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🧪 Converting ALL Signer System Tests...", .{});
 
-    // SignerTests.swift conversion
+    // Test conversion
     const test_signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
     try testing.expect(test_signer.signer_hash.eql(neo.Hash160.ZERO));
     try testing.expectEqual(neo.transaction.WitnessScope.CalledByEntry, test_signer.scopes);
 
-    // AccountSignerTests.swift conversion
+    // Test conversion
     var test_account = try neo.transaction.Account.fromScriptHash(allocator, neo.Hash160.ZERO);
     defer test_account.deinit();
 
@@ -86,14 +86,14 @@ test "complete signer system test conversion" {
     std.log.info("✅ ALL Signer System Tests Converted", .{});
 }
 
-// /// Complete transaction tests (converted from TransactionBuilderTests.swift, NeoTransactionTests.swift)
+// /// Complete transaction tests
 test "complete transaction system test conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🧪 Converting ALL Transaction System Tests...", .{});
 
-    // TransactionBuilderTests.swift conversion
+    // Test conversion
     var builder = neo.transaction.TransactionBuilder.init(allocator);
     defer builder.deinit();
 
@@ -119,7 +119,7 @@ test "complete transaction system test conversion" {
 
     try transaction.validate();
 
-    // NeoTransactionTests.swift conversion (SerializableTransactionTest.swift)
+    // Test conversion
     const neo_transaction = neo.transaction.NeoTransaction.init(
         null,
         transaction.version,
@@ -162,13 +162,13 @@ test "complete contract system test conversion" {
 
     std.log.info("🧪 Converting ALL Contract System Tests...", .{});
 
-    // SmartContractTests.swift conversion
+    // Test conversion
     const contract_hash = try neo.Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf");
     const smart_contract = neo.contract.SmartContract.init(allocator, contract_hash, null);
 
     try testing.expect(smart_contract.getScriptHash().eql(contract_hash));
 
-    // NeoTokenTests.swift conversion
+    // Test conversion
     const neo_token = neo.contract.NeoToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, neo_token.getSymbol());
@@ -179,14 +179,14 @@ test "complete contract system test conversion" {
     defer register_tx.deinit();
     try testing.expect(register_tx.getScript() != null);
 
-    // GasTokenTests.swift conversion
+    // Test conversion
     const gas_token = neo.contract.GasToken.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getSymbol());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getDecimals());
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, gas_token.getTotalSupply());
 
-    // PolicyContractTests.swift conversion
+    // Test conversion
     const policy_contract = neo.contract.PolicyContract.init(allocator, null);
 
     try testing.expectError(neo.errors.NeoError.InvalidConfiguration, policy_contract.getFeePerByte());
@@ -195,7 +195,7 @@ test "complete contract system test conversion" {
     defer block_tx.deinit();
     try testing.expect(block_tx.getScript() != null);
 
-    // RoleManagementTests.swift conversion
+    // Test conversion
     const role_mgmt = neo.contract.RoleManagement.init(allocator, null);
 
     try testing.expectEqualStrings("RoleManagement", neo.contract.RoleManagement.NAME);
@@ -204,7 +204,7 @@ test "complete contract system test conversion" {
     try testing.expectEqual(@as(u8, 4), role.getByte());
     try testing.expectEqualStrings("StateValidator", role.getName());
 
-    // NefFileTests.swift conversion
+    // Test conversion
     const nef_file = try neo.contract.NefFile.init(
         "test-compiler",
         "test.neo",
@@ -225,7 +225,7 @@ test "complete crypto system test conversion" {
 
     std.log.info("🧪 Converting ALL Crypto System Tests...", .{});
 
-    // ECKeyPairTests.swift conversion
+    // Test conversion
     const encoded_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const public_key = try neo.crypto.PublicKey.fromHex(encoded_point);
 
@@ -252,7 +252,7 @@ test "complete crypto system test conversion" {
     const script_hash = try key_pair.getScriptHash(allocator);
     try testing.expect(!script_hash.eql(neo.Hash160.ZERO));
 
-    // ECDSASignatureTests.swift conversion
+    // Test conversion
     const test_r: u256 = 12345;
     const test_s: u256 = 67890;
     const ecdsa_sig = neo.crypto.ECDSASignature.init(test_r, test_s);
@@ -261,7 +261,7 @@ test "complete crypto system test conversion" {
     try testing.expectEqual(test_s, ecdsa_sig.getS());
     try testing.expect(ecdsa_sig.isValid());
 
-    // SignTests.swift conversion
+    // Test conversion
     const sign_message = "Test sign message";
     const signature_data = try neo.crypto.Sign.signStringMessage(sign_message, key_pair, allocator);
 
@@ -269,7 +269,7 @@ test "complete crypto system test conversion" {
     try testing.expect(signature_data.r != 0);
     try testing.expect(signature_data.s != 0);
 
-    // WIFTests.swift conversion
+    // Test conversion
     const wif_string = try key_pair.exportWIF(true, .mainnet, allocator);
     defer allocator.free(wif_string);
 
@@ -281,7 +281,7 @@ test "complete crypto system test conversion" {
 
     try testing.expect(key_pair.getPrivateKey().eql(imported_key_pair.getPrivateKey()));
 
-    // Bip32ECKeyPairTests.swift conversion
+    // Test conversion
     const bip32_seed = "test seed for BIP32 testing";
     const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
 
@@ -291,7 +291,7 @@ test "complete crypto system test conversion" {
     const child_key = try master_key.deriveChild(0, false, allocator);
     try testing.expectEqual(@as(i32, 1), child_key.depth);
 
-    // NEP2Tests.swift conversion
+    // Test conversion
     const password = "test_nep2_password";
     const nep2_params = neo.wallet.ScryptParams.init(512, 1, 1);
 
@@ -316,7 +316,7 @@ test "complete wallet system test conversion" {
 
     std.log.info("🧪 Converting ALL Wallet System Tests...", .{});
 
-    // AccountTests.swift conversion
+    // Test conversion
     var test_account = try neo.wallet.Account.createSingleSig(
         allocator,
         try neo.crypto.ECKeyPair.createRandom(),
@@ -326,7 +326,7 @@ test "complete wallet system test conversion" {
     const test_account_hash = try test_account.getScriptHash();
     try testing.expect(test_account_hash.eql(neo.Hash160.ZERO) or !test_account_hash.eql(neo.Hash160.ZERO));
 
-    // Bip39AccountTests.swift conversion
+    // Test conversion
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "bip39_test_password");
     defer bip39_account.deinit();
 
@@ -340,7 +340,7 @@ test "complete wallet system test conversion" {
 
     try testing.expect((try bip39_account.getScriptHash()).eql(try recovered.getScriptHash()));
 
-    // WalletTests.swift conversion
+    // Test conversion
     var wallet = neo.wallet.Wallet.init(allocator);
     defer wallet.deinit();
 
@@ -350,7 +350,7 @@ test "complete wallet system test conversion" {
     try testing.expect(wallet.containsAccount(wallet_account));
     try testing.expect(wallet.isDefault(wallet_account));
 
-    // NEP6WalletTests.swift conversion
+    // Test conversion
     const nep6_accounts = [_]neo.wallet.NEP6Account{};
     const nep6_wallet = neo.wallet.NEP6Wallet.init(
         "NEP6 Test Wallet",
@@ -366,14 +366,14 @@ test "complete wallet system test conversion" {
     std.log.info("✅ ALL Wallet System Tests Converted", .{});
 }
 
-// /// Complete serialization tests (converted from BinaryReaderTests.swift, BinaryWriterTests.swift)
+// /// Complete serialization tests
 test "complete serialization system test conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🧪 Converting ALL Serialization System Tests...", .{});
 
-    // BinaryWriterTests.swift conversion
+    // Test conversion
     var writer = neo.serialization.CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
@@ -388,7 +388,7 @@ test "complete serialization system test conversion" {
     try testing.expectEqual(@as(u8, 1), written_data[0]); // Boolean true
     try testing.expectEqual(@as(u8, 0x42), written_data[1]); // Byte
 
-    // BinaryReaderTests.swift conversion
+    // Test conversion
     var reader = neo.serialization.CompleteBinaryReader.init(written_data);
 
     const read_bool = try reader.readBoolean();
@@ -422,7 +422,7 @@ test "complete utility system test conversion" {
 
     std.log.info("🧪 Converting ALL Utility System Tests...", .{});
 
-    // StringTests.swift conversion
+    // Test conversion
     const hex_string = "0x1234abcdef";
     try testing.expect(neo.utils.StringUtils.isValidHex(hex_string));
 
@@ -433,7 +433,7 @@ test "complete utility system test conversion" {
     defer allocator.free(bytes_from_hex);
     try testing.expectEqual(@as(usize, 5), bytes_from_hex.len);
 
-    // ArrayTests.swift conversion
+    // Test conversion
     const test_array = [_]i32{ 1, 2, 3, 4, 5 };
     const appended = try neo.utils.ArrayUtils.appendElement(i32, &test_array, 6, allocator);
     defer allocator.free(appended);
@@ -441,7 +441,7 @@ test "complete utility system test conversion" {
     const expected = [_]i32{ 1, 2, 3, 4, 5, 6 };
     try testing.expectEqualSlices(i32, &expected, appended);
 
-    // BytesTests.swift conversion
+    // Test conversion
     const test_data = "Test bytes data";
     const base64_encoded = try neo.utils.BytesUtils.base64Encoded(test_data, allocator);
     defer allocator.free(base64_encoded);
@@ -451,18 +451,18 @@ test "complete utility system test conversion" {
 
     try testing.expectEqualStrings(test_data, base64_decoded);
 
-    // NumericTests.swift conversion
+    // Test conversion
     try testing.expectEqual(@as(i64, 8), neo.utils.IntUtils.toPowerOf(2, 3));
     try testing.expectEqual(@as(usize, 1), neo.utils.IntUtils.varSize(100));
     try testing.expectEqual(@as(usize, 3), neo.utils.IntUtils.varSize(1000));
 
-    // DecodeTests.swift conversion
+    // Test conversion
     const string_json = std.json.Value{ .string = "decode_test" };
     const decoded_string = try neo.utils.JsonDecodeUtils.decodeString(string_json, allocator);
     defer allocator.free(decoded_string);
     try testing.expectEqualStrings("decode_test", decoded_string);
 
-    // EnumTests.swift conversion
+    // Test conversion
     const all_vm_states = neo.types.NeoVMStateType.getAllCases();
     try testing.expectEqual(@as(usize, 4), all_vm_states.len);
 
@@ -476,7 +476,7 @@ test "complete type system test conversion" {
 
     std.log.info("🧪 Converting ALL Type System Tests...", .{});
 
-    // Hash160Tests.swift conversion
+    // Test conversion
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const hash160_string = try hash160.string(allocator);
     defer allocator.free(hash160_string);
@@ -487,7 +487,7 @@ test "complete type system test conversion" {
     const little_endian = hash160.toLittleEndianArray();
     try testing.expect(!std.mem.eql(u8, &big_endian, &little_endian));
 
-    // Hash256Tests.swift conversion
+    // Test conversion
     const hash256 = try neo.Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     const hash256_string = try hash256.string(allocator);
     defer allocator.free(hash256_string);
@@ -503,7 +503,7 @@ test "complete type system test conversion" {
     try testing.expect(!double_sha.isZero());
     try testing.expect(!sha_result.eql(double_sha));
 
-    // ContractParameterTests.swift conversion
+    // Test conversion
     const bool_param = neo.ContractParameter.boolean(true);
     const int_param = neo.ContractParameter.integer(12345);
     const string_param = neo.ContractParameter.string("Test parameter");
@@ -516,7 +516,7 @@ test "complete type system test conversion" {
     try int_param.validate();
     try string_param.validate();
 
-    // AddressTests.swift conversion
+    // Test conversion
     const address = neo.Address.fromHash160(hash160);
     try testing.expect(address.isValid());
     try testing.expect(address.isStandard());
@@ -537,7 +537,7 @@ test "complete protocol system test conversion" {
 
     std.log.info("🧪 Converting ALL Protocol System Tests...", .{});
 
-    // RequestTests.swift conversion
+    // Test conversion
     var service = try neo.rpc.ServiceFactory.localhost(allocator, null);
     const TestResponse = struct {
         result: ?u32,
@@ -555,7 +555,7 @@ test "complete protocol system test conversion" {
     try testing.expectEqualStrings("test_method", request.method);
     try testing.expectEqual(@as(usize, 1), request.params.len);
 
-    // ResponseTests.swift conversion
+    // Test conversion
     const IntResponse = neo.rpc.Response(u32);
     var response_with_result = IntResponse.init(allocator, 54321);
     defer response_with_result.deinit();
@@ -563,10 +563,10 @@ test "complete protocol system test conversion" {
     try testing.expect(!response_with_result.hasError());
     try testing.expectEqual(@as(u32, 54321), try response_with_result.getResult());
 
-    // NeoSwiftTests.swift conversion
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var rpc_service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &rpc_service, config);
+    // Neo SDK tests
+    const config = neo.rpc.NeoConfig.init();
+    var rpc_service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &rpc_service, config);
     defer client.deinit();
 
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
@@ -582,14 +582,14 @@ test "complete protocol system test conversion" {
     std.log.info("✅ ALL Protocol System Tests Converted", .{});
 }
 
-// /// Complete script tests (converted from ScriptBuilderTests.swift, ScriptReaderTests.swift)
+// /// Complete script tests
 test "complete script system test conversion" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🧪 Converting ALL Script System Tests...", .{});
 
-    // ScriptBuilderTests.swift conversion
+    // Test conversion
     var builder = neo.script.ScriptBuilder.init(allocator);
     defer builder.deinit();
 
@@ -607,7 +607,7 @@ test "complete script system test conversion" {
     const contract_script = builder.toScript();
     try testing.expect(contract_script.len > 0);
 
-    // ScriptReaderTests.swift conversion
+    // Test conversion
     const script_analysis = try neo.script.ScriptReader.analyzeScript(contract_script, allocator);
     defer script_analysis.deinit();
 
@@ -621,7 +621,7 @@ test "complete script system test conversion" {
     try testing.expect(std.mem.indexOf(u8, opcode_string, "PUSH1") != null);
     try testing.expect(std.mem.indexOf(u8, opcode_string, "ADD") != null);
 
-    // InvocationScriptTests.swift and VerificationScriptTests.swift conversion
+    // InvocationScript and VerificationScript tests
     const key_pair = try neo.crypto.ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
@@ -709,5 +709,5 @@ test "complete integration test conversion" {
     try testing.expect(verification);
 
     std.log.info("✅ ALL Integration Test Scenarios Converted", .{});
-    std.log.info("🎉 COMPLETE SWIFT TEST CONVERSION SUCCESSFUL!", .{});
+    std.log.info("🎉 COMPLETE TEST CONVERSION SUCCESSFUL!", .{});
 }

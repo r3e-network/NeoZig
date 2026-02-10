@@ -1,6 +1,6 @@
 //! Neo Serializable protocol implementation
 //!
-//! Complete conversion from NeoSwift NeoSerializable.swift
+//! Neo N3
 //! Provides serialization interface for all Neo types.
 
 const std = @import("std");
@@ -8,20 +8,20 @@ const std = @import("std");
 const BinaryWriter = @import("binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("binary_reader.zig").BinaryReader;
 
-/// Serializable trait for Neo types (converted from Swift NeoSerializable protocol)
+/// Serializable trait for Neo types
 pub fn NeoSerializable(comptime T: type) type {
     return struct {
-        /// Gets serialized size (equivalent to Swift .size property)
+        /// Gets serialized size
         pub fn size(self: T) usize {
             return T.size(self);
         }
 
-        /// Serializes to binary writer (equivalent to Swift serialize(_ writer: BinaryWriter))
+        /// Serializes to binary writer)
         pub fn serialize(self: T, writer: *BinaryWriter) !void {
             return T.serialize(self, writer);
         }
 
-        /// Deserializes from binary reader (equivalent to Swift deserialize(_ reader: BinaryReader))
+        /// Deserializes from binary reader)
         pub fn deserialize(reader: *BinaryReader) !T {
             return T.deserialize(reader);
         }
@@ -43,20 +43,20 @@ pub fn NeoSerializable(comptime T: type) type {
     };
 }
 
-/// Variable size calculation utilities (converted from Swift varSize)
+/// Variable size calculation utilities
 pub const VarSizeUtils = struct {
-    /// Calculates variable size for byte array (equivalent to Swift Bytes.varSize)
+    /// Calculates variable size for byte array
     pub fn bytesVarSize(bytes: []const u8) usize {
         const VarInt = @import("../serialization/varint.zig").VarInt;
         return VarInt.size(bytes.len) + bytes.len;
     }
 
-    /// Calculates variable size for string (equivalent to Swift String.varSize)
+    /// Calculates variable size for string
     pub fn stringVarSize(str: []const u8) usize {
         return bytesVarSize(str);
     }
 
-    /// Calculates variable size for array (equivalent to Swift Array.varSize)
+    /// Calculates variable size for array
     pub fn arrayVarSize(comptime T: type, array: []const T) usize {
         const VarInt = @import("../serialization/varint.zig").VarInt;
         var total_size = VarInt.size(array.len);
@@ -73,7 +73,7 @@ pub const VarSizeUtils = struct {
     }
 };
 
-/// Serialization utilities (converted from Swift serialization helpers)
+/// Serialization utilities
 pub const SerializationUtils = struct {
     /// Serializes any NeoSerializable type to bytes
     pub fn serialize(data: anytype, allocator: std.mem.Allocator) ![]u8 {
@@ -108,7 +108,7 @@ pub const SerializationUtils = struct {
     }
 };
 
-// Tests (converted from Swift NeoSerializable tests)
+// Tests
 test "NeoSerializable interface" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -137,7 +137,7 @@ test "NeoSerializable interface" {
 test "Variable size calculations" {
     const testing = std.testing;
 
-    // Test bytes variable size (equivalent to Swift Bytes.varSize tests)
+    // Test bytes variable size
     const small_bytes = [_]u8{ 1, 2, 3 };
     const small_var_size = VarSizeUtils.bytesVarSize(&small_bytes);
     try testing.expect(small_var_size >= 4); // 1 byte length + 3 bytes data
@@ -156,7 +156,7 @@ test "Serialization utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test generic serialization (equivalent to Swift serialization tests)
+    // Test generic serialization
     const Hash256 = @import("../types/hash256.zig").Hash256;
     const hash = Hash256.sha256("test data");
 

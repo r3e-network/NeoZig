@@ -1,6 +1,6 @@
 //! Neo URI Tests
 //!
-//! Complete conversion from NeoSwift NeoURITests.swift
+//!
 //! Tests Neo URI parsing and construction.
 
 const std = @import("std");

@@ -1,6 +1,6 @@
 //! Wallet Error Implementation
 //!
-//! Complete conversion from NeoSwift WalletError.swift
+//! Neo N3 
 //! Provides wallet-specific error handling.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const builtin = @import("builtin");
 
 const log = std.log.scoped(.neo_wallet);
 
-/// Wallet-specific errors (converted from Swift WalletError)
+/// Wallet-specific errors
 pub const WalletError = union(enum) {
     /// Account state error
     AccountState: []const u8,
@@ -27,7 +27,7 @@ pub const WalletError = union(enum) {
 
     const Self = @This();
 
-    /// Creates account state error (equivalent to Swift .accountState)
+    /// Creates account state error
     pub fn accountState(message: []const u8) Self {
         return Self{ .AccountState = message };
     }
@@ -62,7 +62,7 @@ pub const WalletError = union(enum) {
         return Self{ .InsufficientFunds = {} };
     }
 
-    /// Gets error description (equivalent to Swift errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .AccountState => |message| {
@@ -161,12 +161,12 @@ pub const ErrorSeverity = enum {
     }
 };
 
-// Tests (converted from Swift WalletError tests)
+// Tests
 test "WalletError creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test account state error (equivalent to Swift tests)
+    // Test account state error
     const account_error = WalletError.accountState("Account state is invalid");
     const account_description = try account_error.getErrorDescription(allocator);
     defer allocator.free(account_description);

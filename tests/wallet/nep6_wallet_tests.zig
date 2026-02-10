@@ -1,6 +1,6 @@
 //! NEP-6 Wallet Tests
 //!
-//! Complete conversion from NeoSwift NEP6WalletTests.swift
+//!
 //! Tests NEP-6 wallet format import/export functionality.
 
 const std = @import("std");

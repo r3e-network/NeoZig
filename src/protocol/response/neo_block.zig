@@ -1,6 +1,6 @@
 //! Neo Block Implementation
 //!
-//! Complete conversion from NeoSwift NeoBlock.swift
+//! Neo N3
 //! Provides Neo block structure for blockchain data.
 
 const std = @import("std");
@@ -10,7 +10,7 @@ const Hash256 = @import("../../types/hash256.zig").Hash256;
 const NeoWitness = @import("neo_witness.zig").NeoWitness;
 const Transaction = @import("transaction.zig").Transaction;
 
-/// Neo block structure (converted from Swift NeoBlock)
+/// Neo block structure
 pub const NeoBlock = struct {
     /// Block hash
     hash: Hash256,
@@ -41,7 +41,7 @@ pub const NeoBlock = struct {
 
     const Self = @This();
 
-    /// Creates new NeoBlock (equivalent to Swift init)
+    /// Creates new NeoBlock
     pub fn init(
         hash: Hash256,
         size: u32,
@@ -74,7 +74,7 @@ pub const NeoBlock = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.hash.eql(other.hash) and
             self.size == other.size and
@@ -91,7 +91,7 @@ pub const NeoBlock = struct {
                     self.next_block_hash.?.eql(other.next_block_hash.?)));
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hashValue(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -155,7 +155,7 @@ pub const NeoBlock = struct {
         return self.confirmations > 0;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const hash_str = try self.hash.toString(allocator);
         defer allocator.free(hash_str);
@@ -193,7 +193,7 @@ pub const NeoBlock = struct {
         });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -319,12 +319,12 @@ pub const NeoBlock = struct {
     }
 };
 
-// Tests (converted from Swift NeoBlock tests)
+// Tests
 test "NeoBlock creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test block creation (equivalent to Swift tests)
+    // Test block creation
     const block_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const prev_hash = try Hash256.initWithString("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab");
     const merkle_root = try Hash256.initWithString("0x9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98");
@@ -364,7 +364,7 @@ test "NeoBlock equality and hashing" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const block_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const prev_hash = try Hash256.initWithString("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab");
     const merkle_root = try Hash256.initWithString("0x9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98");
@@ -392,7 +392,7 @@ test "NeoBlock JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const block_hash = try Hash256.initWithString("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12");
     const prev_hash = try Hash256.initWithString("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab");
     const merkle_root = try Hash256.initWithString("0x9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98");

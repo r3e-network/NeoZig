@@ -1,6 +1,6 @@
 //! Contract Error implementation
 //!
-//! Complete conversion from NeoSwift ContractError.swift
+//! Neo N3 
 //! Provides specialized error handling for smart contract operations.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const errors = @import("../core/errors.zig");
 
 const log = std.log.scoped(.neo_contract);
 
-/// Contract-specific errors (converted from Swift ContractError)
+/// Contract-specific errors
 pub const ContractError = union(enum) {
     InvalidNeoName: []const u8,
     InvalidNeoNameServiceRoot: []const u8,
@@ -23,17 +23,17 @@ pub const ContractError = union(enum) {
 
     const Self = @This();
 
-    /// Creates invalid Neo name error (equivalent to Swift .invalidNeoName)
+    /// Creates invalid Neo name error
     pub fn invalidNeoName(name: []const u8) Self {
         return Self{ .InvalidNeoName = name };
     }
 
-    /// Creates invalid NNS root error (equivalent to Swift .invalidNeoNameServiceRoot)
+    /// Creates invalid NNS root error
     pub fn invalidNeoNameServiceRoot(root: []const u8) Self {
         return Self{ .InvalidNeoNameServiceRoot = root };
     }
 
-    /// Creates unexpected return type error (equivalent to Swift .unexpectedReturnType)
+    /// Creates unexpected return type error
     pub fn unexpectedReturnType(actual_type: []const u8, expected_types: ?[]const []const u8) Self {
         return Self{ .UnexpectedReturnType = .{
             .actual_type = actual_type,
@@ -41,12 +41,12 @@ pub const ContractError = union(enum) {
         } };
     }
 
-    /// Creates unresolvable domain name error (equivalent to Swift .unresolvableDomainName)
+    /// Creates unresolvable domain name error
     pub fn unresolvableDomainName(name: []const u8) Self {
         return Self{ .UnresolvableDomainName = name };
     }
 
-    /// Gets error description (equivalent to Swift .errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .InvalidNeoName => |name| {
@@ -160,12 +160,12 @@ pub const ContractErrorUtils = struct {
     }
 };
 
-// Tests (converted from Swift ContractError tests)
+// Tests
 test "ContractError creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test invalid Neo name error (equivalent to Swift ContractError tests)
+    // Test invalid Neo name error
     const invalid_name_error = ContractError.invalidNeoName("invalid.name.here");
     const name_description = try invalid_name_error.getErrorDescription(allocator);
     defer allocator.free(name_description);
@@ -202,7 +202,7 @@ test "ContractError creation and descriptions" {
 test "ContractErrorUtils validation functions" {
     const testing = std.testing;
 
-    // Test contract name validation (equivalent to Swift validation tests)
+    // Test contract name validation
     try ContractErrorUtils.validateContractName("ValidContract");
 
     try testing.expectError(ContractError.InvalidNeoName, ContractErrorUtils.validateContractName(""));

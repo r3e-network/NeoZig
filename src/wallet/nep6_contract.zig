@@ -1,6 +1,6 @@
 //! NEP-6 Contract Implementation
 //!
-//! Complete conversion from NeoSwift NEP6Contract.swift
+//! Neo N3 
 //! Provides NEP-6 wallet contract structure.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const ArrayList = std.ArrayList;
 
 const ContractParameterType = @import("../types/contract_parameter.zig").ContractParameterType;
 
-/// NEP-6 parameter structure (converted from Swift NEP6Parameter)
+/// NEP-6 parameter structure
 pub const NEP6Parameter = struct {
     /// Parameter name
     param_name: []const u8,
@@ -17,7 +17,7 @@ pub const NEP6Parameter = struct {
 
     const Self = @This();
 
-    /// Creates new NEP-6 parameter (equivalent to Swift init)
+    /// Creates new NEP-6 parameter
     pub fn init(param_name: []const u8, param_type: ContractParameterType) Self {
         return Self{
             .param_name = param_name,
@@ -35,13 +35,13 @@ pub const NEP6Parameter = struct {
         return self.param_type;
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.param_name, other.param_name) and
             self.param_type == other.param_type;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.param_name);
@@ -49,7 +49,7 @@ pub const NEP6Parameter = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "{{\"name\":\"{s}\",\"type\":\"{s}\"}}", .{ self.param_name, self.param_type.toString() });
     }
@@ -66,7 +66,7 @@ pub const NEP6Parameter = struct {
     }
 };
 
-/// NEP-6 contract structure (converted from Swift NEP6Contract)
+/// NEP-6 contract structure
 pub const NEP6Contract = struct {
     /// Contract script (optional)
     script: ?[]const u8,
@@ -77,7 +77,7 @@ pub const NEP6Contract = struct {
 
     const Self = @This();
 
-    /// Creates new NEP-6 contract (equivalent to Swift init)
+    /// Creates new NEP-6 contract
     pub fn init(script: ?[]const u8, nep6_parameters: []NEP6Parameter, is_deployed: bool) Self {
         return Self{
             .script = script,
@@ -127,7 +127,7 @@ pub const NEP6Contract = struct {
         return null;
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         // Compare script
         if (self.script == null and other.script == null) {
@@ -159,7 +159,7 @@ pub const NEP6Contract = struct {
         return true;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -177,7 +177,7 @@ pub const NEP6Contract = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const script_str = if (self.script) |script|
             try std.fmt.allocPrint(allocator, "\"{s}\"", .{script})
@@ -201,7 +201,7 @@ pub const NEP6Contract = struct {
         return try std.fmt.allocPrint(allocator, "{{\"script\":{s},\"parameters\":{s},\"deployed\":{}}}", .{ script_str, params_json.items, self.is_deployed });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -274,7 +274,7 @@ pub const NEP6Contract = struct {
     }
 };
 
-// Tests (converted from Swift NEP6Contract tests)
+// Tests
 test "NEP6Parameter creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

@@ -1,6 +1,6 @@
 //! Token base implementation
 //!
-//! Complete conversion from NeoSwift Token.swift base class
+//! Neo N3 base class
 //! Provides common token functionality for NEP-17 and NEP-11.
 
 const std = @import("std");
@@ -11,9 +11,9 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const SmartContract = @import("smart_contract.zig").SmartContract;
 
-/// Base token contract (converted from Swift Token)
+/// Base token contract
 pub const Token = struct {
-    /// Common method names (match Swift constants)
+    /// Common method names
     pub const SYMBOL = "symbol";
     pub const DECIMALS = "decimals";
     pub const TOTAL_SUPPLY = "totalSupply";
@@ -23,30 +23,30 @@ pub const Token = struct {
 
     const Self = @This();
 
-    /// Creates new Token instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, neo_swift: ?*anyopaque) Self {
+    /// Creates new Token instance
+    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, client: ?*anyopaque) Self {
         return Self{
-            .smart_contract = SmartContract.init(allocator, script_hash, neo_swift),
+            .smart_contract = SmartContract.init(allocator, script_hash, client),
         };
     }
 
-    /// Gets token symbol (equivalent to Swift getSymbol())
+    /// Gets token symbol)
     pub fn getSymbol(self: Self) ![]u8 {
         return try self.smart_contract.callFunctionReturningString(SYMBOL, &[_]ContractParameter{});
     }
 
-    /// Gets token decimals (equivalent to Swift getDecimals())
+    /// Gets token decimals)
     pub fn getDecimals(self: Self) !u8 {
         const decimals_result = try self.smart_contract.callFunctionReturningInt(DECIMALS, &[_]ContractParameter{});
         return @intCast(decimals_result);
     }
 
-    /// Gets total supply (equivalent to Swift getTotalSupply())
+    /// Gets total supply)
     pub fn getTotalSupply(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(TOTAL_SUPPLY, &[_]ContractParameter{});
     }
 
-    /// Gets script hash (equivalent to Swift scriptHash property)
+    /// Gets script hash
     pub fn getScriptHash(self: Self) Hash160 {
         return self.smart_contract.getScriptHash();
     }
@@ -74,7 +74,7 @@ pub const Token = struct {
     }
 };
 
-// Tests (converted from Swift Token tests)
+// Tests
 test "Token creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -82,7 +82,7 @@ test "Token creation and basic operations" {
     const token_hash = try Hash160.initWithString("d2a4cff31913016155e38e474a2c06d08be276cf"); // GAS token
     const token = Token.init(allocator, token_hash, null);
 
-    // Test script hash retrieval (equivalent to Swift scriptHash property test)
+    // Test script hash retrieval
     try testing.expect(token.getScriptHash().eql(token_hash));
 }
 

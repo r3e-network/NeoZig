@@ -1,6 +1,6 @@
 //! BIP32 EC Key Pair Tests
 //!
-//! Complete conversion from NeoSwift Bip32ECKeyPairTests.swift
+//! BIP-32 EC key pair tests
 //! Tests hierarchical deterministic key derivation functionality.
 
 const std = @import("std");

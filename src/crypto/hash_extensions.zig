@@ -1,7 +1,7 @@
 //! Hash Extensions
 //!
-//! Complete conversion from NeoSwift Hash.swift extensions
-//! Provides all Swift hash utility methods for bytes and strings.
+//! Neo N3
+//! Hash utility methods for bytes and strings.
 
 const std = @import("std");
 
@@ -9,27 +9,27 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const errors = @import("../core/errors.zig");
 
-/// Hash utilities for bytes (converted from Swift Bytes extensions)
+/// Hash utilities for bytes
 pub const BytesHashUtils = struct {
-    /// Double SHA-256 hash (equivalent to Swift .hash256())
+    /// Double SHA-256 hash)
     pub fn hash256(bytes: []const u8) Hash256 {
         const first_hash = Hash256.sha256(bytes);
         return Hash256.sha256(first_hash.toSlice());
     }
 
-    /// RIPEMD160 hash (equivalent to Swift .ripemd160())
+    /// RIPEMD160 hash)
     pub fn ripemd160(bytes: []const u8) [20]u8 {
         const ripemd160_impl = @import("ripemd160.zig");
         return ripemd160_impl.ripemd160(bytes);
     }
 
-    /// SHA256 then RIPEMD160 (equivalent to Swift .sha256ThenRipemd160())
+    /// SHA256 then RIPEMD160)
     pub fn sha256ThenRipemd160(bytes: []const u8) [20]u8 {
         const sha_result = Hash256.sha256(bytes);
         return ripemd160(sha_result.toSlice());
     }
 
-    /// HMAC-SHA512 (equivalent to Swift .hmacSha512(key:))
+    /// HMAC-SHA512)
     pub fn hmacSha512(bytes: []const u8, key: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const block_size = 128; // SHA512 block size
 
@@ -108,24 +108,24 @@ pub const BytesHashUtils = struct {
     }
 };
 
-/// Hash utilities for strings (converted from Swift String extensions)
+/// Hash utilities for strings
 pub const StringHashUtils = struct {
-    /// Double SHA-256 hash for string (equivalent to Swift String.hash256())
+    /// Double SHA-256 hash for string)
     pub fn hash256(string: []const u8) Hash256 {
         return BytesHashUtils.hash256(string);
     }
 
-    /// RIPEMD160 hash for string (equivalent to Swift String.ripemd160())
+    /// RIPEMD160 hash for string)
     pub fn ripemd160(string: []const u8) [20]u8 {
         return BytesHashUtils.ripemd160(string);
     }
 
-    /// SHA256 then RIPEMD160 for string (equivalent to Swift String.sha256ThenRipemd160())
+    /// SHA256 then RIPEMD160 for string)
     pub fn sha256ThenRipemd160(string: []const u8) [20]u8 {
         return BytesHashUtils.sha256ThenRipemd160(string);
     }
 
-    /// HMAC-SHA512 for string (equivalent to Swift String.hmacSha512(key:))
+    /// HMAC-SHA512 for string)
     pub fn hmacSha512(string: []const u8, key: []const u8, allocator: std.mem.Allocator) ![]u8 {
         return try BytesHashUtils.hmacSha512(string, key, allocator);
     }
@@ -266,32 +266,32 @@ pub const HashBenchmark = struct {
     }
 };
 
-// Tests (converted from Swift Hash extension tests)
+// Tests
 test "BytesHashUtils hash operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const test_data = "Neo Zig SDK hash test data";
 
-    // Test SHA256 (equivalent to Swift sha256 tests)
+    // Test SHA256
     const sha_hash = BytesHashUtils.sha256(test_data);
     try testing.expect(!sha_hash.isZero());
 
-    // Test double SHA256 (equivalent to Swift hash256() tests)
+    // Test double SHA256 tests)
     const double_sha = BytesHashUtils.hash256(test_data);
     try testing.expect(!double_sha.isZero());
     try testing.expect(!sha_hash.eql(double_sha)); // Should be different
 
-    // Test RIPEMD160 (equivalent to Swift ripemd160() tests)
+    // Test RIPEMD160 tests)
     const ripemd_hash = BytesHashUtils.ripemd160(test_data);
     try testing.expect(!std.mem.allEqual(u8, &ripemd_hash, 0));
 
-    // Test SHA256 then RIPEMD160 (equivalent to Swift sha256ThenRipemd160() tests)
+    // Test SHA256 then RIPEMD160 tests)
     const combined_hash = BytesHashUtils.sha256ThenRipemd160(test_data);
     try testing.expect(!std.mem.allEqual(u8, &combined_hash, 0));
     try testing.expect(!std.mem.eql(u8, &ripemd_hash, &combined_hash)); // Should be different
 
-    // Test HMAC-SHA512 (equivalent to Swift hmacSha512 tests)
+    // Test HMAC-SHA512
     const hmac_key = "test_hmac_key";
     const hmac_result = try BytesHashUtils.hmacSha512(test_data, hmac_key, allocator);
     defer allocator.free(hmac_result);
@@ -306,7 +306,7 @@ test "StringHashUtils string hash operations" {
 
     const test_string = "Test string for hashing";
 
-    // Test string hash operations (equivalent to Swift String hash tests)
+    // Test string hash operations
     const string_sha = StringHashUtils.sha256(test_string);
     const bytes_sha = BytesHashUtils.sha256(test_string);
 
@@ -364,7 +364,7 @@ test "HashComputeUtils comprehensive operations" {
 test "Hash validation operations" {
     const testing = std.testing;
 
-    // Test hash string validation (equivalent to Swift validation tests)
+    // Test hash string validation
     try StringHashUtils.validateHashString("1234567890abcdef1234567890abcdef12345678", 20); // Valid Hash160
     try StringHashUtils.validateHashString("0x1234567890abcdef1234567890abcdef12345678", 20); // With prefix
 
@@ -381,7 +381,7 @@ test "Hash consistency verification" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test that hash operations are consistent (equivalent to Swift consistency tests)
+    // Test that hash operations are consistent
     const test_data = "Consistency test data";
 
     // Multiple calls should produce same results

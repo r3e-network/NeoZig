@@ -1,6 +1,6 @@
 //! Mock Blocks
 //!
-//! Complete conversion from NeoSwift MockBlocks.swift
+//! Mock block data for testing
 //! Provides mock block data for testing.
 
 const std = @import("std");

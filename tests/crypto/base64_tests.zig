@@ -1,6 +1,6 @@
 //! Base64 Tests
 //!
-//! Complete conversion from NeoSwift Base64Tests.swift
+//! Base64 tests
 //! Tests Base64 encoding and decoding functionality.
 
 const std = @import("std");

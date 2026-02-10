@@ -1,6 +1,6 @@
 //! Service Protocol Implementation
 //!
-//! Complete conversion from NeoSwift Service.swift
+//! Neo N3
 //! Provides service protocol for Neo RPC communication.
 
 const std = @import("std");
@@ -179,7 +179,7 @@ fn mockContextCleanup(context_ptr: ?*anyopaque, allocator: std.mem.Allocator) vo
         ctx.allocator.destroy(ctx);
     }
 }
-/// Service protocol for Neo RPC communication (converted from Swift Service)
+/// Service protocol for Neo RPC communication
 pub const Service = struct {
     /// Include raw responses flag
     include_raw_responses: bool,
@@ -194,7 +194,7 @@ pub const Service = struct {
 
     const Self = @This();
 
-    /// Creates new Service (equivalent to Swift Service protocol)
+    /// Creates new Service
     pub fn init(
         include_raw_responses: bool,
         perform_io_fn: *const fn (context: ?*anyopaque, payload: []const u8, allocator: std.mem.Allocator) anyerror![]u8,
@@ -211,7 +211,7 @@ pub const Service = struct {
         };
     }
 
-    /// Performs I/O operation (equivalent to Swift performIO)
+    /// Performs I/O operation
     pub fn performIO(self: Self, payload: []const u8) ![]u8 {
         return try self.perform_io_fn(self.perform_context, payload, self.allocator);
     }
@@ -225,7 +225,7 @@ pub const Service = struct {
         self.cleanup_fn = null;
     }
 
-    /// Sends request and returns response (equivalent to Swift send extension)
+    /// Sends request and returns response
     pub fn send(
         self: Self,
         comptime T: type,
@@ -561,12 +561,12 @@ pub const ServiceFactory = struct {
     }
 };
 
-// Tests (converted from Swift Service protocol tests)
+// Tests
 test "Service creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test service creation (equivalent to Swift Service tests)
+    // Test service creation
     const mock_response = "{\"jsonrpc\":\"2.0\",\"result\":\"test\",\"id\":1}";
     var service = try ServiceFactory.createMockService(mock_response, false, allocator);
     defer service.deinit();

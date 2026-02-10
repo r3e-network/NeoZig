@@ -1,6 +1,6 @@
 //! Account Tests
 //!
-//! Complete conversion from NeoSwift AccountTests.swift
+//!
 //! Tests account creation, key pair management, and multi-signature accounts.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../../src/crypto/keys.zig").PublicKey;
 const VerificationScript = @import("../../src/wallet/verification_script.zig").VerificationScript;
 
-/// Test constants (equivalent to Swift test constants)
+/// Test constants
 const defaultAccountPrivateKey = "e6e919577dd7b8e97805151c05ae07ff4f752654d6d8797597aca989c02c4cb3";
 const defaultAccountPublicKey = "02163946a133e3d2e0d987fb90cb01b060ed1780f1718e2da28edf13b965fd2b600b";
 const defaultAccountAddress = "NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj";
@@ -19,15 +19,15 @@ const defaultAccountVerificationScript = "0c2102163946a133e3d2e0d987fb90cb01b060
 const committeeAccountAddress = "NX8GreRFGFK5wpGMWetpX93HmtrezGogzk";
 const committeeAccountVerificationScript = "0c2102163946a133e3d2e0d987fb90cb01b060ed1780f1718e2da28edf13b965fd2b600b4156e7b327";
 
-// /// Test creating generic account (converted from Swift testCreateGenericAccount)
+// /// Test creating generic account
 test "Create generic account" {
     const allocator = testing.allocator;
 
-    // Create random account (equivalent to Swift Account.create())
+    // Create random account)
     var account = try Account.create(allocator);
     defer account.deinit();
 
-    // Verify account properties (equivalent to Swift XCTAssertNotNil checks)
+    // Verify account properties
     try testing.expect(!account.getAddress().isEmpty());
     try testing.expect(account.getVerificationScript() != null);
     try testing.expect(account.getKeyPair() != null);
@@ -43,11 +43,11 @@ test "Create generic account" {
     try testing.expect(key_pair.isValid());
 }
 
-// /// Test creating account from existing key pair (converted from Swift testInitAccountFromExistingKeyPair)
+// /// Test creating account from existing key pair
 test "Create account from existing key pair" {
     const allocator = testing.allocator;
 
-    // Create key pair from known private key (equivalent to Swift keyPair creation)
+    // Create key pair from known private key
     const private_key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(defaultAccountPrivateKey, allocator);
     defer allocator.free(private_key_bytes);
 
@@ -57,11 +57,11 @@ test "Create account from existing key pair" {
         mutable_kp.zeroize();
     }
 
-    // Create account from key pair (equivalent to Swift Account(keyPair: keyPair))
+    // Create account from key pair)
     var account = try Account.init(key_pair, allocator);
     defer account.deinit();
 
-    // Verify account properties (equivalent to Swift XCTAssertEqual checks)
+    // Verify account properties
     try testing.expect(!account.isMultiSig());
 
     const account_address_str = try account.getAddress().toString(allocator);
@@ -78,11 +78,11 @@ test "Create account from existing key pair" {
     try testing.expect(verification_script_bytes.len >= 40); // Minimum size for single-sig verification script
 }
 
-// /// Test creating account from verification script (converted from Swift testFromVerificationScript)
+// /// Test creating account from verification script
 test "Create account from verification script" {
     const allocator = testing.allocator;
 
-    // Create verification script from hex (equivalent to Swift VerificationScript creation)
+    // Create verification script from hex
     const verification_script_hex = "0c2102163946a133e3d2e0d987fb90cb01b060ed1780f1718e2da28edf13b965fd2b600b4195440d78";
     const verification_script_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(verification_script_hex, allocator);
     defer allocator.free(verification_script_bytes);
@@ -90,11 +90,11 @@ test "Create account from verification script" {
     var verification_script = try VerificationScript.initFromScript(verification_script_bytes, allocator);
     defer verification_script.deinit(allocator);
 
-    // Create account from verification script (equivalent to Swift Account.fromVerificationScript)
+    // Create account from verification script
     var account = try Account.fromVerificationScript(verification_script, allocator);
     defer account.deinit();
 
-    // Verify account address and verification script (equivalent to Swift XCTAssertEqual)
+    // Verify account address and verification script
     // Note: Address generation would need to match Neo's exact algorithm
     try testing.expect(!account.getAddress().isEmpty());
 
@@ -102,18 +102,18 @@ test "Create account from verification script" {
     try testing.expectEqualSlices(u8, verification_script_bytes, account_verification.*.getScript());
 }
 
-// /// Test creating account from public key (converted from Swift testFromPublicKey)
+// /// Test creating account from public key
 test "Create account from public key" {
     const allocator = testing.allocator;
 
-    // Create public key from hex (equivalent to Swift ECPublicKey creation)
+    // Create public key from hex
     const public_key_hex = defaultAccountPublicKey;
     const public_key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(public_key_hex, allocator);
     defer allocator.free(public_key_bytes);
 
     const public_key = try PublicKey.initFromBytes(public_key_bytes);
 
-    // Create account from public key (equivalent to Swift Account.fromPublicKey)
+    // Create account from public key
     var account = try Account.fromPublicKey(public_key, allocator);
     defer account.deinit();
 
@@ -128,25 +128,25 @@ test "Create account from public key" {
     try testing.expect(!account.isMultiSig());
 }
 
-// /// Test creating multi-signature account (converted from Swift testCreateMultiSigAccountFromPublicKeys)
+// /// Test creating multi-signature account
 test "Create multi-signature account from public keys" {
     const allocator = testing.allocator;
 
-    // Create public key (equivalent to Swift ECPublicKey creation)
+    // Create public key
     const public_key_hex = defaultAccountPublicKey;
     const public_key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(public_key_hex, allocator);
     defer allocator.free(public_key_bytes);
 
     const public_key = try PublicKey.initFromBytes(public_key_bytes);
 
-    // Create multi-sig account (equivalent to Swift Account.createMultiSigAccount)
+    // Create multi-sig account
     const public_keys = [_]PublicKey{public_key};
     const signing_threshold: u32 = 1;
 
     var multi_sig_account = try Account.createMultiSigAccount(public_keys[0..], signing_threshold, allocator);
     defer multi_sig_account.deinit();
 
-    // Verify multi-sig properties (equivalent to Swift XCTAssert checks)
+    // Verify multi-sig properties
     try testing.expect(multi_sig_account.isMultiSig());
 
     const multi_sig_address_str = try multi_sig_account.getAddress().toString(allocator);

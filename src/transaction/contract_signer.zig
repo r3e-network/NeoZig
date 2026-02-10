@@ -1,6 +1,6 @@
 //! Contract Signer implementation
 //!
-//! Complete conversion from NeoSwift ContractSigner.swift
+//! Neo N3
 //! Provides smart contract-based transaction signing capabilities.
 
 const std = @import("std");
@@ -12,7 +12,7 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const Signer = @import("transaction_builder.zig").Signer;
 const WitnessScope = @import("transaction_builder.zig").WitnessScope;
 
-/// Contract signer for smart contract verification (converted from Swift ContractSigner)
+/// Contract signer for smart contract verification
 pub const ContractSigner = struct {
     /// Verification parameters for contract's verify() method
     verify_params: []const ContractParameter,
@@ -23,7 +23,7 @@ pub const ContractSigner = struct {
 
     const Self = @This();
 
-    /// Creates contract signer (equivalent to Swift private init)
+    /// Creates contract signer
     fn initPrivate(
         allocator: std.mem.Allocator,
         contract_hash: Hash160,
@@ -39,7 +39,7 @@ pub const ContractSigner = struct {
         };
     }
 
-    /// Creates signer with calledByEntry scope (equivalent to Swift calledByEntry)
+    /// Creates signer with calledByEntry scope
     pub fn calledByEntry(
         allocator: std.mem.Allocator,
         contract_hash: Hash160,
@@ -49,7 +49,7 @@ pub const ContractSigner = struct {
         return initPrivate(allocator, contract_hash, .CalledByEntry, params_copy);
     }
 
-    /// Creates signer with global scope (equivalent to Swift global)
+    /// Creates signer with global scope
     pub fn global(
         allocator: std.mem.Allocator,
         contract_hash: Hash160,
@@ -88,27 +88,27 @@ pub const ContractSigner = struct {
         self.allocator.free(self.verify_params);
     }
 
-    /// Gets verification parameters (equivalent to Swift .verifyParams property)
+    /// Gets verification parameters
     pub fn getVerifyParams(self: Self) []const ContractParameter {
         return self.verify_params;
     }
 
-    /// Gets contract hash (equivalent to Swift contract hash access)
+    /// Gets contract hash
     pub fn getContractHash(self: Self) Hash160 {
         return self.signer.signer_hash;
     }
 
-    /// Gets witness scope (equivalent to Swift scope access)
+    /// Gets witness scope
     pub fn getWitnessScope(self: Self) WitnessScope {
         return self.signer.scopes;
     }
 
-    /// Gets base signer (equivalent to Swift base signer access)
+    /// Gets base signer
     pub fn getSigner(self: Self) Signer {
         return self.signer;
     }
 
-    /// Validates contract signer configuration (equivalent to Swift validation)
+    /// Validates contract signer configuration
     pub fn validate(self: Self) !void {
         try self.signer.validate();
 
@@ -123,7 +123,7 @@ pub const ContractSigner = struct {
         }
     }
 
-    /// Builds verification script invocation (equivalent to Swift script building)
+    /// Builds verification script invocation
     pub fn buildVerificationInvocation(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
         defer script_builder.deinit();
@@ -265,7 +265,7 @@ pub const TokenOperation = enum {
     Burn,
 };
 
-// Tests (converted from Swift ContractSigner tests)
+// Tests
 test "ContractSigner creation with different scopes" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -276,7 +276,7 @@ test "ContractSigner creation with different scopes" {
         ContractParameter.integer(42),
     };
 
-    // Test calledByEntry scope (equivalent to Swift calledByEntry tests)
+    // Test calledByEntry scope
     var entry_signer = try ContractSigner.calledByEntry(allocator, contract_hash, &verify_params);
     defer entry_signer.deinit();
 
@@ -284,7 +284,7 @@ test "ContractSigner creation with different scopes" {
     try testing.expect(entry_signer.getContractHash().eql(contract_hash));
     try testing.expectEqual(@as(usize, 2), entry_signer.getVerifyParams().len);
 
-    // Test global scope (equivalent to Swift global tests)
+    // Test global scope
     var global_signer = try ContractSigner.global(allocator, contract_hash, &verify_params);
     defer global_signer.deinit();
 
@@ -305,7 +305,7 @@ test "ContractSigner validation and verification" {
     var contract_signer = try ContractSigner.calledByEntry(allocator, contract_hash, &valid_params);
     defer contract_signer.deinit();
 
-    // Test validation (equivalent to Swift validation tests)
+    // Test validation
     try contract_signer.validate();
 
     // Test verification context
@@ -332,7 +332,7 @@ test "ContractSigner verification script building" {
     var contract_signer = try ContractSigner.calledByEntry(allocator, contract_hash, &verify_params);
     defer contract_signer.deinit();
 
-    // Test verification script building (equivalent to Swift script tests)
+    // Test verification script building
     const verification_script = try contract_signer.buildVerificationInvocation(allocator);
     defer allocator.free(verification_script);
 
@@ -349,7 +349,7 @@ test "ContractSigner context validation" {
     const contract_hash = Hash160.ZERO;
     const verify_params = [_]ContractParameter{};
 
-    // Test context validation (equivalent to Swift context tests)
+    // Test context validation
     var entry_signer = try ContractSigner.calledByEntry(allocator, contract_hash, &verify_params);
     defer entry_signer.deinit();
 

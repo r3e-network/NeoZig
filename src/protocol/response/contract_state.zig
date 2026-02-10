@@ -1,6 +1,6 @@
 //! Contract State Implementation
 //!
-//! Complete conversion from NeoSwift ContractState.swift
+//! Neo N3
 //! Provides smart contract state information.
 
 const std = @import("std");
@@ -9,7 +9,7 @@ const Hash160 = @import("../../types/hash160.zig").Hash160;
 const ContractNef = @import("contract_nef.zig").ContractNef;
 const ContractManifest = @import("contract_manifest.zig").ContractManifest;
 
-/// Contract state structure (converted from Swift ContractState)
+/// Contract state structure
 pub const ContractState = struct {
     /// Contract ID
     id: i32,
@@ -24,7 +24,7 @@ pub const ContractState = struct {
 
     const Self = @This();
 
-    /// Creates new ContractState (equivalent to Swift init)
+    /// Creates new ContractState
     pub fn init(
         id: i32,
         update_counter: u32,
@@ -91,7 +91,7 @@ pub const ContractState = struct {
         return self.manifest.isNep11();
     }
 
-    /// Equality comparison (equivalent to Swift ==)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.id == other.id and
             self.update_counter == other.update_counter and
@@ -100,7 +100,7 @@ pub const ContractState = struct {
             self.manifest.eql(other.manifest);
     }
 
-    /// Hash function (equivalent to Swift hash(into:))
+    /// Hash function)
     pub fn hashValue(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.id));
@@ -118,7 +118,7 @@ pub const ContractState = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const hash_str = try self.hash.toString(allocator);
         defer allocator.free(hash_str);
@@ -132,7 +132,7 @@ pub const ContractState = struct {
         return try std.fmt.allocPrint(allocator, "{{\"id\":{},\"updatecounter\":{},\"hash\":\"{s}\",\"nef\":{s},\"manifest\":{s}}}", .{ self.id, self.update_counter, hash_str, nef_json, manifest_json });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -183,7 +183,7 @@ pub const ContractState = struct {
     }
 };
 
-// Tests (converted from Swift ContractState tests)
+// Tests
 test "ContractState creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

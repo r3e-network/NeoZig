@@ -1,6 +1,6 @@
 //! Core Neo types module
 //!
-//! Exports all Neo blockchain types with Swift API compatibility.
+//! Exports all Neo blockchain types.
 
 const std = @import("std");
 

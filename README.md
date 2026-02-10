@@ -6,7 +6,7 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/neo-zig-sdk)
 [![Release](https://img.shields.io/github/v/release/r3e-network/neo-zig-sdk?sort=semver&display_name=tag)](https://github.com/r3e-network/neo-zig-sdk/releases/latest)
 
-A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and NeoSwift API familiarity.
+A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and NeoClient API familiarity.
 
 ## ✨ Features
 
@@ -25,56 +25,43 @@ A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory managemen
 - **Neo protocol**: aligned with Neo N3 v3.9.1 (VM opcodes, interop pricing, native contract hashes, `getversion` metadata)
 - **Test coverage**: `zig build test` runs unit + parity suites
 - **Networking**: RPC transport uses `std.http.Client`; timeouts are best-effort (no socket deadlines in stdlib)
-- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.NeoSwift` for live calls
+- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.NeoClient` for live calls
 
 ## 📖 Documentation
 
 The SDK includes comprehensive documentation covering all aspects of development:
 
 ### Getting Started
+
 - **[Quick Start](#-quick-start)** - Get up and running in 5 minutes
 - **[Installation](#installation)** - Add to your project
 - **[Usage Guide](docs/USAGE.md)** - Comprehensive usage patterns with examples
 
 ### Core Concepts
+
 - **[Architecture](docs/ARCHITECTURE.md)** - Module organization and design patterns
 - **[API Reference](docs/API.md)** - Complete API documentation
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Migration & Contributing
-- **[Swift Migration](docs/SWIFT_MIGRATION.md)** - Transition from NeoSwift SDK
+
+- **[Swift Migration](docs/SWIFT_MIGRATION.md)** - Transition from NeoClient SDK
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Security](SECURITY.md)** - Security best practices
 
-## 🆕 v1.0.1 Release
+## 🆕 v1.2.0 Release
 
-`v1.0.1` is a patch release focused on correctness, safer ownership patterns, and docs polish. Highlights:
+`v1.2.0` completes the NeoSwift → Neo rename and consolidates the codebase. Highlights:
 
-- ✅ **Cryptography + addresses** – Base58/Base58Check, `Hash160` helpers, NEP-2, WIF, and RIPEMD160 validated against reference vectors.
-- 🧾 **Transactions + wallets** – Builders, account abstractions, and witness handling mirror Swift semantics.
-- 🌐 **RPC client** – JSON-RPC payload builders and response parsing cover the published Neo node APIs (HTTP timeouts are best-effort; no socket deadlines).
-- 🧪 **Regression coverage** – Broad parity tests for contracts, RPC, wallets, serialization, and transactions.
-- 📘 **Docs + examples** – README, demos, and migration notes track the shipped surface.
-
-Grab the release straight from GitHub:
+- 🔄 **Full rename** – All `neo_swift_*` files replaced by clean `neo_*` equivalents
+- 📦 **Module consolidation** – `*_complete.zig` files merged into primary modules (−10.5k lines net)
+- 🧹 **Dead code removal** – Scratch files, alias shims, and Swift-era test files removed
+- ✅ **Zero warnings** – `zig build` and `zig build test` pass cleanly
 
 ```bash
-git clone --branch v1.0.1 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v1.2.0 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
-# Individual suites:
-zig build parity-test
-zig build rpc-test
-zig build integration-test
-zig build crypto-test
-zig build contract-test
-zig build transaction-test
-zig build wallet-test
-zig build protocol-test
-zig build serialization-test
-zig build script-test
-zig build types-test
-zig build witnessrule-test
 ```
 
 If you hit cache errors (e.g. `failed to check cache: invalid manifest file format`) when switching Zig versions, use a repo-local global cache:
@@ -212,8 +199,8 @@ pub fn main() !void {
     std.log.info("Your address: {s}", .{address_str});
 
     // 3. Connect to RPC
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, .{});
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+    var client = neo.rpc.NeoClient.build(allocator, &service, .{});
     defer client.deinit();
 
     // 4. Query blockchain
@@ -239,34 +226,34 @@ const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    
+
     // Initialize logging
     neo.utils.initGlobalLogger(.Info);
-    
+
     // Generate key pair
     const key_pair = try neo.crypto.generateKeyPair(true);
     defer {
         var mutable_key_pair = key_pair;
         mutable_key_pair.zeroize();
     }
-    
+
     // Create address
     const address = try key_pair.public_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION);
     const address_str = try address.toString(allocator);
     defer allocator.free(address_str);
-    
+
     std.log.info("Generated address: {s}", .{address_str});
-    
+
     // Create RPC client
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
-    
+
     // Query blockchain
     const block_count_request = try client.getBlockCount();
     // Note: Actual network call would require proper error handling
-    
+
     std.log.info("Neo Zig SDK initialized successfully!");
 }
 ```
@@ -286,7 +273,7 @@ defer deploy_tx.deinit();
 const gas_token = neo.contract.GasToken.init(allocator, null);
 var transfer_tx = try gas_token.transfer(
     from_address.toHash160(),
-    to_address.toHash160(), 
+    to_address.toHash160(),
     100000000, // 1 GAS (8 decimals)
     null
 );
@@ -352,24 +339,26 @@ zig build bench
 
 ## 📊 Swift Migration
 
-The Neo Zig SDK aims for NeoSwift API familiarity and broad parity coverage. Some higher-level helpers are still evolving; see **Known Limitations** below.
+The Neo Zig SDK aims for NeoClient API familiarity and broad parity coverage. Some higher-level helpers are still evolving; see **Known Limitations** below.
 
 ### Migration Examples
 
 **Swift:**
+
 ```swift
 let keyPair = try ECKeyPair.create()
 let address = keyPair.getAddress()
-let neoSwift = NeoSwift.build(HttpService(URL(string: "https://testnet1.neo.coz.io:443")!))
+let neoSwift = NeoClient.build(HttpService(URL(string: "https://testnet1.neo.coz.io:443")!))
 let response = try await neoSwift.getBlockCount().send()
 ```
 
 **Zig:**
+
 ```zig
 const key_pair = try neo.crypto.generateKeyPair(true);
 const address = try key_pair.public_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION);
-var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-var client = neo.rpc.NeoSwift.build(allocator, &service, neo.rpc.NeoSwiftConfig.init());
+var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+var client = neo.rpc.NeoClient.build(allocator, &service, neo.rpc.NeoConfig.init());
 defer client.deinit();
 const request = try client.getBlockCount();
 const response = try request.send();
@@ -392,7 +381,7 @@ const response = try request.send();
 
 - **DApp Development**: Build complete decentralized applications
 - **Wallet Applications**: Professional wallet software with all standards
-- **Token Platforms**: Create and manage NEP-17/NEP-11 ecosystems  
+- **Token Platforms**: Create and manage NEP-17/NEP-11 ecosystems
 - **Enterprise Integration**: Mission-critical blockchain operations
 - **Developer Tools**: Neo blockchain development utilities
 - **Educational Platforms**: Teaching and learning Neo development
@@ -408,14 +397,14 @@ zig build docs
 
 ### Guides
 
-| Guide | Description |
-|-------|-------------|
-| [Usage Guide](docs/USAGE.md) | Comprehensive practical patterns |
-| [API Reference](docs/API.md) | Complete API documentation |
-| [Architecture](docs/ARCHITECTURE.md) | Module organization and design |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
-| [Swift Migration](docs/SWIFT_MIGRATION.md) | Transition from Swift SDK |
-| [Examples](examples/) | Working code examples |
+| Guide                                      | Description                      |
+| ------------------------------------------ | -------------------------------- |
+| [Usage Guide](docs/USAGE.md)               | Comprehensive practical patterns |
+| [API Reference](docs/API.md)               | Complete API documentation       |
+| [Architecture](docs/ARCHITECTURE.md)       | Module organization and design   |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions      |
+| [Swift Migration](docs/SWIFT_MIGRATION.md) | Transition from Swift SDK        |
+| [Examples](examples/)                      | Working code examples            |
 
 ### Security & Contributing
 
@@ -461,7 +450,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📝 Known Limitations
 
-The SDK aims for NeoSwift parity, but a few higher-level surfaces are still in progress:
+The SDK aims for NeoClient parity, but a few higher-level surfaces are still in progress:
 
 - Contract iterator helpers (`ContractIterator`, `TokenIterator`) now support RPC traversal via `traverseiterator`, but remain experimental; remember to call `deinit()` to terminate remote iterator sessions.
 - Transaction tracking (`NeoTransaction.getApplicationLog`) is still stubbed; use the `rpc` client directly for application logs.
@@ -470,17 +459,17 @@ The SDK aims for NeoSwift parity, but a few higher-level surfaces are still in p
 Allocator notes:
 
 - Most public APIs accept an allocator. A small number of convenience constructors still fall back to `std.heap.page_allocator`; allocator-taking variants are available (for example `NefFile.initWithAllocator` and `TokenProperties.initWithAllocator`).
-- Prefer allocator-aware constructors in long-running processes (for example `NeoSwiftService.initWithAllocator`) to avoid relying on `std.heap.page_allocator`.
+- Prefer allocator-aware constructors in long-running processes (for example `NeoService.initWithAllocator`) to avoid relying on `std.heap.page_allocator`.
 
 Networking notes:
 
 - HTTP timeouts are best-effort. `std.http` does not expose per-request socket deadlines, so the SDK relies on elapsed-time checks and retry limits.
-- HTTP response bodies captured into memory are capped by default (32 MiB) to avoid unbounded growth. Override via `NeoSwiftService.setMaxResponseBytes()` / `HttpService.setMaxResponseBytes()` / `HttpClient.setMaxResponseBytes()` (pass `0` to reset to the default cap).
+- HTTP response bodies captured into memory are capped by default (32 MiB) to avoid unbounded growth. Override via `NeoService.setMaxResponseBytes()` / `HttpService.setMaxResponseBytes()` / `HttpClient.setMaxResponseBytes()` (pass `0` to reset to the default cap).
 
 ## 🎖️ Project Status
 
 - **Status**: Core modules implemented; some helper APIs experimental
-- **Version**: 1.0.1
+- **Version**: 1.2.0
 - **Maintenance**: Actively maintained
 
 ---
@@ -488,19 +477,23 @@ Networking notes:
 ## 🔍 Technical Notes
 
 ### Requirements
+
 - **Zig**: 0.14.0 or later
 - **Platform**: Cross-platform (Linux, macOS, Windows)
 - **Dependencies**: Zero external dependencies (self-contained)
 
 ### Performance
+
 - Benchmark on your target with `zig build bench` and the desired `-Doptimize=` mode.
 - Most APIs are allocator-aware so you can control allocation strategies in hot paths.
 
 ### Security
+
 - Avoid logging secrets (private keys, mnemonics, WIF, NEP-2 intermediate data).
 - Prefer HTTPS endpoints for RPC; timeouts are best-effort (see Networking notes above).
 
 ### Compatibility
+
 - **Neo Protocol**: N3 (latest)
 - **Standards**: NEP-6, NEP-17, NEP-11, BIP-39, BIP-32
 - **Networks**: MainNet, TestNet, private networks

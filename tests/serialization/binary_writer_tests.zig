@@ -1,6 +1,6 @@
 //! Binary Writer Tests
 //!
-//! Complete conversion from NeoSwift BinaryWriterTests.swift
+//! BinaryWriter tests
 //! Tests binary serialization functionality and data type writing.
 
 const std = @import("std");
@@ -9,21 +9,21 @@ const testing = std.testing;
 const neo = @import("neo-zig");
 const BinaryWriter = neo.serialization.CompleteBinaryWriter;
 
-/// Helper function to test and reset writer (equivalent to Swift testAndReset)
+/// Helper function to test and reset writer
 fn testAndReset(writer: *BinaryWriter, expected: []const u8) !void {
     const written_data = writer.toArray();
     try testing.expectEqualSlices(u8, expected, written_data);
     writer.reset();
 }
 
-// Test writing UInt32 values (converted from Swift testWriteUInt32)
+// Test writing UInt32 values
 test "Write UInt32 values" {
     const allocator = testing.allocator;
 
     var writer = BinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test maximum UInt32 value (equivalent to Swift 2.toPowerOf(32) - 1)
+    // Test maximum UInt32 value - 1)
     const max_uint32: u32 = std.math.maxInt(u32); // 0xFFFFFFFF
     try writer.writeUInt32(max_uint32);
     try testAndReset(&writer, &[_]u8{ 0xff, 0xff, 0xff, 0xff });
@@ -37,7 +37,7 @@ test "Write UInt32 values" {
     try testAndReset(&writer, &[_]u8{ 0x39, 0x30, 0, 0 });
 }
 
-// Test writing Int64 values (converted from Swift testWriteInt64)
+// Test writing Int64 values
 test "Write Int64 values" {
     const allocator = testing.allocator;
 
@@ -61,7 +61,7 @@ test "Write Int64 values" {
     try testAndReset(&writer, &[_]u8{ 0xd2, 0x02, 0x96, 0x49, 0x00, 0x00, 0x00, 0x00 });
 }
 
-// Test writing UInt16 values (converted from Swift testWriteUInt16)
+// Test writing UInt16 values
 test "Write UInt16 values" {
     const allocator = testing.allocator;
 

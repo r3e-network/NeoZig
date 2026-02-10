@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
     const demo = b.addExecutable(.{
         .name = "neo-zig-demo",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("final_demo.zig"),
+            .root_source_file = b.path("examples/final_demo.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{.{ .name = "neo-zig", .module = sdk_module }},
@@ -120,8 +120,8 @@ pub fn build(b: *std.Build) void {
         sdk_module,
         "parity-tests",
         "parity-test",
-        "Run Swift parity tests",
-        "tests/all_swift_tests.zig",
+        "Run parity tests",
+        "tests/all_tests.zig",
     );
 
     addSuiteTestStep(

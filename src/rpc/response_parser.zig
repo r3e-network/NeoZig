@@ -37,9 +37,9 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         @import("responses.zig").NetworkFeeResponse => try @import("responses.zig").NetworkFeeResponse.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep17Balances => try @import("token_responses.zig").NeoGetNep17Balances.fromJson(result, allocator),
         @import("token_responses.zig").NeoGetNep11Balances => try @import("token_responses.zig").NeoGetNep11Balances.fromJson(result, allocator),
-        @import("complete_responses.zig").NeoAccountState => try @import("complete_responses.zig").NeoAccountState.fromJson(result, allocator),
+        @import("extended_responses.zig").NeoAccountState => try @import("extended_responses.zig").NeoAccountState.fromJson(result, allocator),
         @import("protocol_responses.zig").NeoGetPeers => try @import("protocol_responses.zig").NeoGetPeers.fromJson(result, allocator),
-        @import("complete_responses.zig").NeoListPlugins => try @import("complete_responses.zig").NeoListPlugins.fromJson(result, allocator),
+        @import("extended_responses.zig").NeoListPlugins => try @import("extended_responses.zig").NeoListPlugins.fromJson(result, allocator),
         @import("remaining_responses.zig").NeoGetVersion => try @import("remaining_responses.zig").NeoGetVersion.fromJson(result, allocator),
 
         else => blk: {

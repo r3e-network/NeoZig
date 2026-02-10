@@ -1,6 +1,6 @@
 //! Invocation Result Implementation
 //!
-//! Complete conversion from NeoSwift InvocationResult.swift
+//! Neo N3
 //! Provides smart contract invocation result structure.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const std = @import("std");
 const NeoVMStateType = @import("../../types/neo_vm_state_type.zig").NeoVMStateType;
 const StackItem = @import("../../types/stack_item.zig").StackItem;
 
-/// Pending signature structure (converted from Swift PendingSignature)
+/// Pending signature structure
 pub const PendingSignature = struct {
     type: []const u8,
     data: []const u8,
@@ -119,7 +119,7 @@ pub const StorageChange = struct {
     }
 };
 
-/// Invocation result structure (converted from Swift InvocationResult)
+/// Invocation result structure
 pub const InvocationResult = struct {
     /// Invocation script
     script: []const u8,
@@ -144,7 +144,7 @@ pub const InvocationResult = struct {
 
     const Self = @This();
 
-    /// Creates new InvocationResult (equivalent to Swift init)
+    /// Creates new InvocationResult
     pub fn init(
         script: []const u8,
         state: NeoVMStateType,
@@ -171,7 +171,7 @@ pub const InvocationResult = struct {
         };
     }
 
-    /// Checks if state is fault (equivalent to Swift hasStateFault)
+    /// Checks if state is fault
     pub fn hasStateFault(self: Self) bool {
         return self.state == .Fault;
     }
@@ -181,7 +181,7 @@ pub const InvocationResult = struct {
         return self.state == .Halt;
     }
 
-    /// Gets first stack item (equivalent to Swift getFirstStackItem)
+    /// Gets first stack item
     pub fn getFirstStackItem(self: Self) !StackItem {
         if (self.stack.len == 0) {
             return error.EmptyStack;
@@ -281,7 +281,7 @@ pub const InvocationResult = struct {
     }
 };
 
-// Tests (converted from Swift InvocationResult tests)
+// Tests
 test "InvocationResult creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

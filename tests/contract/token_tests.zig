@@ -1,6 +1,6 @@
 //! Token Tests
 //!
-//! Complete conversion from NeoSwift TokenTests.swift
+//!
 //! Tests base token functionality shared by NEP-17 and NEP-11.
 
 const std = @import("std");
@@ -13,11 +13,11 @@ const TestUtils = @import("../helpers/test_utilities.zig");
 test "Token base functionality" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
     const token_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
-    const token = Token.init(allocator, token_hash, &neo_swift);
+    const token = Token.init(allocator, token_hash, &client);
 
     try testing.expect(token.getScriptHash().eql(token_hash));
     try token.validate();

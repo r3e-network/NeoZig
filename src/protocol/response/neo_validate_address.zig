@@ -1,11 +1,11 @@
 //! Neo ValidateAddress Implementation
 //!
-//! Complete conversion from NeoSwift NeoValidateAddress.swift
+//! Neo N3
 //! Provides address validation response structure.
 
 const std = @import("std");
 
-/// Address validation result (converted from Swift Result)
+/// Address validation result
 pub const ValidateAddressResult = struct {
     /// Address string
     address: []const u8,
@@ -14,7 +14,7 @@ pub const ValidateAddressResult = struct {
 
     const Self = @This();
 
-    /// Creates new validation result (equivalent to Swift init)
+    /// Creates new validation result
     pub fn init(address: []const u8, is_valid: bool) Self {
         return Self{
             .address = address,
@@ -63,7 +63,7 @@ pub const ValidateAddressResult = struct {
     }
 };
 
-/// ValidateAddress RPC response wrapper (converted from Swift NeoValidateAddress)
+/// ValidateAddress RPC response wrapper
 pub const NeoValidateAddress = struct {
     /// The validation result
     result: ?ValidateAddressResult,
@@ -75,7 +75,7 @@ pub const NeoValidateAddress = struct {
         return Self{ .result = result };
     }
 
-    /// Gets the validation result (equivalent to Swift result property)
+    /// Gets the validation result
     pub fn getResult(self: Self) ?ValidateAddressResult {
         return self.result;
     }
@@ -101,7 +101,7 @@ pub const NeoValidateAddress = struct {
     }
 };
 
-// Tests (converted from Swift NeoValidateAddress tests)
+// Tests
 test "ValidateAddressResult creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

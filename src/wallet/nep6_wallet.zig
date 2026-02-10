@@ -1,6 +1,6 @@
 //! NEP-6 Wallet implementation
 //!
-//! Complete conversion from NeoSwift NEP6Wallet.swift
+//! Neo N3 
 //! Standard wallet format for Neo blockchain.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const json_utils = @import("../utils/json_utils.zig");
 
-/// NEP-6 wallet structure (converted from Swift NEP6Wallet)
+/// NEP-6 wallet structure
 pub const NEP6Wallet = struct {
     name: []const u8,
     version: []const u8,
@@ -21,7 +21,7 @@ pub const NEP6Wallet = struct {
 
     const Self = @This();
 
-    /// Creates NEP-6 wallet (equivalent to Swift init)
+    /// Creates NEP-6 wallet
     pub fn init(
         name: []const u8,
         version: []const u8,
@@ -38,7 +38,7 @@ pub const NEP6Wallet = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift == operator)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.name, other.name) and
             std.mem.eql(u8, self.version, other.version) and
@@ -46,7 +46,7 @@ pub const NEP6Wallet = struct {
             self.accounts.len == other.accounts.len;
     }
 
-    /// Converts to JSON (equivalent to Swift Codable encoding)
+    /// Converts to JSON
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var wallet_obj = std.json.ObjectMap.init(allocator);
 
@@ -68,7 +68,7 @@ pub const NEP6Wallet = struct {
         return std.json.Value{ .object = wallet_obj };
     }
 
-    /// Parses from JSON (equivalent to Swift Codable decoding)
+    /// Parses from JSON
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
@@ -108,7 +108,7 @@ pub const NEP6Wallet = struct {
         return Self.init(name, version, scrypt, try accounts.toOwnedSlice(), extra_opt);
     }
 
-    /// Saves to file (equivalent to Swift file operations)
+    /// Saves to file
     pub fn saveToFile(self: Self, file_path: []const u8, allocator: std.mem.Allocator) !void {
         const json_value = try self.toJson(allocator);
         defer json_utils.freeValue(json_value, allocator);
@@ -122,7 +122,7 @@ pub const NEP6Wallet = struct {
         try file.writeAll(encoded);
     }
 
-    /// Loads from file (equivalent to Swift file operations)
+    /// Loads from file
     pub fn loadFromFile(file_path: []const u8, allocator: std.mem.Allocator) !Self {
         const file = try std.fs.cwd().openFile(file_path, .{});
         defer file.close();
@@ -137,7 +137,7 @@ pub const NEP6Wallet = struct {
     }
 };
 
-/// NEP-6 account (converted from Swift NEP6Account)
+/// NEP-6 account
 pub const NEP6Account = struct {
     address: []const u8,
     label: ?[]const u8,
@@ -169,17 +169,17 @@ pub const NEP6Account = struct {
         };
     }
 
-    /// Gets script hash (equivalent to Swift getScriptHash)
+    /// Gets script hash
     pub fn getScriptHash(self: Self, allocator: std.mem.Allocator) !Hash160 {
         return try Hash160.fromAddress(self.address, allocator);
     }
 
-    /// Checks if account has private key (equivalent to Swift hasPrivateKey)
+    /// Checks if account has private key
     pub fn hasPrivateKey(self: Self) bool {
         return self.key != null;
     }
 
-    /// Converts to JSON (equivalent to Swift Codable)
+    /// Converts to JSON
     pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         var account_obj = std.json.ObjectMap.init(allocator);
 
@@ -207,7 +207,7 @@ pub const NEP6Account = struct {
         return std.json.Value{ .object = account_obj };
     }
 
-    /// Parses from JSON (equivalent to Swift Codable)
+    /// Parses from JSON
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         if (json_value != .object) return errors.SerializationError.InvalidFormat;
         const obj = json_value.object;
@@ -271,7 +271,7 @@ pub const NEP6Account = struct {
     }
 };
 
-/// NEP-6 contract (converted from Swift NEP6Contract)
+/// NEP-6 contract
 pub const NEP6Contract = struct {
     script: []const u8,
     parameters: []const ContractParameterInfo,
@@ -335,7 +335,7 @@ pub const NEP6Contract = struct {
     }
 };
 
-/// Contract parameter info (converted from Swift parameter definitions)
+/// Contract parameter info
 pub const ContractParameterInfo = struct {
     name: []const u8,
     parameter_type: []const u8,
@@ -372,7 +372,7 @@ pub const ContractParameterInfo = struct {
     }
 };
 
-/// Scrypt parameters (converted from Swift ScryptParams)
+/// Scrypt parameters
 pub const ScryptParams = struct {
     n: u32,
     r: u32,
@@ -380,7 +380,7 @@ pub const ScryptParams = struct {
 
     const Self = @This();
 
-    /// Default NEP-6 parameters (matches Swift default)
+    /// Default NEP-6 parameters
     pub const DEFAULT: ScryptParams = ScryptParams{ .n = 16384, .r = 8, .p = 8 };
 
     pub fn init(n: u32, r: u32, p: u32) Self {
@@ -444,12 +444,12 @@ fn deinitOwnedAccount(account: *NEP6Account, allocator: std.mem.Allocator) void 
     if (account.extra) |extra| json_utils.freeValue(extra, allocator);
 }
 
-// Tests (converted from Swift NEP6Wallet tests)
+// Tests
 test "NEP6Wallet creation and properties" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test wallet creation (equivalent to Swift NEP6Wallet tests)
+    // Test wallet creation
     const accounts = [_]NEP6Account{};
     const wallet = NEP6Wallet.init(
         "Test Wallet",
@@ -478,7 +478,7 @@ test "NEP6Wallet JSON serialization" {
         null,
     );
 
-    // Test JSON conversion (equivalent to Swift Codable tests)
+    // Test JSON conversion
     const json_value = try wallet.toJson(allocator);
     defer json_utils.freeValue(json_value, allocator);
 
@@ -533,7 +533,7 @@ test "NEP6Account creation and properties" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test account creation (equivalent to Swift NEP6Account tests)
+    // Test account creation
     const account = NEP6Account.init(
         "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNn",
         "Test Account",
@@ -555,7 +555,7 @@ test "ScryptParams operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test default parameters (equivalent to Swift ScryptParams tests)
+    // Test default parameters
     const default_params = ScryptParams.DEFAULT;
     try testing.expectEqual(@as(u32, 16384), default_params.n);
     try testing.expectEqual(@as(u32, 8), default_params.r);

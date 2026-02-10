@@ -1,11 +1,11 @@
 //! Interop Service implementation
 //!
-//! Complete conversion from NeoSwift InteropService.swift
+//! Neo N3 
 //! Provides system call definitions and pricing for Neo VM operations.
 
 const std = @import("std");
 
-/// System call interop services for Neo VM (converted from Swift InteropService)
+/// System call interop services for Neo VM
 pub const InteropService = enum {
     SystemCryptoCheckSig,
     SystemCryptoCheckMultisig,
@@ -49,7 +49,7 @@ pub const InteropService = enum {
     SystemStorageLocalPut,
     SystemStorageLocalDelete,
 
-    /// Gets the string representation (equivalent to Swift rawValue)
+    /// Gets the string representation
     pub fn toString(self: InteropService) []const u8 {
         return switch (self) {
             .SystemCryptoCheckSig => "System.Crypto.CheckSig",
@@ -96,7 +96,7 @@ pub const InteropService = enum {
         };
     }
 
-    /// Gets the hash for the interop service (equivalent to Swift hash property)
+    /// Gets the hash for the interop service
     pub fn getHash(self: InteropService, allocator: std.mem.Allocator) ![]u8 {
         const string_value = self.toString();
         var hash_full: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
@@ -107,7 +107,7 @@ pub const InteropService = enum {
         return try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(prefix, allocator);
     }
 
-    /// Gets the gas price for the interop service (equivalent to Swift price property)
+    /// Gets the gas price for the interop service
     pub fn getPrice(self: InteropService) u32 {
         return switch (self) {
             .SystemRuntimePlatform, .SystemRuntimeGetNetwork, .SystemRuntimeGetAddressVersion, .SystemRuntimeGetTrigger, .SystemRuntimeGetTime, .SystemRuntimeGetScriptContainer => 1 << 3, // 8 gas
@@ -124,7 +124,7 @@ pub const InteropService = enum {
         };
     }
 
-    /// Creates an interop service from string (equivalent to Swift init from rawValue)
+    /// Creates an interop service from string
     pub fn fromString(string_value: []const u8) ?InteropService {
         const services = [_]InteropService{
             .SystemCryptoCheckSig,
@@ -229,11 +229,11 @@ pub const InteropService = enum {
     }
 };
 
-// Tests (converted from Swift InteropService tests)
+// Tests
 test "InteropService string conversion" {
     const testing = std.testing;
 
-    // Test toString (equivalent to Swift rawValue)
+    // Test toString
     const contract_call = InteropService.SystemContractCall;
     const contract_call_string = contract_call.toString();
     try testing.expectEqualStrings("System.Contract.Call", contract_call_string);
@@ -246,7 +246,7 @@ test "InteropService string conversion" {
 test "InteropService fromString creation" {
     const testing = std.testing;
 
-    // Test fromString (equivalent to Swift init from rawValue)
+    // Test fromString
     const contract_call = InteropService.fromString("System.Contract.Call");
     try testing.expect(contract_call != null);
     try testing.expectEqual(InteropService.SystemContractCall, contract_call.?);
@@ -263,7 +263,7 @@ test "InteropService fromString creation" {
 test "InteropService gas pricing" {
     const testing = std.testing;
 
-    // Test gas pricing (equivalent to Swift price property)
+    // Test gas pricing
     const platform_price = InteropService.SystemRuntimePlatform.getPrice();
     try testing.expectEqual(@as(u32, 8), platform_price); // 1 << 3
 
@@ -278,7 +278,7 @@ test "InteropService hash generation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test hash generation (equivalent to Swift hash property)
+    // Test hash generation
     const contract_call = InteropService.SystemContractCall;
     const hash = try contract_call.getHash(allocator);
     defer allocator.free(hash);

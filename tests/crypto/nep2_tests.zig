@@ -1,6 +1,6 @@
 //! NEP-2 Tests
 //!
-//! Complete conversion from NeoSwift NEP2Tests.swift
+//! NEP-2 tests
 //! Tests NEP-2 encryption and decryption of private keys.
 
 const std = @import("std");
@@ -10,16 +10,16 @@ const NEP2 = @import("../../src/crypto/nep2.zig").NEP2;
 const ECKeyPair = @import("../../src/crypto/ec_key_pair.zig").ECKeyPair;
 const ScryptParams = @import("../../src/crypto/scrypt_params.zig").ScryptParams;
 
-/// Test constants (equivalent to Swift test constants)
+/// Test constants
 const defaultAccountPassword = "Pwd12345678";
 const defaultAccountPrivateKey = "e6e919577dd7b8e97805151c05ae07ff4f752654d6d8797597aca989c02c4cb3";
 const defaultAccountEncryptedPrivateKey = "6PYVPVe1fQznphjbUxXP9KZJqPMVnVwCx5s5pr5axRJ8uHkMtZg97eT2kA";
 
-// /// Test NEP-2 decryption with default scrypt parameters (converted from Swift testDecryptWithDefaultScryptParams)
+// /// Test NEP-2 decryption with default scrypt parameters
 test "NEP-2 decrypt with default scrypt parameters" {
     const allocator = testing.allocator;
 
-    // Decrypt with default parameters (equivalent to Swift NEP2.decrypt)
+    // Decrypt with default parameters
     const decrypted_result = try NEP2.decrypt(
         defaultAccountPassword,
         defaultAccountEncryptedPrivateKey,
@@ -32,16 +32,16 @@ test "NEP-2 decrypt with default scrypt parameters" {
     const expected_private_key = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(defaultAccountPrivateKey, allocator);
     defer allocator.free(expected_private_key);
 
-    // Verify decryption result (equivalent to Swift XCTAssertEqual)
+    // Verify decryption result
     const decrypted_private_key = decrypted_result.private_key.toSlice();
     try testing.expectEqualSlices(u8, expected_private_key, decrypted_private_key);
 }
 
-// /// Test NEP-2 decryption with custom scrypt parameters (converted from Swift testDecryptWithNonDefaultScryptParams)
+// /// Test NEP-2 decryption with custom scrypt parameters
 test "NEP-2 decrypt with non-default scrypt parameters" {
     const allocator = testing.allocator;
 
-    // Use custom scrypt parameters (equivalent to Swift ScryptParams(256, 1, 1))
+    // Use custom scrypt parameters)
     const custom_params = ScryptParams.init(256, 1, 1);
     const custom_encrypted = "6PYM7jHL3uwhP8uuHP9fMGMfJxfyQbanUZPQEh1772iyb7vRnUkbkZmdRT";
 
@@ -58,16 +58,16 @@ test "NEP-2 decrypt with non-default scrypt parameters" {
     const expected_private_key = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(defaultAccountPrivateKey, allocator);
     defer allocator.free(expected_private_key);
 
-    // Verify decryption result (equivalent to Swift XCTAssertEqual)
+    // Verify decryption result
     const decrypted_private_key = decrypted_result.private_key.toSlice();
     try testing.expectEqualSlices(u8, expected_private_key, decrypted_private_key);
 }
 
-// /// Test NEP-2 encryption with default scrypt parameters (converted from Swift testEncryptWithDefaultScryptParams)
+// /// Test NEP-2 encryption with default scrypt parameters
 test "NEP-2 encrypt with default scrypt parameters" {
     const allocator = testing.allocator;
 
-    // Create key pair from known private key (equivalent to Swift ECKeyPair.create)
+    // Create key pair from known private key
     const private_key_bytes = try @import("../../src/utils/string_extensions.zig").StringUtils.bytesFromHex(defaultAccountPrivateKey, allocator);
     defer allocator.free(private_key_bytes);
 
@@ -77,7 +77,7 @@ test "NEP-2 encrypt with default scrypt parameters" {
         mutable_kp.zeroize();
     }
 
-    // Encrypt with default parameters (equivalent to Swift NEP2.encrypt)
+    // Encrypt with default parameters
     const encrypted_result = try NEP2.encrypt(
         defaultAccountPassword,
         key_pair,
@@ -86,15 +86,15 @@ test "NEP-2 encrypt with default scrypt parameters" {
     );
     defer allocator.free(encrypted_result);
 
-    // Verify encryption result (equivalent to Swift XCTAssertEqual)
+    // Verify encryption result
     try testing.expectEqualStrings(defaultAccountEncryptedPrivateKey, encrypted_result);
 }
 
-// /// Test NEP-2 encryption with custom scrypt parameters (converted from Swift testEncryptWithNonDefaultScryptParams)
+// /// Test NEP-2 encryption with custom scrypt parameters
 test "NEP-2 encrypt with non-default scrypt parameters" {
     const allocator = testing.allocator;
 
-    // Use custom scrypt parameters (equivalent to Swift ScryptParams(256, 1, 1))
+    // Use custom scrypt parameters)
     const custom_params = ScryptParams.init(256, 1, 1);
     const expected_encrypted = "6PYM7jHL3uwhP8uuHP9fMGMfJxfyQbanUZPQEh1772iyb7vRnUkbkZmdRT";
 
@@ -117,7 +117,7 @@ test "NEP-2 encrypt with non-default scrypt parameters" {
     );
     defer allocator.free(encrypted_result);
 
-    // Verify encryption result (equivalent to Swift XCTAssertEqual)
+    // Verify encryption result
     try testing.expectEqualStrings(expected_encrypted, encrypted_result);
 }
 

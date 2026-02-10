@@ -1,6 +1,6 @@
 //! GAS Token Tests
 //!
-//! Complete conversion from NeoSwift GasTokenTests.swift
+//!
 //! Tests GAS token functionality and operations.
 
 const std = @import("std");
@@ -12,10 +12,10 @@ const TestUtils = @import("../helpers/test_utilities.zig");
 test "GAS token constants and properties" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
-    const gas_token = GasToken.init(allocator, &neo_swift);
+    const gas_token = GasToken.init(allocator, &client);
 
     const gas_hash_string = try gas_token.getScriptHash().toString(allocator);
     defer allocator.free(gas_hash_string);

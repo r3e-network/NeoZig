@@ -1,6 +1,6 @@
 //! Sign utilities implementation
 //!
-//! Complete conversion from NeoSwift Sign.swift
+//! Neo N3
 //! Provides message signing with recovery and validation utilities.
 
 const std = @import("std");
@@ -13,12 +13,12 @@ const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
 const PublicKey = @import("keys.zig").PublicKey;
 const secp256r1 = @import("secp256r1.zig");
 
-/// Sign utilities (converted from Swift Sign enum)
+/// Sign utilities
 pub const Sign = struct {
-    /// Lower real V constant (matches Swift LOWER_REAL_V)
+    /// Lower real V constant
     pub const LOWER_REAL_V: u8 = 27;
 
-    /// Signs hex message (equivalent to Swift signHexMessage)
+    /// Signs hex message
     pub fn signHexMessage(message_hex: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         const message_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(message_hex, allocator);
         defer allocator.free(message_bytes);
@@ -26,12 +26,12 @@ pub const Sign = struct {
         return try signMessage(message_bytes, key_pair, allocator);
     }
 
-    /// Signs string message (equivalent to Swift signMessage(_ message: String))
+    /// Signs string message)
     pub fn signStringMessage(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         return try signMessage(message, key_pair, allocator);
     }
 
-    /// Signs message bytes (equivalent to Swift signMessage(_ message: Bytes))
+    /// Signs message bytes)
     pub fn signMessage(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         // Hash the message
         const message_hash = Hash256.sha256(message);
@@ -94,7 +94,7 @@ pub const Sign = struct {
         return null;
     }
 
-    /// Recovers public key from signature (equivalent to Swift recoverFromSignature)
+    /// Recovers public key from signature
     pub fn recoverFromSignature(
         signature: SignatureData,
         message: []const u8,
@@ -121,7 +121,7 @@ pub const Sign = struct {
         return null;
     }
 
-    /// Verifies signature (equivalent to Swift signature verification)
+    /// Verifies signature
     pub fn verifySignature(
         signature_data: SignatureData,
         message: []const u8,
@@ -148,7 +148,7 @@ pub const Sign = struct {
     }
 };
 
-/// Signature data structure (converted from Swift SignatureData)
+/// Signature data structure
 pub const SignatureData = struct {
     /// Recovery ID + 27
     v: u8,
@@ -159,17 +159,17 @@ pub const SignatureData = struct {
 
     const Self = @This();
 
-    /// Creates signature data (equivalent to Swift init)
+    /// Creates signature data
     pub fn init(v: u8, r: u256, s: u256) Self {
         return Self{ .v = v, .r = r, .s = s };
     }
 
-    /// Gets recovery ID (equivalent to Swift recovery ID extraction)
+    /// Gets recovery ID
     pub fn getRecoveryId(self: Self) u8 {
         return self.v - Sign.LOWER_REAL_V;
     }
 
-    /// Gets concatenated signature (equivalent to Swift concatenated property)
+    /// Gets concatenated signature
     pub fn getConcatenated(self: Self) [65]u8 {
         var result: [65]u8 = undefined;
 
@@ -183,7 +183,7 @@ pub const SignatureData = struct {
         return result;
     }
 
-    /// Gets signature without recovery ID (equivalent to Swift signature bytes)
+    /// Gets signature without recovery ID
     pub fn getSignatureBytes(self: Self) [64]u8 {
         var result: [64]u8 = undefined;
 
@@ -218,7 +218,7 @@ pub const SignatureData = struct {
             self.s > 0 and self.s < secp256r1.Secp256r1.N;
     }
 
-    /// Converts to canonical form (equivalent to Swift canonicalization)
+    /// Converts to canonical form
     pub fn toCanonical(self: Self) Self {
         if (self.s <= secp256r1.Secp256r1.HALF_CURVE_ORDER) {
             return self;
@@ -253,7 +253,7 @@ pub const SignatureData = struct {
     }
 };
 
-// Tests (converted from Swift Sign tests)
+// Tests
 test "Sign message operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -265,7 +265,7 @@ test "Sign message operations" {
         mutable_key_pair.zeroize();
     }
 
-    // Test string message signing (equivalent to Swift signMessage tests)
+    // Test string message signing
     const message = "Test message for signing";
     const signature_data = try Sign.signStringMessage(message, key_pair, allocator);
 
@@ -275,13 +275,13 @@ test "Sign message operations" {
     try testing.expect(signature_data.r != 0);
     try testing.expect(signature_data.s != 0);
 
-    // Test hex message signing (equivalent to Swift signHexMessage tests)
+    // Test hex message signing
     const hex_message = "48656c6c6f204e656f"; // "Hello Neo" in hex
     const hex_signature_data = try Sign.signHexMessage(hex_message, key_pair, allocator);
 
     try testing.expect(hex_signature_data.isValid());
 
-    // Test signature verification (equivalent to Swift verification tests)
+    // Test signature verification
     const verification_result = try Sign.verifySignature(signature_data, message, key_pair.getPublicKey(), allocator);
     try testing.expect(verification_result);
 }
@@ -289,7 +289,7 @@ test "Sign message operations" {
 test "SignatureData operations" {
     const testing = std.testing;
 
-    // Test signature data creation (equivalent to Swift SignatureData tests)
+    // Test signature data creation
     const test_r: u256 = 0x123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0;
     const test_s: u256 = 0x0FEDCBA987654321FEDCBA987654321FEDCBA987654321FEDCBA987654321;
     const test_v: u8 = 28;
@@ -352,7 +352,7 @@ test "SignatureData conversion operations" {
 test "SignatureData equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift equality tests)
+    // Test equality
     const sig1 = SignatureData.init(28, 123, 456);
     const sig2 = SignatureData.init(28, 123, 456);
     const sig3 = SignatureData.init(29, 123, 456);
@@ -360,7 +360,7 @@ test "SignatureData equality and hashing" {
     try testing.expect(sig1.eql(sig2));
     try testing.expect(!sig1.eql(sig3));
 
-    // Test hashing (equivalent to Swift Hashable tests)
+    // Test hashing
     const hash1 = sig1.hash();
     const hash2 = sig2.hash();
     const hash3 = sig3.hash();

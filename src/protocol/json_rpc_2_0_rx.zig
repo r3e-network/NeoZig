@@ -1,6 +1,6 @@
 //! JSON-RPC 2.0 Rx implementation
 //!
-//! Complete conversion from NeoSwift JsonRpc2_0Rx.swift
+//! Neo N3
 //! Provides reactive programming support for Neo blockchain operations.
 
 const std = @import("std");
@@ -16,10 +16,10 @@ const PollingSource = @import("block_index_polling.zig").PollingSource;
 
 const log = std.log.scoped(.neo_protocol);
 
-/// JSON-RPC 2.0 reactive extension (converted from Swift JsonRpc2_0Rx)
+/// JSON-RPC 2.0 reactive extension
 pub const JsonRpc2_0Rx = struct {
     /// Neo client reference
-    neo_swift: ?*anyopaque,
+    client: ?*anyopaque,
     /// Callback to retrieve latest block count
     get_block_count_fn: ?*const fn (?*anyopaque) anyerror!u32,
     /// Callback to retrieve a block by index
@@ -33,16 +33,16 @@ pub const JsonRpc2_0Rx = struct {
 
     const Self = @This();
 
-    /// Creates JSON-RPC reactive client (equivalent to Swift init)
+    /// Creates JSON-RPC reactive client
     pub fn init(
-        neo_swift: ?*anyopaque,
+        client: ?*anyopaque,
         get_block_count_fn: ?*const fn (?*anyopaque) anyerror!u32,
         get_block_by_index_fn: ?*const fn (?*anyopaque, u32, bool) anyerror!response_aliases.NeoGetBlock,
         default_polling_interval_ms: u32,
         allocator: std.mem.Allocator,
     ) Self {
         return Self{
-            .neo_swift = neo_swift,
+            .client = client,
             .get_block_count_fn = get_block_count_fn,
             .get_block_by_index_fn = get_block_by_index_fn,
             .executor_service = AsyncExecutor.init(1),
@@ -51,7 +51,7 @@ pub const JsonRpc2_0Rx = struct {
         };
     }
 
-    /// Creates block index publisher (equivalent to Swift blockIndexPublisher)
+    /// Creates block index publisher
     pub fn blockIndexPublisher(
         self: *Self,
         polling_interval_ms: u32,
@@ -59,7 +59,7 @@ pub const JsonRpc2_0Rx = struct {
         callback_context: ?*anyopaque,
         callback_context_destructor: ?*const fn (std.mem.Allocator, ?*anyopaque) void,
     ) !BlockIndexSubscription {
-        const context = self.neo_swift orelse return errors.NeoError.UnsupportedOperation;
+        const context = self.client orelse return errors.NeoError.UnsupportedOperation;
         const get_block_count = self.get_block_count_fn orelse return errors.NeoError.UnsupportedOperation;
 
         const source = PollingSource{
@@ -129,14 +129,14 @@ pub const JsonRpc2_0Rx = struct {
         };
     }
 
-    /// Creates block publisher (equivalent to Swift blockPublisher)
+    /// Creates block publisher
     pub fn blockPublisher(
         self: *Self,
         full_transaction_objects: bool,
         polling_interval_ms: u32,
         callback: *const fn (BlockData) void,
     ) !BlockSubscription {
-        const neo_context = self.neo_swift orelse return errors.NeoError.UnsupportedOperation;
+        const neo_context = self.client orelse return errors.NeoError.UnsupportedOperation;
         const fetch_block = self.get_block_by_index_fn orelse return errors.NeoError.UnsupportedOperation;
 
         const block_callback = struct {
@@ -192,7 +192,7 @@ pub const JsonRpc2_0Rx = struct {
         };
     }
 
-    /// Replays blocks in range (equivalent to Swift replayBlocksPublisher)
+    /// Replays blocks in range
     pub fn replayBlocksPublisher(
         self: *Self,
         start_block: u32,
@@ -225,7 +225,7 @@ pub const JsonRpc2_0Rx = struct {
         };
     }
 
-    /// Catches up to latest block (equivalent to Swift catchUpToLatestBlockPublisher)
+    /// Catches up to latest block
     pub fn catchUpToLatestBlockPublisher(
         self: *Self,
         start_block: u32,
@@ -269,7 +269,7 @@ pub const JsonRpc2_0Rx = struct {
         return self.default_polling_interval_ms;
     }
 
-    /// Catches up and subscribes to new blocks (equivalent to Swift catchUpToLatestAndSubscribeToNewBlocksPublisher)
+    /// Catches up and subscribes to new blocks
     pub fn catchUpToLatestAndSubscribeToNewBlocksPublisher(
         self: *Self,
         start_block: u32,
@@ -296,9 +296,9 @@ pub const JsonRpc2_0Rx = struct {
         };
     }
 
-    /// Gets latest block index (equivalent to Swift latestBlockIndexPublisher)
+    /// Gets latest block index
     pub fn getLatestBlockIndex(self: *Self) !u32 {
-        const context = self.neo_swift orelse return errors.NeoError.UnsupportedOperation;
+        const context = self.client orelse return errors.NeoError.UnsupportedOperation;
         const get_block_count = self.get_block_count_fn orelse return errors.NeoError.UnsupportedOperation;
         const count = try get_block_count(context);
         if (count == 0) return 0;
@@ -315,7 +315,7 @@ pub const JsonRpc2_0Rx = struct {
         const context = if (storage) |ctx|
             ctx.neo_context
         else
-            self.neo_swift;
+            self.client;
 
         const ctx_ptr = context orelse return errors.NeoError.UnsupportedOperation;
 
@@ -623,7 +623,7 @@ fn replayStubFetch(
     return response;
 }
 
-// Tests (converted from Swift JsonRpc2_0Rx tests)
+// Tests
 test "JsonRpc2_0Rx creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;

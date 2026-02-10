@@ -1,21 +1,21 @@
 //! Numeric Extensions
 //!
-//! Complete conversion from NeoSwift Numeric.swift extensions
+//! Neo N3 
 //! Provides numeric utility functions and conversions.
 
 const std = @import("std");
 const BytesExt = @import("bytes_extensions.zig").BytesUtils;
 const errors = @import("../core/errors.zig");
 
-/// Big integer utilities (converted from Swift BInt extensions)
+/// Big integer utilities
 pub const BigIntUtils = struct {
-    /// Converts big integer to padded bytes (equivalent to Swift toBytesPadded)
+    /// Converts big integer to padded bytes
     pub fn toBytesPadded(value: u256, length: usize, allocator: std.mem.Allocator) ![]u8 {
         const magnitude_bytes = std.mem.toBytes(std.mem.nativeToBig(u256, value));
         return try BytesUtils.toPadded(&magnitude_bytes, length, allocator);
     }
 
-    /// Converts bytes to big integer (equivalent to Swift from bytes)
+    /// Converts bytes to big integer
     pub fn fromBytes(bytes: []const u8) u256 {
         if (bytes.len == 0) return 0;
 
@@ -26,7 +26,7 @@ pub const BigIntUtils = struct {
         return result;
     }
 
-    /// Gets magnitude bytes (equivalent to Swift asMagnitudeBytes)
+    /// Gets magnitude bytes
     pub fn asMagnitudeBytes(value: u256, allocator: std.mem.Allocator) ![]u8 {
         const bytes = std.mem.toBytes(std.mem.nativeToBig(u256, value));
 
@@ -45,14 +45,14 @@ pub const BigIntUtils = struct {
     }
 };
 
-/// Integer utilities (converted from Swift Int extensions)
+/// Integer utilities
 pub const IntUtils = struct {
-    /// Power function (equivalent to Swift toPowerOf)
+    /// Power function
     pub fn toPowerOf(base: i64, exponent: u32) i64 {
         return std.math.pow(i64, base, exponent);
     }
 
-    /// Gets variable size (equivalent to Swift varSize)
+    /// Gets variable size
     pub fn varSize(value: i64) usize {
         const unsigned_value = if (value < 0) @as(u64, @bitCast(value)) else @as(u64, @intCast(value));
 
@@ -62,7 +62,7 @@ pub const IntUtils = struct {
         return 9;
     }
 
-    /// Converts to unsigned (equivalent to Swift toUnsigned)
+    /// Converts to unsigned
     pub fn toUnsigned(value: i32) u32 {
         return @bitCast(value);
     }
@@ -89,19 +89,19 @@ pub const IntUtils = struct {
     }
 };
 
-/// Numeric type utilities (converted from Swift Numeric extensions)
+/// Numeric type utilities
 pub const NumericUtils = struct {
-    /// Gets bytes in little-endian format (equivalent to Swift .bytes)
+    /// Gets bytes in little-endian format
     pub fn getBytes(comptime T: type, value: T) [@sizeOf(T)]u8 {
         return std.mem.toBytes(std.mem.nativeToLittle(T, value));
     }
 
-    /// Gets bytes in big-endian format (equivalent to Swift .bigEndianBytes)
+    /// Gets bytes in big-endian format
     pub fn getBigEndianBytes(comptime T: type, value: T) [@sizeOf(T)]u8 {
         return std.mem.toBytes(std.mem.nativeToBig(T, value));
     }
 
-    /// Gets reversed bytes (equivalent to Swift reversed())
+    /// Gets reversed bytes)
     pub fn getReversedBytes(comptime T: type, value: T, allocator: std.mem.Allocator) ![]u8 {
         const bytes = getBigEndianBytes(T, value);
         const result = try allocator.dupe(u8, &bytes);
@@ -109,7 +109,7 @@ pub const NumericUtils = struct {
         return result;
     }
 
-    /// Creates value from bytes (equivalent to Swift from bytes)
+    /// Creates value from bytes
     pub fn fromBytes(comptime T: type, bytes: []const u8, endian: std.builtin.Endian) !T {
         if (bytes.len != @sizeOf(T)) {
             return errors.ValidationError.InvalidParameter;
@@ -127,7 +127,7 @@ pub const NumericUtils = struct {
     }
 };
 
-/// Decimal utilities (converted from Swift Decimal extensions)
+/// Decimal utilities
 pub const DecimalUtils = struct {
     /// Fixed-point decimal representation
     pub const FixedDecimal = struct {
@@ -140,7 +140,7 @@ pub const DecimalUtils = struct {
             return Self{ .value = value, .scale = scale };
         }
 
-        /// Gets scale (equivalent to Swift .scale property)
+        /// Gets scale
         pub fn getScale(self: Self) u8 {
             return self.scale;
         }
@@ -251,9 +251,9 @@ pub const DecimalUtils = struct {
     }
 };
 
-/// Bytes utilities (converted from Swift bytes operations)
+/// Bytes utilities
 pub const BytesUtils = struct {
-    /// Pads bytes to specified length (equivalent to Swift toPadded)
+    /// Pads bytes to specified length
     pub fn toPadded(bytes: []const u8, target_length: usize, allocator: std.mem.Allocator) ![]u8 {
         if (bytes.len >= target_length) {
             return try allocator.dupe(u8, bytes);
@@ -268,7 +268,7 @@ pub const BytesUtils = struct {
         return result;
     }
 
-    /// Removes leading zeros (equivalent to Swift trimming)
+    /// Removes leading zeros
     pub fn trimLeadingZeros(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var start: usize = 0;
         while (start < bytes.len and bytes[start] == 0) {
@@ -283,22 +283,22 @@ pub const BytesUtils = struct {
         return try allocator.dupe(u8, bytes[start..]);
     }
 
-    /// Converts to hex string (equivalent to Swift hex conversion)
+    /// Converts to hex string
     pub fn toHexString(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         return try BytesExt.toHexString(bytes, allocator);
     }
 };
 
-// Tests (converted from Swift Numeric tests)
+// Tests
 test "IntUtils power and variable size operations" {
     const testing = std.testing;
 
-    // Test power function (equivalent to Swift toPowerOf tests)
+    // Test power function
     try testing.expectEqual(@as(i64, 8), IntUtils.toPowerOf(2, 3)); // 2^3 = 8
     try testing.expectEqual(@as(i64, 100), IntUtils.toPowerOf(10, 2)); // 10^2 = 100
     try testing.expectEqual(@as(i64, 1), IntUtils.toPowerOf(5, 0)); // 5^0 = 1
 
-    // Test variable size calculation (equivalent to Swift varSize tests)
+    // Test variable size calculation
     try testing.expectEqual(@as(usize, 1), IntUtils.varSize(100)); // < 0xFD
     try testing.expectEqual(@as(usize, 3), IntUtils.varSize(1000)); // <= 0xFFFF
     try testing.expectEqual(@as(usize, 5), IntUtils.varSize(100000)); // <= 0xFFFFFFFF
@@ -312,7 +312,7 @@ test "NumericUtils byte conversion operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test byte conversion (equivalent to Swift Numeric extensions tests)
+    // Test byte conversion
     const test_value: u32 = 0x12345678;
 
     const little_endian_bytes = NumericUtils.getBytes(u32, test_value);
@@ -340,7 +340,7 @@ test "DecimalUtils fixed-point operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test fixed decimal creation (equivalent to Swift Decimal tests)
+    // Test fixed decimal creation
     const decimal1 = DecimalUtils.FixedDecimal.fromFloat(1.23, 2);
     try testing.expectEqual(@as(i64, 123), decimal1.value);
     try testing.expectEqual(@as(u8, 2), decimal1.scale);
@@ -370,7 +370,7 @@ test "DecimalUtils string parsing" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test decimal parsing from string (equivalent to Swift string parsing tests)
+    // Test decimal parsing from string
     const decimal_from_string = try DecimalUtils.fromString("12.345", allocator);
     try testing.expectEqual(@as(i64, 12345), decimal_from_string.value);
     try testing.expectEqual(@as(u8, 3), decimal_from_string.scale);
@@ -392,7 +392,7 @@ test "BigIntUtils operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test big integer operations (equivalent to Swift BInt tests)
+    // Test big integer operations
     const test_value: u256 = 0x123456789ABCDEF0;
 
     const magnitude_bytes = try BigIntUtils.asMagnitudeBytes(test_value, allocator);
@@ -416,7 +416,7 @@ test "BytesUtils operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test byte padding (equivalent to Swift toPadded tests)
+    // Test byte padding
     const short_bytes = [_]u8{ 0x12, 0x34 };
     const padded = try BytesUtils.toPadded(&short_bytes, 5, allocator);
     defer allocator.free(padded);

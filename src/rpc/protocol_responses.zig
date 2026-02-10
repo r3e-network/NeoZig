@@ -1,6 +1,6 @@
 //! Complete Protocol Response Types
 //!
-//! Conversion of ALL remaining Swift protocol response types
+//! Protocol response types
 //! for complete RPC functionality.
 
 const std = @import("std");
@@ -16,7 +16,7 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 /// NEF file (shared contract format).
 pub const ContractNef = @import("responses.zig").ContractNef;
 
-/// Contract manifest (converted from Swift ContractManifest)
+/// Contract manifest
 pub const ContractManifest = struct {
     name: ?[]const u8,
     groups: []const ContractGroup,
@@ -51,7 +51,7 @@ pub const ContractManifest = struct {
         };
     }
 
-    /// Creates contract group (equivalent to Swift createGroup)
+    /// Creates contract group
     pub fn createGroup(
         group_key_pair: anytype,
         deployment_sender: Hash160,
@@ -59,7 +59,7 @@ pub const ContractManifest = struct {
         contract_name: ?[]const u8,
         allocator: std.mem.Allocator,
     ) !ContractGroup {
-        // Build contract hash script (equivalent to Swift buildContractHashScript)
+        // Build contract hash script
         const contract_hash_bytes = try buildContractHashScript(
             deployment_sender,
             nef_checksum,
@@ -68,7 +68,7 @@ pub const ContractManifest = struct {
         );
         defer allocator.free(contract_hash_bytes);
 
-        // Sign the contract hash (equivalent to Swift signMessage)
+        // Sign the contract hash
         const signature_data = try signMessage(contract_hash_bytes, group_key_pair, allocator);
         defer allocator.free(signature_data);
 
@@ -239,7 +239,7 @@ pub const ContractManifest = struct {
     }
 };
 
-/// Contract group (converted from Swift ContractGroup)
+/// Contract group
 pub const ContractGroup = struct {
     pub_key: []const u8,
     signature: []const u8,
@@ -256,7 +256,7 @@ pub const ContractGroup = struct {
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
         const obj = json_value.object;
 
-        // Handle both "pubkey" and "pubKey" (Swift handles both)
+        // Handle both "pubkey" and "pubKey" key names
         const pub_key_str = if (obj.get("pubkey")) |pk|
             pk.string
         else if (obj.get("pubKey")) |pk|
@@ -266,7 +266,7 @@ pub const ContractGroup = struct {
 
         const cleaned_pub_key = @import("../utils/string_extensions.zig").StringUtils.cleanedHexPrefix(pub_key_str);
 
-        // Validate public key length (equivalent to Swift validation)
+        // Validate public key length
         const pub_key_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(cleaned_pub_key, allocator);
         defer allocator.free(pub_key_bytes);
 
@@ -294,7 +294,7 @@ pub const ContractGroup = struct {
     }
 };
 
-/// Contract ABI (converted from Swift ContractABI)
+/// Contract ABI
 pub const ContractABI = struct {
     methods: []const ContractMethodInfo,
     events: []const ContractEventInfo,
@@ -365,7 +365,7 @@ pub const ContractABI = struct {
     }
 };
 
-/// Contract method info (converted from Swift method definitions)
+/// Contract method info
 pub const ContractMethodInfo = struct {
     name: []const u8,
     parameters: []const ContractParameterDefinition,
@@ -438,7 +438,7 @@ pub const ContractMethodInfo = struct {
     }
 };
 
-/// Contract parameter definition (converted from Swift parameter definitions)
+/// Contract parameter definition
 pub const ContractParameterDefinition = struct {
     name: []const u8,
     parameter_type: []const u8,
@@ -465,7 +465,7 @@ pub const ContractParameterDefinition = struct {
     }
 };
 
-/// Contract event info (converted from Swift event definitions)
+/// Contract event info
 pub const ContractEventInfo = struct {
     name: []const u8,
     parameters: []const ContractParameterDefinition,
@@ -517,7 +517,7 @@ pub const ContractEventInfo = struct {
     }
 };
 
-/// Contract permission (converted from Swift ContractPermission)
+/// Contract permission
 pub const ContractPermission = struct {
     contract: []const u8,
     methods: []const []const u8,
@@ -570,7 +570,7 @@ pub const ContractPermission = struct {
     }
 };
 
-/// Memory pool response (converted from Swift NeoGetMemPool)
+/// Memory pool response
 pub const NeoGetMemPool = struct {
     height: u32,
     verified: []const []const u8,
@@ -649,7 +649,7 @@ pub const NeoGetMemPool = struct {
     }
 };
 
-/// Peers response (converted from Swift NeoGetPeers)
+/// Peers response
 pub const NeoGetPeers = struct {
     unconnected: []const Peer,
     bad: []const Peer,
@@ -739,7 +739,7 @@ pub const NeoGetPeers = struct {
     }
 };
 
-/// Peer information (converted from Swift peer data)
+/// Peer information
 pub const Peer = struct {
     address: []const u8,
     port: u16,
@@ -762,7 +762,7 @@ pub const Peer = struct {
     }
 };
 
-/// Wallet balance response (converted from Swift NeoGetWalletBalance)
+/// Wallet balance response
 pub const NeoGetWalletBalance = struct {
     balance: []const u8,
 
@@ -786,7 +786,7 @@ pub const NeoGetWalletBalance = struct {
     }
 };
 
-/// Contract storage entry (converted from Swift ContractStorageEntry)
+/// Contract storage entry
 pub const ContractStorageEntry = struct {
     key: []const u8,
     value: []const u8,
@@ -812,7 +812,7 @@ pub const ContractStorageEntry = struct {
     }
 };
 
-/// Claimable GAS response (converted from Swift NeoGetClaimable)
+/// Claimable GAS response
 pub const NeoGetClaimable = struct {
     claimable: []const ClaimableTransaction,
     address: []const u8,
@@ -868,7 +868,7 @@ pub const NeoGetClaimable = struct {
     }
 };
 
-/// Claimable transaction (converted from Swift claimable data)
+/// Claimable transaction
 pub const ClaimableTransaction = struct {
     tx_id: Hash256,
     n: u32,
@@ -917,12 +917,12 @@ fn signMessage(message: []const u8, key_pair: anytype, allocator: std.mem.Alloca
     return try allocator.dupe(u8, signature.toSlice());
 }
 
-// Tests (converted from Swift protocol response tests)
+// Tests
 test "ContractManifest parsing and operations" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test manifest creation (equivalent to Swift ContractManifest tests)
+    // Test manifest creation
     const manifest = ContractManifest.init(
         "TestContract",
         &[_]ContractGroup{},
@@ -942,7 +942,7 @@ test "ContractGroup validation" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test contract group creation (equivalent to Swift ContractGroup tests)
+    // Test contract group creation
     const valid_pub_key = "02b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
     const valid_signature = "dGVzdF9zaWduYXR1cmU="; // "test_signature" in base64
 
@@ -955,7 +955,7 @@ test "Memory pool response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test memory pool response (equivalent to Swift mempool tests)
+    // Test memory pool response
     const mempool = NeoGetMemPool.init();
     try testing.expectEqual(@as(u32, 0), mempool.height);
     try testing.expectEqual(@as(usize, 0), mempool.verified.len);
@@ -966,7 +966,7 @@ test "Peers response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test peers response (equivalent to Swift peers tests)
+    // Test peers response
     const peers = NeoGetPeers.init();
     try testing.expectEqual(@as(usize, 0), peers.connected.len);
     try testing.expectEqual(@as(usize, 0), peers.unconnected.len);

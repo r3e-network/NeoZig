@@ -1,6 +1,6 @@
 //! Neo GetTokenBalances Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetTokenBalances.swift
+//! Neo N3
 
 const std = @import("std");
 

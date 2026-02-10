@@ -1,6 +1,6 @@
 //! Neo ListPlugins Implementation
 //!
-//! Complete conversion from NeoSwift NeoListPlugins.swift
+//! Neo N3
 
 const std = @import("std");
 

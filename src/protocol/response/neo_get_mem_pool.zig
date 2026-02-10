@@ -1,6 +1,6 @@
 //! Neo GetMemPool Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetMemPool.swift
+//! Neo N3
 
 const std = @import("std");
 

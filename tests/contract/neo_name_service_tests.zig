@@ -1,6 +1,6 @@
 //! Neo Name Service Tests
 //!
-//! Complete conversion from NeoSwift NeoNameServiceTests.swift
+//!
 //! Tests NNS domain name resolution and management.
 
 const std = @import("std");
@@ -51,11 +51,11 @@ test "NNS record type operations" {
 test "NNS service functionality" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
     const nns_hash = try Hash160.initWithString("0x50ac1c37690cc2cfc594472833cf57505d5f46de");
-    const nns = NeoNameService.init(allocator, nns_hash, &neo_swift);
+    const nns = NeoNameService.init(allocator, nns_hash, &client);
 
     try testing.expect(nns.getScriptHash().eql(nns_hash));
     try nns.validate();

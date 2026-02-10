@@ -1,6 +1,6 @@
 //! Decode utilities and protocols
 //!
-//! Complete conversion from NeoSwift Decode.swift
+//! Neo N3 
 //! Provides safe decoding and string conversion protocols.
 
 const std = @import("std");
@@ -8,26 +8,26 @@ const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 
-/// String decodable trait (converted from Swift StringDecodable protocol)
+/// String decodable trait
 pub fn StringDecodable(comptime T: type) type {
     return struct {
-        /// Creates instance from string (equivalent to Swift init(string:))
+        /// Creates instance from string)
         pub fn initFromString(string: []const u8) !T {
             return T.initFromString(string);
         }
 
-        /// Gets string representation (equivalent to Swift .string property)
+        /// Gets string representation
         pub fn toString(self: T, allocator: std.mem.Allocator) ![]u8 {
             return T.toString(self, allocator);
         }
 
-        /// Encodes to JSON string (equivalent to Swift encode(to:))
+        /// Encodes to JSON string)
         pub fn encodeToJson(self: T, allocator: std.mem.Allocator) !std.json.Value {
             const string_value = try self.toString(allocator);
             return std.json.Value{ .string = string_value };
         }
 
-        /// Decodes from JSON string (equivalent to Swift init(from:))
+        /// Decodes from JSON string)
         pub fn decodeFromJson(json_value: std.json.Value) !T {
             const string_value = switch (json_value) {
                 .string => |s| s,
@@ -39,7 +39,7 @@ pub fn StringDecodable(comptime T: type) type {
     };
 }
 
-/// Safe decoder wrapper (converted from Swift SafeDecode)
+/// Safe decoder wrapper
 pub fn SafeDecode(comptime T: type) type {
     return struct {
         value: T,
@@ -50,7 +50,7 @@ pub fn SafeDecode(comptime T: type) type {
             return Self{ .value = value };
         }
 
-        /// Safe decoding from JSON (equivalent to Swift SafeDecode init(from:))
+        /// Safe decoding from JSON)
         pub fn decodeFromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
             _ = allocator;
             // Try direct decoding first
@@ -72,14 +72,14 @@ pub fn SafeDecode(comptime T: type) type {
             }
         }
 
-        /// Encodes to JSON (equivalent to Swift encode(to:))
+        /// Encodes to JSON)
         pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
             return try self.value.encodeToJson(allocator);
         }
     };
 }
 
-/// JSON decoding utilities (converted from Swift JSON handling)
+/// JSON decoding utilities
 pub const JsonDecodeUtils = struct {
     /// Safely decodes string from JSON value
     pub fn decodeString(json_value: std.json.Value, allocator: std.mem.Allocator) ![]u8 {
@@ -140,7 +140,7 @@ pub const JsonDecodeUtils = struct {
     }
 };
 
-/// Nullable decoding utilities (converted from Swift nullable handling)
+/// Nullable decoding utilities
 pub const NullableDecodeUtils = struct {
     /// Decodes nullable string
     pub fn decodeNullableString(json_value: std.json.Value, allocator: std.mem.Allocator) !?[]u8 {
@@ -170,9 +170,9 @@ pub const NullableDecodeUtils = struct {
     }
 };
 
-/// Array decoding utilities (converted from Swift array handling)
+/// Array decoding utilities
 pub const ArrayDecodeUtils = struct {
-    /// Decodes array or single value as array (equivalent to Swift @SingleValueOrNilArray)
+    /// Decodes array or single value as array
     pub fn decodeSingleValueOrArray(
         comptime T: type,
         json_value: std.json.Value,
@@ -221,7 +221,7 @@ pub const ArrayDecodeUtils = struct {
     }
 };
 
-// Tests (converted from Swift Decode tests)
+// Tests
 test "StringDecodable protocol" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -229,7 +229,7 @@ test "StringDecodable protocol" {
     // Test string decodable implementation with Hash160
     const Hash160 = @import("../types/hash160.zig").Hash160;
 
-    // Test creation from string (equivalent to Swift StringDecodable tests)
+    // Test creation from string
     const hash_string = "1234567890abcdef1234567890abcdef12345678";
     const hash = try Hash160.initWithString(hash_string);
 
@@ -243,14 +243,14 @@ test "Safe decoding operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test safe string decoding (equivalent to Swift SafeDecode tests)
+    // Test safe string decoding
     const string_json = std.json.Value{ .string = "test_string" };
     const decoded_string = try JsonDecodeUtils.decodeString(string_json, allocator);
     defer allocator.free(decoded_string);
 
     try testing.expectEqualStrings("test_string", decoded_string);
 
-    // Test integer from string (equivalent to Swift safe integer decoding)
+    // Test integer from string
     const int_string_json = std.json.Value{ .string = "42" };
     const decoded_int = try JsonDecodeUtils.decodeInteger(int_string_json);
     try testing.expectEqual(@as(i64, 42), decoded_int);
@@ -265,7 +265,7 @@ test "Array decoding utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test string array decoding (equivalent to Swift array decoding tests)
+    // Test string array decoding
     var string_array = ArrayList(std.json.Value).init(allocator);
     defer string_array.deinit();
 
@@ -285,7 +285,7 @@ test "Array decoding utilities" {
     try testing.expectEqualStrings("first", decoded_array[0]);
     try testing.expectEqualStrings("second", decoded_array[1]);
 
-    // Test single value as array (equivalent to Swift @SingleValueOrNilArray)
+    // Test single value as array
     const single_value_json = std.json.Value{ .string = "single" };
     const single_as_array = try ArrayDecodeUtils.decodeStringArray(single_value_json, allocator);
     defer {
@@ -303,7 +303,7 @@ test "Nullable decoding operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test nullable string decoding (equivalent to Swift nullable tests)
+    // Test nullable string decoding
     const null_json = std.json.Value{ .null = {} };
     const null_string = try NullableDecodeUtils.decodeNullableString(null_json, allocator);
     try testing.expectEqual(@as(?[]u8, null), null_string);

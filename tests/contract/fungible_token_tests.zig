@@ -1,6 +1,6 @@
 //! Fungible Token Tests
 //!
-//! Complete conversion from NeoSwift FungibleTokenTests.swift
+//!
 //! Tests NEP-17 fungible token functionality.
 
 const std = @import("std");
@@ -13,11 +13,11 @@ const TestUtils = @import("../helpers/test_utilities.zig");
 test "Fungible token creation and validation" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
     const token_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
-    const fungible_token = FungibleToken.init(allocator, token_hash, &neo_swift);
+    const fungible_token = FungibleToken.init(allocator, token_hash, &client);
 
     try testing.expect(fungible_token.getScriptHash().eql(token_hash));
     try fungible_token.validate();
@@ -26,11 +26,11 @@ test "Fungible token creation and validation" {
 test "NEP-17 standard methods" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
     const token_hash = try Hash160.initWithString("0x1234567890abcdef1234567890abcdef12345678");
-    const fungible_token = FungibleToken.init(allocator, token_hash, &neo_swift);
+    const fungible_token = FungibleToken.init(allocator, token_hash, &client);
 
     const nep17_methods = [_][]const u8{ "symbol", "decimals", "totalSupply", "balanceOf", "transfer" };
 

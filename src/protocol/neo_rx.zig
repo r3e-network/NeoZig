@@ -1,6 +1,6 @@
-//! Neo Swift Rx implementation
+//! Neo Rx implementation
 //!
-//! Complete conversion from NeoSwift NeoSwiftRx.swift protocol
+//! Neo N3
 //! Provides reactive programming interface for Neo blockchain events.
 
 const std = @import("std");
@@ -9,8 +9,8 @@ const errors = @import("../core/errors.zig");
 const JsonRpc2_0Rx = @import("json_rpc_2_0_rx.zig").JsonRpc2_0Rx;
 const BlockData = @import("json_rpc_2_0_rx.zig").BlockData;
 
-/// Neo Swift reactive protocol (converted from Swift NeoSwiftRx)
-pub const NeoSwiftRx = struct {
+/// Neo reactive protocol
+pub const NeoRx = struct {
     /// Reactive JSON-RPC client
     json_rpc_rx: JsonRpc2_0Rx,
     /// Default polling interval
@@ -20,7 +20,7 @@ pub const NeoSwiftRx = struct {
 
     const Self = @This();
 
-    /// Creates Neo Swift reactive client
+    /// Creates Neo reactive client
     pub fn init(json_rpc_rx: JsonRpc2_0Rx, default_polling_interval_ms: u32) Self {
         return Self{
             .json_rpc_rx = json_rpc_rx,
@@ -29,7 +29,7 @@ pub const NeoSwiftRx = struct {
         };
     }
 
-    /// Creates block publisher (equivalent to Swift blockPublisher(_ fullTransactionObjects: Bool))
+    /// Creates block publisher)
     pub fn blockPublisher(
         self: *Self,
         full_transaction_objects: bool,
@@ -42,7 +42,7 @@ pub const NeoSwiftRx = struct {
         );
     }
 
-    /// Replays blocks in range (equivalent to Swift replayBlocksPublisher with 3 parameters)
+    /// Replays blocks in range
     pub fn replayBlocksPublisher(
         self: *Self,
         start_block: u32,
@@ -59,7 +59,7 @@ pub const NeoSwiftRx = struct {
         );
     }
 
-    /// Replays blocks with order control (equivalent to Swift replayBlocksPublisher with 4 parameters)
+    /// Replays blocks with order control
     pub fn replayBlocksPublisherWithOrder(
         self: *Self,
         start_block: u32,
@@ -77,7 +77,7 @@ pub const NeoSwiftRx = struct {
         );
     }
 
-    /// Catches up to latest block (equivalent to Swift catchUpToLatestBlockPublisher)
+    /// Catches up to latest block
     pub fn catchUpToLatestBlockPublisher(
         self: *Self,
         start_block: u32,
@@ -91,7 +91,7 @@ pub const NeoSwiftRx = struct {
         );
     }
 
-    /// Catches up and subscribes to new blocks (equivalent to Swift catchUpToLatestAndSubscribeToNewBlocksPublisher)
+    /// Catches up and subscribes to new blocks
     pub fn catchUpToLatestAndSubscribeToNewBlocksPublisher(
         self: *Self,
         start_block: u32,
@@ -106,7 +106,7 @@ pub const NeoSwiftRx = struct {
         );
     }
 
-    /// Subscribes to new blocks (equivalent to Swift subscribeToNewBlocksPublisher)
+    /// Subscribes to new blocks
     pub fn subscribeToNewBlocksPublisher(
         self: *Self,
         full_transaction_objects: bool,
@@ -239,7 +239,7 @@ pub const TransactionSubscription = struct {
     filter: TransactionFilter,
     callback: *const fn (TransactionData) void,
     is_active: bool,
-    rx_client: *NeoSwiftRx,
+    rx_client: *NeoRx,
 
     pub fn stop(self: *TransactionSubscription) void {
         if (!self.is_active) return;
@@ -261,7 +261,7 @@ pub const ContractEventSubscription = struct {
     event_name: ?[]const u8,
     callback: *const fn (ContractEvent) void,
     is_active: bool,
-    rx_client: *NeoSwiftRx,
+    rx_client: *NeoRx,
 
     pub fn stop(self: *ContractEventSubscription) void {
         if (!self.is_active) return;
@@ -382,8 +382,8 @@ pub const NetworkType = enum {
     Custom,
 };
 
-// Tests (converted from Swift NeoSwiftRx tests)
-test "NeoSwiftRx creation and basic operations" {
+// Tests
+test "NeoRx creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
@@ -392,10 +392,10 @@ test "NeoSwiftRx creation and basic operations" {
     var json_rpc_rx = JsonRpc2_0Rx.init(null, null, null, 15000, allocator);
     json_rpc_rx.executor_service = executor;
 
-    var neo_swift_rx = NeoSwiftRx.init(json_rpc_rx, 15000);
+    var neo_rx = NeoRx.init(json_rpc_rx, 15000);
 
-    try testing.expectEqual(@as(u32, 15000), neo_swift_rx.default_polling_interval_ms);
-    try testing.expectEqual(@as(u32, 0), neo_swift_rx.getActiveSubscriptionCount());
+    try testing.expectEqual(@as(u32, 15000), neo_rx.default_polling_interval_ms);
+    try testing.expectEqual(@as(u32, 0), neo_rx.getActiveSubscriptionCount());
 }
 
 test "TransactionFilter operations" {

@@ -1,6 +1,6 @@
 //! Response Aliases implementation
 //!
-//! Complete conversion from NeoSwift NeoResponseAliases.swift
+//! Neo N3
 //! Provides all Neo RPC response type aliases and wrappers.
 
 const std = @import("std");
@@ -37,10 +37,10 @@ pub fn Response(comptime T: type) type {
 }
 
 // ============================================================================
-// BLOCKCHAIN RESPONSE TYPES (converted from Swift aliases)
+// BLOCKCHAIN RESPONSE TYPES
 // ============================================================================
 
-/// Block count response (converted from Swift NeoBlockCount)
+/// Block count response
 pub const NeoBlockCount = struct {
     result: ?u32,
 
@@ -58,7 +58,7 @@ pub const NeoBlockCount = struct {
     }
 };
 
-/// Block hash response (converted from Swift NeoBlockHash)
+/// Block hash response
 pub const NeoBlockHash = struct {
     result: ?Hash256,
 
@@ -77,7 +77,7 @@ pub const NeoBlockHash = struct {
     }
 };
 
-/// Block response wrapper (converted from Swift NeoGetBlock)
+/// Block response wrapper
 pub const NeoGetBlock = struct {
     result: ?*@import("responses.zig").NeoBlock,
 
@@ -153,7 +153,7 @@ pub const NeoGetRawMemPool = struct {
 /// Block header count response (alias of connection count)
 pub const NeoBlockHeaderCount = NeoConnectionCount;
 
-/// Calculate network fee response (converted from Swift NeoCalculateNetworkFee)
+/// Calculate network fee response
 pub const NeoCalculateNetworkFee = struct {
     result: ?@import("responses.zig").NetworkFeeResponse,
 
@@ -171,7 +171,7 @@ pub const NeoCalculateNetworkFee = struct {
     }
 };
 
-/// Close wallet response (converted from Swift NeoCloseWallet)
+/// Close wallet response
 pub const NeoCloseWallet = struct {
     result: ?bool,
 
@@ -189,7 +189,7 @@ pub const NeoCloseWallet = struct {
     }
 };
 
-/// Connection count response (converted from Swift NeoConnectionCount)
+/// Connection count response
 pub const NeoConnectionCount = struct {
     result: ?u32,
 
@@ -207,7 +207,7 @@ pub const NeoConnectionCount = struct {
     }
 };
 
-/// Dump private key response (converted from Swift NeoDumpPrivKey)
+/// Dump private key response
 pub const NeoDumpPrivKey = struct {
     result: ?[]const u8,
 
@@ -293,10 +293,10 @@ pub const NeoGetTransaction = struct {
 };
 
 // ============================================================================
-// EXPRESS RESPONSE TYPES (converted from Swift Express aliases)
+// EXPRESS RESPONSE TYPES
 // ============================================================================
 
-/// Express create checkpoint response (converted from Swift NeoExpressCreateCheckpoint)
+/// Express create checkpoint response
 pub const NeoExpressCreateCheckpoint = struct {
     result: ?[]const u8,
 
@@ -321,7 +321,7 @@ pub const NeoExpressCreateCheckpoint = struct {
     }
 };
 
-/// Express create oracle response tx (converted from Swift NeoExpressCreateOracleResponseTx)
+/// Express create oracle response tx
 pub const NeoExpressCreateOracleResponseTx = struct {
     result: ?[]const u8,
 
@@ -348,18 +348,18 @@ pub const NeoExpressCreateOracleResponseTx = struct {
 
 /// Express get populated blocks response
 pub const NeoExpressGetPopulatedBlocks = struct {
-    result: ?@import("complete_responses.zig").PopulatedBlocks,
+    result: ?@import("extended_responses.zig").PopulatedBlocks,
 
     pub fn init() NeoExpressGetPopulatedBlocks {
         return NeoExpressGetPopulatedBlocks{ .result = null };
     }
 
-    pub fn getPopulatedBlocks(self: NeoExpressGetPopulatedBlocks) ?@import("complete_responses.zig").PopulatedBlocks {
+    pub fn getPopulatedBlocks(self: NeoExpressGetPopulatedBlocks) ?@import("extended_responses.zig").PopulatedBlocks {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetPopulatedBlocks {
-        const populated = try @import("complete_responses.zig").PopulatedBlocks.fromJson(json_value, allocator);
+        const populated = try @import("extended_responses.zig").PopulatedBlocks.fromJson(json_value, allocator);
         return NeoExpressGetPopulatedBlocks{ .result = populated };
     }
 
@@ -371,29 +371,29 @@ pub const NeoExpressGetPopulatedBlocks = struct {
     }
 };
 
-/// Express get contract storage response (converted from Swift NeoExpressGetContractStorage)
+/// Express get contract storage response
 pub const NeoExpressGetContractStorage = struct {
-    result: ?[]const @import("complete_responses.zig").ContractStorageEntry,
+    result: ?[]const @import("extended_responses.zig").ContractStorageEntry,
 
     pub fn init() NeoExpressGetContractStorage {
         return NeoExpressGetContractStorage{ .result = null };
     }
 
-    pub fn getContractStorage(self: NeoExpressGetContractStorage) ?[]const @import("complete_responses.zig").ContractStorageEntry {
+    pub fn getContractStorage(self: NeoExpressGetContractStorage) ?[]const @import("extended_responses.zig").ContractStorageEntry {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetContractStorage {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var storage_list = ArrayList(@import("complete_responses.zig").ContractStorageEntry).init(allocator);
+        var storage_list = ArrayList(@import("extended_responses.zig").ContractStorageEntry).init(allocator);
         errdefer {
             for (storage_list.items) |*entry| entry.deinit(allocator);
             storage_list.deinit();
         }
 
         for (json_value.array.items) |entry| {
-            var parsed = try @import("complete_responses.zig").ContractStorageEntry.fromJson(entry, allocator);
+            var parsed = try @import("extended_responses.zig").ContractStorageEntry.fromJson(entry, allocator);
             errdefer parsed.deinit(allocator);
             try storage_list.append(parsed);
         }
@@ -412,29 +412,29 @@ pub const NeoExpressGetContractStorage = struct {
     }
 };
 
-/// Express get NEP-17 contracts response (converted from Swift NeoExpressGetNep17Contracts)
+/// Express get NEP-17 contracts response
 pub const NeoExpressGetNep17Contracts = struct {
-    result: ?[]const @import("complete_responses.zig").Nep17Contract,
+    result: ?[]const @import("extended_responses.zig").Nep17Contract,
 
     pub fn init() NeoExpressGetNep17Contracts {
         return NeoExpressGetNep17Contracts{ .result = null };
     }
 
-    pub fn getNep17Contracts(self: NeoExpressGetNep17Contracts) ?[]const @import("complete_responses.zig").Nep17Contract {
+    pub fn getNep17Contracts(self: NeoExpressGetNep17Contracts) ?[]const @import("extended_responses.zig").Nep17Contract {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetNep17Contracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var contracts_list = ArrayList(@import("complete_responses.zig").Nep17Contract).init(allocator);
+        var contracts_list = ArrayList(@import("extended_responses.zig").Nep17Contract).init(allocator);
         errdefer {
             for (contracts_list.items) |*contract| contract.deinit(allocator);
             contracts_list.deinit();
         }
 
         for (json_value.array.items) |contract| {
-            var parsed = try @import("complete_responses.zig").Nep17Contract.fromJson(contract, allocator);
+            var parsed = try @import("extended_responses.zig").Nep17Contract.fromJson(contract, allocator);
             errdefer parsed.deinit(allocator);
             try contracts_list.append(parsed);
         }
@@ -455,27 +455,27 @@ pub const NeoExpressGetNep17Contracts = struct {
 
 /// Express list contracts response
 pub const NeoExpressListContracts = struct {
-    result: ?[]const @import("complete_responses.zig").ExpressContractState,
+    result: ?[]const @import("extended_responses.zig").ExpressContractState,
 
     pub fn init() NeoExpressListContracts {
         return NeoExpressListContracts{ .result = null };
     }
 
-    pub fn getContracts(self: NeoExpressListContracts) ?[]const @import("complete_responses.zig").ExpressContractState {
+    pub fn getContracts(self: NeoExpressListContracts) ?[]const @import("extended_responses.zig").ExpressContractState {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListContracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var list = ArrayList(@import("complete_responses.zig").ExpressContractState).init(allocator);
+        var list = ArrayList(@import("extended_responses.zig").ExpressContractState).init(allocator);
         errdefer {
             for (list.items) |*contract| contract.deinit(allocator);
             list.deinit();
         }
 
         for (json_value.array.items) |contract_value| {
-            var parsed = try @import("complete_responses.zig").ExpressContractState.fromJson(contract_value, allocator);
+            var parsed = try @import("extended_responses.zig").ExpressContractState.fromJson(contract_value, allocator);
             errdefer parsed.deinit(allocator);
             try list.append(parsed);
         }
@@ -496,27 +496,27 @@ pub const NeoExpressListContracts = struct {
 
 /// Express list oracle requests response
 pub const NeoExpressListOracleRequests = struct {
-    result: ?[]const @import("complete_responses.zig").OracleRequest,
+    result: ?[]const @import("extended_responses.zig").OracleRequest,
 
     pub fn init() NeoExpressListOracleRequests {
         return NeoExpressListOracleRequests{ .result = null };
     }
 
-    pub fn getOracleRequests(self: NeoExpressListOracleRequests) ?[]const @import("complete_responses.zig").OracleRequest {
+    pub fn getOracleRequests(self: NeoExpressListOracleRequests) ?[]const @import("extended_responses.zig").OracleRequest {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListOracleRequests {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var list = ArrayList(@import("complete_responses.zig").OracleRequest).init(allocator);
+        var list = ArrayList(@import("extended_responses.zig").OracleRequest).init(allocator);
         errdefer {
             for (list.items) |*request| request.deinit(allocator);
             list.deinit();
         }
 
         for (json_value.array.items) |request_value| {
-            var parsed = try @import("complete_responses.zig").OracleRequest.fromJson(request_value, allocator);
+            var parsed = try @import("extended_responses.zig").OracleRequest.fromJson(request_value, allocator);
             errdefer parsed.deinit(allocator);
             try list.append(parsed);
         }
@@ -537,18 +537,18 @@ pub const NeoExpressListOracleRequests = struct {
 
 /// Express shutdown response
 pub const NeoExpressShutdown = struct {
-    result: ?@import("complete_responses.zig").ExpressShutdown,
+    result: ?@import("extended_responses.zig").ExpressShutdown,
 
     pub fn init() NeoExpressShutdown {
         return NeoExpressShutdown{ .result = null };
     }
 
-    pub fn getShutdown(self: NeoExpressShutdown) ?@import("complete_responses.zig").ExpressShutdown {
+    pub fn getShutdown(self: NeoExpressShutdown) ?@import("extended_responses.zig").ExpressShutdown {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressShutdown {
-        const shutdown = try @import("complete_responses.zig").ExpressShutdown.fromJson(json_value, allocator);
+        const shutdown = try @import("extended_responses.zig").ExpressShutdown.fromJson(json_value, allocator);
         return NeoExpressShutdown{ .result = shutdown };
     }
 
@@ -579,10 +579,10 @@ pub const NeoExpressReset = struct {
 };
 
 // ============================================================================
-// WALLET RESPONSE TYPES (converted from Swift wallet aliases)
+// WALLET RESPONSE TYPES
 // ============================================================================
 
-/// Get new address response (converted from Swift NeoGetNewAddress)
+/// Get new address response
 pub const NeoGetNewAddress = struct {
     result: ?[]const u8,
 
@@ -607,7 +607,7 @@ pub const NeoGetNewAddress = struct {
     }
 };
 
-/// Open wallet response (converted from Swift NeoOpenWallet)
+/// Open wallet response
 pub const NeoOpenWallet = struct {
     result: ?bool,
 
@@ -625,29 +625,29 @@ pub const NeoOpenWallet = struct {
     }
 };
 
-/// List address response (converted from Swift NeoListAddress)
+/// List address response
 pub const NeoListAddress = struct {
-    result: ?[]const @import("complete_responses.zig").NeoAddress,
+    result: ?[]const @import("extended_responses.zig").NeoAddress,
 
     pub fn init() NeoListAddress {
         return NeoListAddress{ .result = null };
     }
 
-    pub fn getAddresses(self: NeoListAddress) ?[]const @import("complete_responses.zig").NeoAddress {
+    pub fn getAddresses(self: NeoListAddress) ?[]const @import("extended_responses.zig").NeoAddress {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListAddress {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var addresses_list = ArrayList(@import("complete_responses.zig").NeoAddress).init(allocator);
+        var addresses_list = ArrayList(@import("extended_responses.zig").NeoAddress).init(allocator);
         errdefer {
             for (addresses_list.items) |*address| address.deinit(allocator);
             addresses_list.deinit();
         }
 
         for (json_value.array.items) |address| {
-            var parsed = try @import("complete_responses.zig").NeoAddress.fromJson(address, allocator);
+            var parsed = try @import("extended_responses.zig").NeoAddress.fromJson(address, allocator);
             errdefer parsed.deinit(allocator);
             try addresses_list.append(parsed);
         }
@@ -667,10 +667,10 @@ pub const NeoListAddress = struct {
 };
 
 // ============================================================================
-// TRANSACTION RESPONSE TYPES (converted from Swift transaction aliases)
+// TRANSACTION RESPONSE TYPES
 // ============================================================================
 
-/// Send from response (converted from Swift NeoSendFrom)
+/// Send from response
 pub const NeoSendFrom = struct {
     result: ?@import("responses.zig").Transaction,
 
@@ -695,7 +695,7 @@ pub const NeoSendFrom = struct {
     }
 };
 
-/// Send many response (converted from Swift NeoSendMany)
+/// Send many response
 pub const NeoSendMany = struct {
     result: ?@import("responses.zig").Transaction,
 
@@ -720,7 +720,7 @@ pub const NeoSendMany = struct {
     }
 };
 
-/// Send to address response (converted from Swift NeoSendToAddress)
+/// Send to address response
 pub const NeoSendToAddress = struct {
     result: ?@import("responses.zig").Transaction,
 
@@ -746,10 +746,10 @@ pub const NeoSendToAddress = struct {
 };
 
 // ============================================================================
-// CONTRACT RESPONSE TYPES (converted from Swift contract aliases)
+// CONTRACT RESPONSE TYPES
 // ============================================================================
 
-/// Get contract state response (converted from Swift NeoGetContractState)
+/// Get contract state response
 pub const NeoGetContractState = struct {
     result: ?@import("responses.zig").ContractState,
 
@@ -774,29 +774,29 @@ pub const NeoGetContractState = struct {
     }
 };
 
-/// Get native contracts response (converted from Swift NeoGetNativeContracts)
+/// Get native contracts response
 pub const NeoGetNativeContracts = struct {
-    result: ?[]const @import("complete_responses.zig").NativeContractState,
+    result: ?[]const @import("extended_responses.zig").NativeContractState,
 
     pub fn init() NeoGetNativeContracts {
         return NeoGetNativeContracts{ .result = null };
     }
 
-    pub fn getNativeContracts(self: NeoGetNativeContracts) ?[]const @import("complete_responses.zig").NativeContractState {
+    pub fn getNativeContracts(self: NeoGetNativeContracts) ?[]const @import("extended_responses.zig").NativeContractState {
         return self.result;
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNativeContracts {
         if (json_value != .array) return errors.SerializationError.InvalidFormat;
 
-        var contracts_list = ArrayList(@import("complete_responses.zig").NativeContractState).init(allocator);
+        var contracts_list = ArrayList(@import("extended_responses.zig").NativeContractState).init(allocator);
         errdefer {
             for (contracts_list.items) |*contract| contract.deinit(allocator);
             contracts_list.deinit();
         }
 
         for (json_value.array.items) |contract| {
-            var parsed = try @import("complete_responses.zig").NativeContractState.fromJson(contract, allocator);
+            var parsed = try @import("extended_responses.zig").NativeContractState.fromJson(contract, allocator);
             errdefer parsed.deinit(allocator);
             try contracts_list.append(parsed);
         }
@@ -815,7 +815,7 @@ pub const NeoGetNativeContracts = struct {
     }
 };
 
-/// Get NEP-11 properties response (converted from Swift NeoGetNep11Properties)
+/// Get NEP-11 properties response
 pub const NeoGetNep11Properties = struct {
     result: ?std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage),
 
@@ -859,7 +859,7 @@ pub const NeoGetNep11Properties = struct {
 // INVOCATION RESPONSE TYPES (aliases)
 // ============================================================================
 
-/// Neo invoke response (converted from Swift NeoInvoke)
+/// Neo invoke response
 pub const NeoInvoke = struct {
     result: ?@import("responses.zig").InvocationResult,
 
@@ -884,12 +884,12 @@ pub const NeoInvoke = struct {
     }
 };
 
-/// Type aliases for invocation methods (converted from Swift typealiases)
+/// Type aliases for invocation methods
 pub const NeoInvokeContractVerify = NeoInvoke;
 pub const NeoInvokeFunction = NeoInvoke;
 pub const NeoInvokeScript = NeoInvoke;
 
-/// Traverse iterator response (converted from Swift NeoTraverseIterator)
+/// Traverse iterator response
 pub const NeoTraverseIterator = struct {
     result: ?[]StackItem,
 
@@ -927,7 +927,7 @@ pub const NeoTraverseIterator = struct {
     }
 };
 
-/// Terminate session response (converted from Swift NeoTerminateSession)
+/// Terminate session response
 pub const NeoTerminateSession = struct {
     result: ?bool,
 
@@ -949,7 +949,7 @@ pub const NeoTerminateSession = struct {
 // STORAGE AND STATE RESPONSE TYPES
 // ============================================================================
 
-/// Get storage response (converted from Swift NeoGetStorage)
+/// Get storage response
 pub const NeoGetStorage = struct {
     result: ?[]const u8,
 
@@ -974,7 +974,7 @@ pub const NeoGetStorage = struct {
     }
 };
 
-/// Get state response (converted from Swift NeoGetState)
+/// Get state response
 pub const NeoGetState = struct {
     result: ?[]const u8,
 
@@ -999,7 +999,7 @@ pub const NeoGetState = struct {
     }
 };
 
-/// Verify proof response (converted from Swift NeoVerifyProof)
+/// Verify proof response
 pub const NeoVerifyProof = struct {
     result: ?[]const u8,
 
@@ -1024,7 +1024,7 @@ pub const NeoVerifyProof = struct {
     }
 };
 
-/// Submit block response (converted from Swift NeoSubmitBlock)
+/// Submit block response
 pub const NeoSubmitBlock = struct {
     result: ?bool,
 
@@ -1055,11 +1055,11 @@ pub const StringContext = struct {
     }
 };
 
-// Tests (converted from Swift response alias tests)
+// Tests
 test "Basic response types" {
     const testing = std.testing;
 
-    // Test block count response (equivalent to Swift NeoBlockCount tests)
+    // Test block count response
     const block_count = NeoBlockCount.init();
     try testing.expect(block_count.getBlockCount() == null);
 

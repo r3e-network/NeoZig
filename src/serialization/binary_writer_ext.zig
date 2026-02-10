@@ -1,7 +1,7 @@
 //! Complete Binary Writer implementation
 //!
-//! Complete conversion from NeoSwift BinaryWriter.swift
-//! Provides comprehensive binary serialization with Swift API compatibility.
+//! Neo N3
+//! Provides comprehensive binary serialization.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -12,14 +12,14 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ECPoint = @import("../crypto/ec_point.zig").ECPoint;
 
-/// Complete binary writer (converted from Swift BinaryWriter)
+/// Complete binary writer
 pub const CompleteBinaryWriter = struct {
     /// Internal byte array
     array: ArrayList(u8),
 
     const Self = @This();
 
-    /// Creates binary writer (equivalent to Swift init())
+    /// Creates binary writer)
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .array = ArrayList(u8).init(allocator),
@@ -31,12 +31,12 @@ pub const CompleteBinaryWriter = struct {
         self.array.deinit();
     }
 
-    /// Gets size (equivalent to Swift .size property)
+    /// Gets size
     pub fn getSize(self: Self) usize {
         return self.array.items.len;
     }
 
-    /// Writes byte buffer (equivalent to Swift write(_ buffer: Bytes))
+    /// Writes byte buffer)
     pub fn write(self: *Self, buffer: []const u8) !void {
         try self.array.appendSlice(buffer);
     }
@@ -46,24 +46,24 @@ pub const CompleteBinaryWriter = struct {
         try self.write(bytes);
     }
 
-    /// Writes boolean (equivalent to Swift writeBoolean(_ v: Bool))
+    /// Writes boolean)
     pub fn writeBoolean(self: *Self, value: bool) !void {
         try self.writeByte(if (value) 1 else 0);
     }
 
-    /// Writes single byte (equivalent to Swift writeByte(_ v: Byte))
+    /// Writes single byte)
     pub fn writeByte(self: *Self, value: u8) !void {
         try self.array.append(value);
     }
 
-    /// Writes double (equivalent to Swift writeDouble(_ v: Double))
+    /// Writes double)
     pub fn writeDouble(self: *Self, value: f64) !void {
         const bits: u64 = @bitCast(value);
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, bits));
         try self.write(&bytes);
     }
 
-    /// Writes EC point (equivalent to Swift writeECPoint(_ v: ECPoint))
+    /// Writes EC point)
     pub fn writeECPoint(self: *Self, point: ECPoint, allocator: std.mem.Allocator) !void {
         const encoded = try point.getEncoded(true, allocator);
         defer allocator.free(encoded);
@@ -71,7 +71,7 @@ pub const CompleteBinaryWriter = struct {
         try self.write(encoded);
     }
 
-    /// Writes fixed-length string (equivalent to Swift writeFixedString(_ v: String?, length: Int))
+    /// Writes fixed-length string)
     pub fn writeFixedString(self: *Self, string_value: ?[]const u8, length: usize, allocator: std.mem.Allocator) !void {
         const bytes = if (string_value) |str| str else &[_]u8{};
 
@@ -79,51 +79,51 @@ pub const CompleteBinaryWriter = struct {
             return errors.throwIllegalArgument("String too long for fixed length");
         }
 
-        // Pad with trailing zeros (Swift uses trailing: true)
+        // Pad with trailing zeros
         const padded = try @import("../utils/bytes_extensions.zig").BytesUtils.toPadded(bytes, length, true, allocator);
         defer allocator.free(padded);
 
         try self.write(padded);
     }
 
-    /// Writes float (equivalent to Swift writeFloat(_ v: Float))
+    /// Writes float)
     pub fn writeFloat(self: *Self, value: f32) !void {
         const bits: u32 = @bitCast(value);
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, bits));
         try self.write(&bytes);
     }
 
-    /// Writes 32-bit signed integer (equivalent to Swift writeInt32(_ v: Int32))
+    /// Writes 32-bit signed integer)
     pub fn writeInt32(self: *Self, value: i32) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(i32, value));
         try self.write(&bytes);
     }
 
-    /// Writes 64-bit signed integer (equivalent to Swift writeInt64(_ v: Int64))
+    /// Writes 64-bit signed integer)
     pub fn writeInt64(self: *Self, value: i64) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(i64, value));
         try self.write(&bytes);
     }
 
-    /// Writes 16-bit unsigned integer (equivalent to Swift writeUInt16(_ v: UInt16))
+    /// Writes 16-bit unsigned integer)
     pub fn writeUInt16(self: *Self, value: u16) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, value));
         try self.write(&bytes);
     }
 
-    /// Writes 32-bit unsigned integer (equivalent to Swift writeUInt32(_ v: UInt32))
+    /// Writes 32-bit unsigned integer)
     pub fn writeUInt32(self: *Self, value: u32) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, value));
         try self.write(&bytes);
     }
 
-    /// Writes 64-bit unsigned integer (equivalent to Swift writeUInt64(_ v: UInt64))
+    /// Writes 64-bit unsigned integer)
     pub fn writeUInt64(self: *Self, value: u64) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, value));
         try self.write(&bytes);
     }
 
-    /// Writes variable-length integer (equivalent to Swift writeVarInt(_ v: Int))
+    /// Writes variable-length integer)
     pub fn writeVarInt(self: *Self, value: u64) !void {
         if (value < 0xFD) {
             try self.writeByte(@intCast(value));
@@ -139,31 +139,31 @@ pub const CompleteBinaryWriter = struct {
         }
     }
 
-    /// Writes variable-length string (equivalent to Swift writeVarString(_ v: String))
+    /// Writes variable-length string)
     pub fn writeVarString(self: *Self, string_value: []const u8) !void {
         try self.writeVarInt(string_value.len);
         try self.write(string_value);
     }
 
-    /// Writes variable-length byte array (equivalent to Swift writeVarBytes(_ v: Bytes))
+    /// Writes variable-length byte array)
     pub fn writeVarBytes(self: *Self, bytes: []const u8) !void {
         try self.writeVarInt(bytes.len);
         try self.write(bytes);
     }
 
-    /// Writes Hash160 (equivalent to Swift Hash160 writing)
+    /// Writes Hash160
     pub fn writeHash160(self: *Self, hash: Hash160) !void {
         const little_endian = hash.toLittleEndianArray();
         try self.write(&little_endian);
     }
 
-    /// Writes Hash256 (equivalent to Swift Hash256 writing)
+    /// Writes Hash256
     pub fn writeHash256(self: *Self, hash: Hash256) !void {
         const little_endian = hash.toLittleEndianArray();
         try self.write(&little_endian);
     }
 
-    /// Writes big integer (equivalent to Swift writeBigInteger())
+    /// Writes big integer)
     pub fn writeBigInteger(self: *Self, value: u256, byte_length: usize, allocator: std.mem.Allocator) !void {
         const bytes = try @import("../utils/bytes_extensions.zig").BytesUtils.fromBigInt(value, allocator);
         defer allocator.free(bytes);
@@ -175,19 +175,19 @@ pub const CompleteBinaryWriter = struct {
         try self.write(padded);
     }
 
-    /// Writes serializable object (equivalent to Swift writeSerializable())
+    /// Writes serializable object)
     pub fn writeSerializable(self: *Self, object: anytype) !void {
         try object.serialize(self);
     }
 
-    /// Writes serializable array (equivalent to Swift writeSerializableFixed())
+    /// Writes serializable array)
     pub fn writeSerializableArray(self: *Self, objects: anytype) !void {
         for (objects) |object| {
             try object.serialize(self);
         }
     }
 
-    /// Writes variable-length serializable array (equivalent to Swift writeSerializableVar())
+    /// Writes variable-length serializable array)
     pub fn writeSerializableVarArray(self: *Self, objects: anytype) !void {
         try self.writeVarInt(objects.len);
         for (objects) |object| {
@@ -195,12 +195,12 @@ pub const CompleteBinaryWriter = struct {
         }
     }
 
-    /// Gets written data (equivalent to Swift toArray())
+    /// Gets written data)
     pub fn toArray(self: Self) []const u8 {
         return self.array.items;
     }
 
-    /// Clears writer (equivalent to Swift clear())
+    /// Clears writer)
     pub fn clear(self: *Self) void {
         self.array.clearRetainingCapacity();
     }
@@ -226,7 +226,7 @@ pub const CompleteBinaryWriter = struct {
     }
 };
 
-// Tests (converted from Swift BinaryWriter tests)
+// Tests
 test "CompleteBinaryWriter basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -234,7 +234,7 @@ test "CompleteBinaryWriter basic operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test basic writes (equivalent to Swift BinaryWriter tests)
+    // Test basic writes
     try writer.writeBoolean(true);
     try writer.writeByte(0x42);
     try writer.writeUInt16(0x1234);
@@ -261,12 +261,12 @@ test "CompleteBinaryWriter variable-length operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test VarInt writing (equivalent to Swift writeVarInt tests)
+    // Test VarInt writing
     try writer.writeVarInt(42); // 1 byte
     try writer.writeVarInt(0x1234); // 3 bytes (0xFD + 2 bytes)
     try writer.writeVarInt(0x12345678); // 5 bytes (0xFE + 4 bytes)
 
-    // Test VarString writing (equivalent to Swift writeVarString tests)
+    // Test VarString writing
     try writer.writeVarString("Hello Neo");
 
     // Test VarBytes writing
@@ -287,7 +287,7 @@ test "CompleteBinaryWriter hash operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test hash writing (equivalent to Swift hash writing tests)
+    // Test hash writing
     const test_hash160 = try Hash160.initWithString("000102030405060708090a0b0c0d0e0f10111213");
     const test_hash256 = try Hash256.initWithString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
@@ -312,7 +312,7 @@ test "CompleteBinaryWriter signed integer operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test signed integer writing (equivalent to Swift signed integer tests)
+    // Test signed integer writing
     try writer.writeInt32(-1);
     try writer.writeInt64(-1);
 
@@ -334,7 +334,7 @@ test "CompleteBinaryWriter floating point operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test floating point writing (equivalent to Swift float/double tests)
+    // Test floating point writing
     try writer.writeFloat(1.5);
     try writer.writeDouble(3.14159);
 
@@ -352,7 +352,7 @@ test "CompleteBinaryWriter string operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test fixed string writing (equivalent to Swift writeFixedString tests)
+    // Test fixed string writing
     try writer.writeFixedString("Test", 10, allocator);
 
     const written_data = writer.toArray();
@@ -378,7 +378,7 @@ test "CompleteBinaryWriter big integer operations" {
     var writer = CompleteBinaryWriter.init(allocator);
     defer writer.deinit();
 
-    // Test big integer writing (equivalent to Swift writeBigInteger tests)
+    // Test big integer writing
     const test_value: u256 = 0x123456789ABCDEF0;
     try writer.writeBigInteger(test_value, 32, allocator);
 

@@ -1,6 +1,6 @@
 //! Test Properties
 //!
-//! Complete conversion from NeoSwift TestProperties.swift
+//! Test properties and constants
 //! Provides shared test constants and utilities.
 
 const std = @import("std");

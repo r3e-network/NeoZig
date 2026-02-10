@@ -1,6 +1,6 @@
 //! Neo GetVersion Response Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetVersion.swift
+//! Neo N3
 //! Provides version information response for Neo RPC calls.
 
 const std = @import("std");
@@ -45,7 +45,7 @@ pub const HardforkInfo = struct {
     }
 };
 
-/// Neo protocol information (converted from Swift NeoProtocol)
+/// Neo protocol information
 pub const NeoProtocol = struct {
     /// Network magic number
     network: u32,
@@ -74,7 +74,7 @@ pub const NeoProtocol = struct {
 
     const Self = @This();
 
-    /// Creates new NeoProtocol (equivalent to Swift init)
+    /// Creates new NeoProtocol
     pub fn init(
         network: u32,
         validators_count: ?u32,
@@ -105,7 +105,7 @@ pub const NeoProtocol = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return self.network == other.network and
             self.validators_count == other.validators_count and
@@ -158,7 +158,7 @@ pub const NeoProtocol = struct {
         return true;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.network));
@@ -217,7 +217,7 @@ pub const NeoProtocol = struct {
         return self.max_valid_until_block_increment;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const validators_str = if (self.validators_count) |count|
             try std.fmt.allocPrint(allocator, "{}", .{count})
@@ -238,7 +238,7 @@ pub const NeoProtocol = struct {
         });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -397,7 +397,7 @@ pub const NeoProtocol = struct {
     }
 };
 
-/// Neo version information (converted from Swift NeoVersion)
+/// Neo version information
 pub const NeoVersion = struct {
     /// TCP port
     tcp_port: ?u16,
@@ -412,7 +412,7 @@ pub const NeoVersion = struct {
 
     const Self = @This();
 
-    /// Creates new NeoVersion (equivalent to Swift init)
+    /// Creates new NeoVersion
     pub fn init(
         tcp_port: ?u16,
         ws_port: ?u16,
@@ -429,7 +429,7 @@ pub const NeoVersion = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         if (self.tcp_port != other.tcp_port or
             self.ws_port != other.ws_port or
@@ -445,7 +445,7 @@ pub const NeoVersion = struct {
         return self.protocol.?.eql(other.protocol.?);
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -487,7 +487,7 @@ pub const NeoVersion = struct {
         return self.tcp_port != null;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const tcp_port_str = if (self.tcp_port) |port|
             try std.fmt.allocPrint(allocator, "{}", .{port})
@@ -510,7 +510,7 @@ pub const NeoVersion = struct {
         return try std.fmt.allocPrint(allocator, "{{\"tcpport\":{s},\"wsport\":{s},\"nonce\":{},\"useragent\":\"{s}\",\"protocol\":{s}}}", .{ tcp_port_str, ws_port_str, self.nonce, self.user_agent, protocol_str });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -579,7 +579,7 @@ pub const NeoVersion = struct {
     }
 };
 
-/// GetVersion RPC response wrapper (converted from Swift NeoGetVersion)
+/// GetVersion RPC response wrapper
 pub const NeoGetVersion = struct {
     /// The version result
     result: ?NeoVersion,
@@ -591,7 +591,7 @@ pub const NeoGetVersion = struct {
         return Self{ .result = result };
     }
 
-    /// Gets the version (equivalent to Swift version property)
+    /// Gets the version
     pub fn getVersion(self: Self) ?NeoVersion {
         return self.result;
     }
@@ -609,12 +609,12 @@ pub const NeoGetVersion = struct {
     }
 };
 
-// Tests (converted from Swift NeoGetVersion tests)
+// Tests
 test "NeoProtocol creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test protocol creation (equivalent to Swift tests)
+    // Test protocol creation
     const protocol = NeoProtocol.init(
         0x334F454E, // MainNet magic
         7, // 7 validators
@@ -651,7 +651,7 @@ test "NeoVersion creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test version creation (equivalent to Swift tests)
+    // Test version creation
     const user_agent = try allocator.dupe(u8, "NEO-GO:3.5.0");
     var version = NeoVersion.init(10333, 10334, 123456, user_agent, null);
     defer version.deinit(allocator);

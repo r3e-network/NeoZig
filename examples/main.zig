@@ -216,9 +216,9 @@ fn demonstrateContractParameters(_: std.mem.Allocator) !void {
 fn demonstrateRpcRequests(_: std.mem.Allocator) !void {
     std.log.info("\n--- RPC Client Requests ---", .{});
 
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(std.heap.page_allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(std.heap.page_allocator, &service, config);
     defer client.deinit();
 
     std.log.info("RPC client created", .{});

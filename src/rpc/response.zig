@@ -1,6 +1,6 @@
 //! Response implementation
 //!
-//! Complete conversion from NeoSwift Response.swift
+//! Neo N3
 //! Provides JSON-RPC 2.0 response structure and error handling.
 
 const std = @import("std");
@@ -9,7 +9,7 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const json_utils = @import("../utils/json_utils.zig");
 
-/// Raw response trait (converted from Swift HasRawResponse protocol)
+/// Raw response trait
 pub const HasRawResponse = struct {
     /// Gets raw response string
     pub fn getRawResponse(self: anytype) ?[]const u8 {
@@ -22,7 +22,7 @@ pub const HasRawResponse = struct {
     }
 };
 
-/// JSON-RPC 2.0 response (converted from Swift Response)
+/// JSON-RPC 2.0 response
 pub fn Response(comptime T: type) type {
     return struct {
         /// Request ID
@@ -40,7 +40,7 @@ pub fn Response(comptime T: type) type {
 
         const Self = @This();
 
-        /// Creates response with result (equivalent to Swift init(_ result: T))
+        /// Creates response with result)
         pub fn init(allocator: std.mem.Allocator, result: T) Self {
             return Self{
                 .id = 1,
@@ -75,12 +75,12 @@ pub fn Response(comptime T: type) type {
             }
         }
 
-        /// Checks if response has error (equivalent to Swift .hasError property)
+        /// Checks if response has error
         pub fn hasError(self: Self) bool {
             return self.response_error != null;
         }
 
-        /// Gets result or throws error (equivalent to Swift getResult())
+        /// Gets result or throws error)
         pub fn getResult(self: Self) !T {
             if (self.response_error != null) {
                 return errors.NetworkError.ServerError;
@@ -95,7 +95,7 @@ pub fn Response(comptime T: type) type {
             return self.result;
         }
 
-        /// Serializes response to JSON (equivalent to Swift Codable encoding)
+        /// Serializes response to JSON
         pub fn toJson(self: Self) !std.json.Value {
             var response_obj = std.json.ObjectMap.init(self.allocator);
 
@@ -123,7 +123,7 @@ pub fn Response(comptime T: type) type {
             return std.json.Value{ .object = response_obj };
         }
 
-        /// Parses response from JSON (equivalent to Swift Codable decoding)
+        /// Parses response from JSON
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
             const obj = json_value.object;
 
@@ -169,7 +169,7 @@ pub fn Response(comptime T: type) type {
     };
 }
 
-/// Response error (converted from Swift Response.Error)
+/// Response error
 pub const ResponseError = struct {
     code: i32,
     message: []const u8,
@@ -194,7 +194,7 @@ pub const ResponseError = struct {
         }
     }
 
-    /// Gets error description (equivalent to Swift LocalizedError)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         if (self.data) |data| {
             return try std.fmt.allocPrint(allocator, "RPC Error {d}: {s} (Data: {s})", .{ self.code, self.message, data });
@@ -255,12 +255,12 @@ pub const ResponseError = struct {
     }
 };
 
-// Tests (converted from Swift Response tests)
+// Tests
 test "Response creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test response with result (equivalent to Swift Response tests)
+    // Test response with result
     const IntResponse = Response(u32);
 
     var response_with_result = IntResponse.init(allocator, 12345);
@@ -282,7 +282,7 @@ test "ResponseError operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test error creation (equivalent to Swift Error tests)
+    // Test error creation
     var error_info = ResponseError.init(
         -32602,
         try allocator.dupe(u8, "Invalid params"),

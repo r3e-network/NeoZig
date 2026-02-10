@@ -1,6 +1,6 @@
 //! Byte manipulation utilities
 //!
-//! Converted from Swift Bytes extensions and utility functions.
+//! Bytes extensions and utility functions.
 
 const std = @import("std");
 

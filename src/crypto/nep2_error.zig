@@ -1,6 +1,6 @@
 //! NEP-2 Error implementation
 //!
-//! Complete conversion from NeoSwift NEP2Error.swift
+//! Neo N3
 //! Provides specialized error handling for NEP-2 operations.
 
 const std = @import("std");
@@ -10,24 +10,24 @@ const errors = @import("../core/errors.zig");
 
 const log = std.log.scoped(.neo_crypto);
 
-/// NEP-2 specific errors (converted from Swift NEP2Error)
+/// NEP-2 specific errors
 pub const NEP2Error = union(enum) {
     InvalidPassphrase: []const u8,
     InvalidFormat: []const u8,
 
     const Self = @This();
 
-    /// Creates invalid passphrase error (equivalent to Swift .invalidPassphrase)
+    /// Creates invalid passphrase error
     pub fn invalidPassphrase(message: []const u8) Self {
         return Self{ .InvalidPassphrase = message };
     }
 
-    /// Creates invalid format error (equivalent to Swift .invalidFormat)
+    /// Creates invalid format error
     pub fn invalidFormat(message: []const u8) Self {
         return Self{ .InvalidFormat = message };
     }
 
-    /// Gets error description (equivalent to Swift .errorDescription)
+    /// Gets error description
     pub fn getErrorDescription(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .InvalidPassphrase => |message| try allocator.dupe(u8, message),
@@ -150,12 +150,12 @@ pub const NEP2ErrorUtils = struct {
     }
 };
 
-// Tests (converted from Swift NEP2Error tests)
+// Tests
 test "NEP2Error creation and descriptions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test invalid passphrase error (equivalent to Swift NEP2Error tests)
+    // Test invalid passphrase error
     const passphrase_error = NEP2Error.invalidPassphrase("Test passphrase error");
     const passphrase_description = try passphrase_error.getErrorDescription(allocator);
     defer allocator.free(passphrase_description);
@@ -178,7 +178,7 @@ test "NEP2ErrorUtils validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test NEP-2 format validation (equivalent to Swift validation tests)
+    // Test NEP-2 format validation
     try testing.expectError(NEP2Error.InvalidFormat, NEP2ErrorUtils.validateNEP2Format("too_short"));
 
     try testing.expectError(NEP2Error.InvalidFormat, NEP2ErrorUtils.validateNEP2Format("invalid_base58_chars_@#$%^&*()"));
@@ -196,7 +196,7 @@ test "NEP2ErrorUtils common errors" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test common error creation (equivalent to Swift common error tests)
+    // Test common error creation
     var invalid_passphrase = try NEP2ErrorUtils.createInvalidPassphraseError(allocator);
     const passphrase_desc = try invalid_passphrase.getErrorDescription(allocator);
     defer allocator.free(passphrase_desc);

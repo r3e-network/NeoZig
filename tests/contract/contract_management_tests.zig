@@ -1,6 +1,6 @@
 //! Contract Management Tests
 //!
-//! Complete conversion from NeoSwift ContractManagementTests.swift
+//!
 //! Tests contract management functionality.
 
 const std = @import("std");
@@ -12,10 +12,10 @@ const TestUtils = @import("../helpers/test_utilities.zig");
 test "Contract management creation" {
     const allocator = testing.allocator;
 
-    var neo_swift = try TestUtils.makeNeoSwiftStub(allocator);
-    defer TestUtils.destroyNeoSwiftStub(&neo_swift);
+    var client = try TestUtils.makeClientStub(allocator);
+    defer TestUtils.destroyClientStub(&client);
 
-    const contract_mgmt = ContractManagement.init(allocator, &neo_swift);
+    const contract_mgmt = ContractManagement.init(allocator, &client);
 
     try contract_mgmt.validate();
     try testing.expect(contract_mgmt.isNativeContract());

@@ -1,13 +1,13 @@
 //! Neo Witness Implementation
 //!
-//! Complete conversion from NeoSwift NeoWitness.swift
+//! Neo N3
 //! Provides Neo witness representation for protocol responses.
 
 const std = @import("std");
 
 const base64 = std.base64;
 
-/// Neo witness for protocol responses (converted from Swift NeoWitness)
+/// Neo witness for protocol responses
 pub const NeoWitness = struct {
     /// Invocation script (base64 encoded)
     invocation: []const u8,
@@ -17,7 +17,7 @@ pub const NeoWitness = struct {
     const Self = @This();
     const Witness = @import("../../transaction/witness.zig").Witness;
 
-    /// Creates new NeoWitness (equivalent to Swift init(_ invocation: String, _ verification: String))
+    /// Creates new NeoWitness)
     pub fn init(invocation: []const u8, verification: []const u8) Self {
         return Self{
             .invocation = invocation,
@@ -25,7 +25,7 @@ pub const NeoWitness = struct {
         };
     }
 
-    /// Creates NeoWitness from Witness (equivalent to Swift init(_ witness: Witness))
+    /// Creates NeoWitness from Witness)
     pub fn initFromWitness(witness: Witness, allocator: std.mem.Allocator) !Self {
         const invocation_script = witness.getInvocationScript();
         const verification_script = witness.getVerificationScript();
@@ -40,13 +40,13 @@ pub const NeoWitness = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.invocation, other.invocation) and
             std.mem.eql(u8, self.verification, other.verification);
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(self.invocation);
@@ -110,12 +110,12 @@ pub const NeoWitness = struct {
         return invocation_size + verification_size;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try std.fmt.allocPrint(allocator, "{{\"invocation\":\"{s}\",\"verification\":\"{s}\"}}", .{ self.invocation, self.verification });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -183,13 +183,13 @@ fn isValidBase64(data: []const u8) bool {
     return true;
 }
 
-// Tests (converted from Swift NeoWitness tests)
+// Tests
 test "NeoWitness creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
     _ = allocator;
 
-    // Test witness creation (equivalent to Swift init tests)
+    // Test witness creation
     const invocation_b64 = "SGVsbG8gV29ybGQ="; // "Hello World" in base64
     const verification_b64 = "VGVzdCBTY3JpcHQ="; // "Test Script" in base64
 
@@ -208,7 +208,7 @@ test "NeoWitness creation and properties" {
 test "NeoWitness equality and hashing" {
     const testing = std.testing;
 
-    // Test equality (equivalent to Swift Hashable tests)
+    // Test equality
     const witness1 = NeoWitness.init("dGVzdDE=", "dGVzdDI=");
     const witness2 = NeoWitness.init("dGVzdDE=", "dGVzdDI=");
     const witness3 = NeoWitness.init("dGVzdDE=", "dGVzdDM=");
@@ -269,7 +269,7 @@ test "NeoWitness JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const original_witness = NeoWitness.init("dGVzdDE=", "dGVzdDI=");
 
     const json_str = try original_witness.encodeToJson(allocator);

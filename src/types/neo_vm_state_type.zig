@@ -1,13 +1,13 @@
 //! Neo VM State Type implementation
 //!
-//! Complete conversion from NeoSwift NeoVMStateType.swift
+//! Neo N3 
 //! Defines Neo virtual machine execution states.
 
 const std = @import("std");
 
 const errors = @import("../core/errors.zig");
 
-/// Neo VM state type (converted from Swift NeoVMStateType)
+/// Neo VM state type
 pub const NeoVMStateType = enum {
     None,
     Halt,
@@ -16,7 +16,7 @@ pub const NeoVMStateType = enum {
 
     const Self = @This();
 
-    /// Gets JSON value (equivalent to Swift .jsonvalue property)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .None => "NONE",
@@ -26,12 +26,12 @@ pub const NeoVMStateType = enum {
         };
     }
 
-    /// Gets raw value (equivalent to Swift .rawValue property)
+    /// Gets raw value
     pub fn getRawValue(self: Self) []const u8 {
         return self.getJsonValue();
     }
 
-    /// Gets integer value (equivalent to Swift .int property)
+    /// Gets integer value
     pub fn getIntValue(self: Self) i32 {
         return switch (self) {
             .None => 0,
@@ -41,7 +41,7 @@ pub const NeoVMStateType = enum {
         };
     }
 
-    /// Creates from JSON string value (equivalent to Swift fromJsonValue)
+    /// Creates from JSON string value
     pub fn fromJsonValue(value: ?[]const u8) ?Self {
         const actual_value = value orelse return .None;
 
@@ -55,7 +55,7 @@ pub const NeoVMStateType = enum {
         return null;
     }
 
-    /// Creates from integer value (equivalent to Swift fromIntValue)
+    /// Creates from integer value
     pub fn fromIntValue(int_value: ?i32) ?Self {
         const actual_int = int_value orelse return .None;
 
@@ -68,12 +68,12 @@ pub const NeoVMStateType = enum {
         };
     }
 
-    /// Gets all cases (equivalent to Swift .allCases)
+    /// Gets all cases
     pub fn getAllCases() []const Self {
         return &[_]Self{ .None, .Halt, .Fault, .Break };
     }
 
-    /// Decodes from JSON (equivalent to Swift init(from decoder:))
+    /// Decodes from JSON)
     pub fn decodeFromJson(json_value: std.json.Value) !Self {
         return switch (json_value) {
             .string => |s| {
@@ -90,7 +90,7 @@ pub const NeoVMStateType = enum {
         };
     }
 
-    /// Encodes to JSON (equivalent to Swift encode(to:))
+    /// Encodes to JSON)
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         const value = try allocator.dupe(u8, self.getJsonValue());
         return std.json.Value{ .string = value };
@@ -122,11 +122,11 @@ pub const NeoVMStateType = enum {
     }
 };
 
-// Tests (converted from Swift NeoVMStateType tests)
+// Tests
 test "NeoVMStateType values and properties" {
     const testing = std.testing;
 
-    // Test JSON values (equivalent to Swift jsonvalue tests)
+    // Test JSON values
     try testing.expectEqualStrings("NONE", NeoVMStateType.None.getJsonValue());
     try testing.expectEqualStrings("HALT", NeoVMStateType.Halt.getJsonValue());
     try testing.expectEqualStrings("FAULT", NeoVMStateType.Fault.getJsonValue());
@@ -136,7 +136,7 @@ test "NeoVMStateType values and properties" {
     try testing.expectEqualStrings("NONE", NeoVMStateType.None.getRawValue());
     try testing.expectEqualStrings("HALT", NeoVMStateType.Halt.getRawValue());
 
-    // Test integer values (equivalent to Swift .int tests)
+    // Test integer values
     try testing.expectEqual(@as(i32, 0), NeoVMStateType.None.getIntValue());
     try testing.expectEqual(@as(i32, 1), NeoVMStateType.Halt.getIntValue());
     try testing.expectEqual(@as(i32, 2), NeoVMStateType.Fault.getIntValue());
@@ -146,7 +146,7 @@ test "NeoVMStateType values and properties" {
 test "NeoVMStateType conversion from values" {
     const testing = std.testing;
 
-    // Test from JSON value (equivalent to Swift fromJsonValue tests)
+    // Test from JSON value
     try testing.expectEqual(NeoVMStateType.None, NeoVMStateType.fromJsonValue("NONE").?);
     try testing.expectEqual(NeoVMStateType.Halt, NeoVMStateType.fromJsonValue("HALT").?);
     try testing.expectEqual(NeoVMStateType.Fault, NeoVMStateType.fromJsonValue("FAULT").?);
@@ -159,7 +159,7 @@ test "NeoVMStateType conversion from values" {
     // Test invalid value
     try testing.expectEqual(@as(?NeoVMStateType, null), NeoVMStateType.fromJsonValue("INVALID"));
 
-    // Test from integer value (equivalent to Swift fromIntValue tests)
+    // Test from integer value
     try testing.expectEqual(NeoVMStateType.None, NeoVMStateType.fromIntValue(0).?);
     try testing.expectEqual(NeoVMStateType.Halt, NeoVMStateType.fromIntValue(1).?);
     try testing.expectEqual(NeoVMStateType.Fault, NeoVMStateType.fromIntValue(2).?);
@@ -194,7 +194,7 @@ test "NeoVMStateType JSON encoding/decoding" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding (equivalent to Swift Codable tests)
+    // Test JSON encoding
     const halt_json = try NeoVMStateType.Halt.encodeToJson(allocator);
     defer allocator.free(halt_json.string);
 
@@ -217,7 +217,7 @@ test "NeoVMStateType JSON encoding/decoding" {
 test "NeoVMStateType all cases enumeration" {
     const testing = std.testing;
 
-    // Test all cases (equivalent to Swift .allCases tests)
+    // Test all cases
     const all_cases = NeoVMStateType.getAllCases();
     try testing.expectEqual(@as(usize, 4), all_cases.len);
 

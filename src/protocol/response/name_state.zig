@@ -1,6 +1,6 @@
 //! NameState Implementation
 //!
-//! Complete conversion from NeoSwift NameState.swift
+//! Neo N3
 
 const std = @import("std");
 

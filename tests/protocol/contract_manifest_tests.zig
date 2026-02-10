@@ -1,6 +1,6 @@
 //! Contract Manifest Tests
 //!
-//! Complete conversion from NeoSwift ContractManifestTests.swift
+//! Contract manifest tests
 //! Tests contract manifest parsing and validation.
 
 const std = @import("std");

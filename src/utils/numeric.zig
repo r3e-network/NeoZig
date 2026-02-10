@@ -1,6 +1,6 @@
 //! Numeric utilities
 //!
-//! Converted from Swift numeric extensions and operations.
+//! Numeric extensions and operations.
 
 const std = @import("std");
 

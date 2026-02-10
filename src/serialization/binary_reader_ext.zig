@@ -1,7 +1,7 @@
 //! Complete Binary Reader implementation
 //!
-//! Complete conversion from NeoSwift BinaryReader.swift
-//! Provides comprehensive binary deserialization with Swift API compatibility.
+//! Neo N3
+//! Provides comprehensive binary deserialization.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
@@ -11,7 +11,7 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 
-/// Complete binary reader (converted from Swift BinaryReader)
+/// Complete binary reader
 pub const CompleteBinaryReader = struct {
     /// Current reading position
     position: usize,
@@ -22,7 +22,7 @@ pub const CompleteBinaryReader = struct {
 
     const Self = @This();
 
-    /// Creates binary reader (equivalent to Swift init(_ input: Bytes))
+    /// Creates binary reader)
     pub fn init(input: []const u8) Self {
         return Self{
             .position = 0,
@@ -31,17 +31,17 @@ pub const CompleteBinaryReader = struct {
         };
     }
 
-    /// Gets available bytes (equivalent to Swift .available property)
+    /// Gets available bytes
     pub fn getAvailable(self: Self) usize {
         return self.array.len - self.position;
     }
 
-    /// Sets position marker (equivalent to Swift mark())
+    /// Sets position marker)
     pub fn mark(self: *Self) void {
         self.marker = @intCast(self.position);
     }
 
-    /// Resets to marker (equivalent to Swift reset())
+    /// Resets to marker)
     pub fn reset(self: *Self) !void {
         if (self.marker < 0) {
             return errors.SerializationError.InvalidFormat;
@@ -50,8 +50,8 @@ pub const CompleteBinaryReader = struct {
         self.position = @intCast(self.marker);
     }
 
-    /// Reads boolean (equivalent to Swift readBoolean())
-    pub fn readBoolean(self: *Self) !bool {
+    /// Reads boolean value
+    pub fn readBool(self: *Self) !bool {
         if (self.position >= self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
         }
@@ -61,7 +61,7 @@ pub const CompleteBinaryReader = struct {
         return value;
     }
 
-    /// Reads single byte (equivalent to Swift readByte())
+    /// Reads single byte)
     pub fn readByte(self: *Self) !u8 {
         if (self.position >= self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -72,13 +72,13 @@ pub const CompleteBinaryReader = struct {
         return byte;
     }
 
-    /// Reads unsigned byte as integer (equivalent to Swift readUnsignedByte())
+    /// Reads unsigned byte as integer)
     pub fn readUnsignedByte(self: *Self) !u32 {
         const byte = try self.readByte();
         return @intCast(byte);
     }
 
-    /// Reads bytes of specified length (equivalent to Swift readBytes(_ length:))
+    /// Reads bytes of specified length)
     pub fn readBytes(self: *Self, length: usize, allocator: std.mem.Allocator) ![]u8 {
         if (self.position + length > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -100,7 +100,7 @@ pub const CompleteBinaryReader = struct {
         self.position += buffer.len;
     }
 
-    /// Reads 16-bit unsigned integer (equivalent to Swift readUInt16())
+    /// Reads 16-bit unsigned integer)
     pub fn readUInt16(self: *Self) !u16 {
         if (self.position + 2 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -112,7 +112,7 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u16, std.mem.bytesToValue(u16, bytes[0..2]));
     }
 
-    /// Reads 32-bit unsigned integer (equivalent to Swift readUInt32())
+    /// Reads 32-bit unsigned integer)
     pub fn readUInt32(self: *Self) !u32 {
         if (self.position + 4 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -124,7 +124,7 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u32, std.mem.bytesToValue(u32, bytes[0..4]));
     }
 
-    /// Reads 64-bit unsigned integer (equivalent to Swift readUInt64())
+    /// Reads 64-bit unsigned integer)
     pub fn readUInt64(self: *Self) !u64 {
         if (self.position + 8 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -136,25 +136,25 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u64, std.mem.bytesToValue(u64, bytes[0..8]));
     }
 
-    /// Reads signed 16-bit integer (equivalent to Swift readInt16())
+    /// Reads signed 16-bit integer)
     pub fn readInt16(self: *Self) !i16 {
         const unsigned = try self.readUInt16();
         return @bitCast(unsigned);
     }
 
-    /// Reads signed 32-bit integer (equivalent to Swift readInt32())
+    /// Reads signed 32-bit integer)
     pub fn readInt32(self: *Self) !i32 {
         const unsigned = try self.readUInt32();
         return @bitCast(unsigned);
     }
 
-    /// Reads signed 64-bit integer (equivalent to Swift readInt64())
+    /// Reads signed 64-bit integer)
     pub fn readInt64(self: *Self) !i64 {
         const unsigned = try self.readUInt64();
         return @bitCast(unsigned);
     }
 
-    /// Reads variable-length integer (equivalent to Swift readVarInt())
+    /// Reads variable-length integer)
     pub fn readVarInt(self: *Self) !u64 {
         const first_byte = try self.readByte();
 
@@ -166,18 +166,18 @@ pub const CompleteBinaryReader = struct {
         };
     }
 
-    /// Reads variable-length string (equivalent to Swift readVarString())
+    /// Reads variable-length string)
     pub fn readVarString(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         const length = try self.readVarInt();
 
-        if (length > 1024 * 1024) { // 1MB limit
+        if (length > constants.MAX_VAR_STRING_SIZE) { // 1MB limit
             return errors.SerializationError.DataTooLarge;
         }
 
         return try self.readBytes(@intCast(length), allocator);
     }
 
-    /// Reads variable-length byte array (equivalent to Swift readVarBytes())
+    /// Reads variable-length byte array)
     pub fn readVarBytes(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         const length = try self.readVarInt();
 
@@ -188,7 +188,7 @@ pub const CompleteBinaryReader = struct {
         return try self.readBytes(@intCast(length), allocator);
     }
 
-    /// Reads Hash160 (equivalent to Swift Hash160 reading)
+    /// Reads Hash160
     pub fn readHash160(self: *Self) !Hash160 {
         var hash_bytes: [20]u8 = undefined;
         try self.readBytesIntoBuffer(&hash_bytes);
@@ -196,7 +196,7 @@ pub const CompleteBinaryReader = struct {
         return Hash160.fromArray(hash_bytes);
     }
 
-    /// Reads Hash256 (equivalent to Swift Hash256 reading)
+    /// Reads Hash256
     pub fn readHash256(self: *Self) !Hash256 {
         var hash_bytes: [32]u8 = undefined;
         try self.readBytesIntoBuffer(&hash_bytes);
@@ -204,7 +204,7 @@ pub const CompleteBinaryReader = struct {
         return try Hash256.initWithBytes(&hash_bytes);
     }
 
-    /// Reads big integer (equivalent to Swift readBigInteger())
+    /// Reads big integer)
     pub fn readBigInteger(self: *Self, byte_length: usize, allocator: std.mem.Allocator) !u256 {
         const bytes = try self.readBytes(byte_length, allocator);
         defer allocator.free(bytes);
@@ -212,12 +212,12 @@ pub const CompleteBinaryReader = struct {
         return @import("../utils/bytes_extensions.zig").BytesUtils.toBigInt(bytes);
     }
 
-    /// Reads serializable object (equivalent to Swift readSerializable())
+    /// Reads serializable object)
     pub fn readSerializable(self: *Self, comptime T: type, allocator: std.mem.Allocator) !T {
         return try T.deserialize(self, allocator);
     }
 
-    /// Skips bytes (equivalent to Swift skip())
+    /// Skips bytes)
     pub fn skip(self: *Self, byte_count: usize) !void {
         if (self.position + byte_count > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -226,7 +226,7 @@ pub const CompleteBinaryReader = struct {
         self.position += byte_count;
     }
 
-    /// Seeks to position (equivalent to Swift seek())
+    /// Seeks to position)
     pub fn seek(self: *Self, new_position: usize) !void {
         if (new_position > self.array.len) {
             return errors.SerializationError.InvalidLength;
@@ -235,7 +235,7 @@ pub const CompleteBinaryReader = struct {
         self.position = new_position;
     }
 
-    /// Gets current position (equivalent to Swift .position property)
+    /// Gets current position
     pub fn getPosition(self: Self) usize {
         return self.position;
     }
@@ -280,7 +280,7 @@ pub const CompleteBinaryReader = struct {
     }
 };
 
-// Tests (converted from Swift BinaryReader tests)
+// Tests
 test "CompleteBinaryReader basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -297,8 +297,8 @@ test "CompleteBinaryReader basic operations" {
 
     var reader = CompleteBinaryReader.init(&test_data);
 
-    // Test basic reads (equivalent to Swift BinaryReader tests)
-    const bool_val = try reader.readBoolean();
+    // Test basic reads
+    const bool_val = try reader.readBool();
     try testing.expect(bool_val);
 
     const byte_val = try reader.readByte();
@@ -331,14 +331,14 @@ test "CompleteBinaryReader variable-length operations" {
 
     var reader = CompleteBinaryReader.init(&test_data);
 
-    // Test VarInt reading (equivalent to Swift readVarInt tests)
+    // Test VarInt reading
     const varint1 = try reader.readVarInt();
     try testing.expectEqual(@as(u64, 42), varint1);
 
     const varint2 = try reader.readVarInt();
     try testing.expectEqual(@as(u64, 256), varint2);
 
-    // Test VarString reading (equivalent to Swift readVarString tests)
+    // Test VarString reading
     const var_string = try reader.readVarString(allocator);
     defer allocator.free(var_string);
 
@@ -376,7 +376,7 @@ test "CompleteBinaryReader hash operations" {
 
     var reader = CompleteBinaryReader.init(test_data.items);
 
-    // Test hash reading (equivalent to Swift hash reading tests)
+    // Test hash reading
     const read_hash160 = try reader.readHash160();
     try testing.expect(std.mem.eql(u8, &hash160_be, &read_hash160.toArray()));
 
@@ -392,7 +392,7 @@ test "CompleteBinaryReader mark and reset" {
     const test_data = [_]u8{ 0x01, 0x02, 0x03, 0x04, 0x05 };
     var reader = CompleteBinaryReader.init(&test_data);
 
-    // Test mark and reset functionality (equivalent to Swift mark/reset tests)
+    // Test mark and reset functionality
     try testing.expectEqual(@as(usize, 0), reader.getPosition());
 
     reader.mark();
@@ -438,7 +438,7 @@ test "CompleteBinaryReader error conditions" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test reading beyond buffer (equivalent to Swift error tests)
+    // Test reading beyond buffer
     const small_data = [_]u8{ 0x01, 0x02 };
     var reader = CompleteBinaryReader.init(&small_data);
 

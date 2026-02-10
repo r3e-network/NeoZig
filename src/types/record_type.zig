@@ -1,13 +1,13 @@
 //! Record Type implementation
 //!
-//! Complete conversion from NeoSwift RecordType.swift
+//! Neo N3 
 //! Provides DNS record types for Neo Name Service operations.
 
 const std = @import("std");
 
 const errors = @import("../core/errors.zig");
 
-/// DNS record types (converted from Swift RecordType)
+/// DNS record types
 pub const RecordType = enum(u8) {
     /// An address record (IPv4)
     A = 1,
@@ -20,7 +20,7 @@ pub const RecordType = enum(u8) {
 
     const Self = @This();
 
-    /// Gets JSON value (equivalent to Swift .jsonValue property)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .A => "A",
@@ -30,12 +30,12 @@ pub const RecordType = enum(u8) {
         };
     }
 
-    /// Gets byte value (equivalent to Swift .byte property)
+    /// Gets byte value
     pub fn getByte(self: Self) u8 {
         return @intFromEnum(self);
     }
 
-    /// Creates from byte value (equivalent to Swift ByteEnum.throwingValueOf)
+    /// Creates from byte value
     pub fn fromByte(byte_value: u8) ?Self {
         return switch (byte_value) {
             1 => .A,
@@ -46,14 +46,14 @@ pub const RecordType = enum(u8) {
         };
     }
 
-    /// Creates from byte value with error (equivalent to Swift throwingValueOf)
+    /// Creates from byte value with error
     pub fn throwingValueOf(byte_value: u8) !Self {
         return Self.fromByte(byte_value) orelse {
             return errors.throwIllegalArgument("Invalid record type byte value");
         };
     }
 
-    /// Creates from JSON value (equivalent to Swift fromJsonValue)
+    /// Creates from JSON value
     pub fn fromJsonValue(json_value: []const u8) ?Self {
         if (std.mem.eql(u8, json_value, "A")) return .A;
         if (std.mem.eql(u8, json_value, "CNAME")) return .CNAME;
@@ -62,7 +62,7 @@ pub const RecordType = enum(u8) {
         return null;
     }
 
-    /// Gets all record types (equivalent to Swift CaseIterable.allCases)
+    /// Gets all record types
     pub fn getAllCases() []const Self {
         return &[_]Self{ .A, .CNAME, .TXT, .AAAA };
     }
@@ -139,7 +139,7 @@ pub const RecordType = enum(u8) {
         }
     }
 
-    /// Decodes from JSON (equivalent to Swift Codable)
+    /// Decodes from JSON
     pub fn decodeFromJson(json_value: std.json.Value) !Self {
         return switch (json_value) {
             .string => |s| {
@@ -156,7 +156,7 @@ pub const RecordType = enum(u8) {
         };
     }
 
-    /// Encodes to JSON (equivalent to Swift Codable)
+    /// Encodes to JSON
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         const value = try allocator.dupe(u8, self.getJsonValue());
         return std.json.Value{ .string = value };
@@ -240,11 +240,11 @@ pub const RecordTypeUtils = struct {
     }
 };
 
-// Tests (converted from Swift RecordType tests)
+// Tests
 test "RecordType values and properties" {
     const testing = std.testing;
 
-    // Test record type values (equivalent to Swift RecordType tests)
+    // Test record type values
     try testing.expectEqual(@as(u8, 1), RecordType.A.getByte());
     try testing.expectEqual(@as(u8, 5), RecordType.CNAME.getByte());
     try testing.expectEqual(@as(u8, 16), RecordType.TXT.getByte());
@@ -266,7 +266,7 @@ test "RecordType values and properties" {
 test "RecordType conversion operations" {
     const testing = std.testing;
 
-    // Test from byte conversion (equivalent to Swift ByteEnum tests)
+    // Test from byte conversion
     try testing.expectEqual(RecordType.A, RecordType.fromByte(1).?);
     try testing.expectEqual(RecordType.CNAME, RecordType.fromByte(5).?);
     try testing.expectEqual(RecordType.TXT, RecordType.fromByte(16).?);
@@ -289,7 +289,7 @@ test "RecordType conversion operations" {
 test "RecordType data validation" {
     const testing = std.testing;
 
-    // Test IPv4 address validation (equivalent to Swift data validation tests)
+    // Test IPv4 address validation
     try RecordType.A.validateRecordData("192.168.1.1");
     try RecordType.A.validateRecordData("10.0.0.1");
 
@@ -315,7 +315,7 @@ test "RecordType data validation" {
 test "RecordType support and detection" {
     const testing = std.testing;
 
-    // Test data type support (equivalent to Swift support tests)
+    // Test data type support
     try testing.expect(RecordType.A.supportsIPv4());
     try testing.expect(!RecordType.A.supportsIPv6());
     try testing.expect(!RecordType.A.supportsText());
@@ -357,7 +357,7 @@ test "RecordType JSON operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const record_type = RecordType.A;
 
     const encoded_json = try record_type.encodeToJson(allocator);

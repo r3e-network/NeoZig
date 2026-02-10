@@ -1,6 +1,6 @@
 //! Complete Witness Scope implementation
 //!
-//! Complete conversion from NeoSwift WitnessScope.swift
+//! Neo N3
 //! Provides comprehensive witness scope functionality with combination operations.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 
-/// Complete witness scope (converted from Swift WitnessScope)
+/// Complete witness scope
 pub const CompleteWitnessScope = enum(u8) {
     /// Witness only used for transactions, disabled in contracts
     None = 0x00,
@@ -25,7 +25,7 @@ pub const CompleteWitnessScope = enum(u8) {
 
     const Self = @This();
 
-    /// Gets JSON value (equivalent to Swift .jsonValue property)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .None => "None",
@@ -37,12 +37,12 @@ pub const CompleteWitnessScope = enum(u8) {
         };
     }
 
-    /// Gets byte value (equivalent to Swift .byte property)
+    /// Gets byte value
     pub fn getByte(self: Self) u8 {
         return @intFromEnum(self);
     }
 
-    /// Creates from byte value (equivalent to Swift ByteEnum.throwingValueOf)
+    /// Creates from byte value
     pub fn fromByte(byte_value: u8) ?Self {
         return switch (byte_value) {
             0x00 => .None,
@@ -55,14 +55,14 @@ pub const CompleteWitnessScope = enum(u8) {
         };
     }
 
-    /// Creates from byte value with error (equivalent to Swift throwingValueOf)
+    /// Creates from byte value with error
     pub fn throwingValueOf(byte_value: u8) !Self {
         return Self.fromByte(byte_value) orelse {
             return errors.throwIllegalArgument("Invalid witness scope byte value");
         };
     }
 
-    /// Creates from JSON value (equivalent to Swift fromJsonValue)
+    /// Creates from JSON value
     pub fn fromJsonValue(json_value: []const u8) ?Self {
         if (std.mem.eql(u8, json_value, "None")) return .None;
         if (std.mem.eql(u8, json_value, "CalledByEntry")) return .CalledByEntry;
@@ -73,12 +73,12 @@ pub const CompleteWitnessScope = enum(u8) {
         return null;
     }
 
-    /// Gets all witness scopes (equivalent to Swift allCases)
+    /// Gets all witness scopes
     pub fn getAllCases() []const Self {
         return &[_]Self{ .None, .CalledByEntry, .CustomContracts, .CustomGroups, .WitnessRules, .Global };
     }
 
-    /// Combines scopes into single byte (equivalent to Swift combineScopes)
+    /// Combines scopes into single byte
     pub fn combineScopes(scopes: []const Self) u8 {
         var combined: u8 = 0;
         for (scopes) |scope| {
@@ -87,7 +87,7 @@ pub const CompleteWitnessScope = enum(u8) {
         return combined;
     }
 
-    /// Extracts scopes from combined byte (equivalent to Swift extractCombinedScopes)
+    /// Extracts scopes from combined byte
     pub fn extractCombinedScopes(combined_scopes: u8, allocator: std.mem.Allocator) ![]Self {
         if (combined_scopes == Self.None.getByte()) {
             var result = try allocator.alloc(Self, 1);
@@ -168,7 +168,7 @@ pub const CompleteWitnessScope = enum(u8) {
         return true;
     }
 
-    /// Decodes from JSON (equivalent to Swift Codable)
+    /// Decodes from JSON
     pub fn decodeFromJson(json_value: std.json.Value) !Self {
         return switch (json_value) {
             .string => |s| {
@@ -185,14 +185,14 @@ pub const CompleteWitnessScope = enum(u8) {
         };
     }
 
-    /// Encodes to JSON (equivalent to Swift Codable)
+    /// Encodes to JSON
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         const value = try allocator.dupe(u8, self.getJsonValue());
         return std.json.Value{ .string = value };
     }
 };
 
-/// Witness scopes from string (converted from Swift @WitnessScopesFromString)
+/// Witness scopes from string
 pub const WitnessScopesFromString = struct {
     scopes: []const CompleteWitnessScope,
 
@@ -203,7 +203,7 @@ pub const WitnessScopesFromString = struct {
         return Self{ .scopes = scopes };
     }
 
-    /// Parses from string (equivalent to Swift property wrapper decoding)
+    /// Parses from string
     pub fn fromString(string_value: []const u8, allocator: std.mem.Allocator) !Self {
         // Remove spaces and split by commas
         var cleaned = ArrayList(u8).init(allocator);
@@ -230,7 +230,7 @@ pub const WitnessScopesFromString = struct {
         };
     }
 
-    /// Converts to string (equivalent to Swift property wrapper encoding)
+    /// Converts to string
     pub fn toString(self: Self, allocator: std.mem.Allocator) ![]u8 {
         if (self.scopes.len == 0) return try allocator.dupe(u8, "");
 
@@ -357,11 +357,11 @@ pub const TransactionType = enum {
     FeeOnly,
 };
 
-// Tests (converted from Swift WitnessScope tests)
+// Tests
 test "CompleteWitnessScope values and properties" {
     const testing = std.testing;
 
-    // Test scope values (equivalent to Swift WitnessScope tests)
+    // Test scope values
     try testing.expectEqual(@as(u8, 0x00), CompleteWitnessScope.None.getByte());
     try testing.expectEqual(@as(u8, 0x01), CompleteWitnessScope.CalledByEntry.getByte());
     try testing.expectEqual(@as(u8, 0x10), CompleteWitnessScope.CustomContracts.getByte());
@@ -383,12 +383,12 @@ test "CompleteWitnessScope combination operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test scope combination (equivalent to Swift combineScopes tests)
+    // Test scope combination
     const scopes = [_]CompleteWitnessScope{ .CalledByEntry, .CustomContracts };
     const combined_byte = CompleteWitnessScope.combineScopes(&scopes);
     try testing.expectEqual(@as(u8, 0x11), combined_byte); // 0x01 | 0x10 = 0x11
 
-    // Test scope extraction (equivalent to Swift extractCombinedScopes tests)
+    // Test scope extraction
     const extracted_scopes = try CompleteWitnessScope.extractCombinedScopes(combined_byte, allocator);
     defer allocator.free(extracted_scopes);
 
@@ -408,7 +408,7 @@ test "WitnessScopesFromString operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test parsing from string (equivalent to Swift property wrapper tests)
+    // Test parsing from string
     var scopes_from_string = try WitnessScopesFromString.fromString("CalledByEntry,CustomContracts", allocator);
     defer scopes_from_string.deinit(allocator);
 
@@ -437,7 +437,7 @@ test "WitnessScopeUtils utility functions" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test scope compatibility (equivalent to Swift compatibility tests)
+    // Test scope compatibility
     try testing.expect(CompleteWitnessScope.areCompatible(.CalledByEntry, .CustomContracts));
     try testing.expect(CompleteWitnessScope.areCompatible(.CustomContracts, .CustomGroups));
     try testing.expect(!CompleteWitnessScope.areCompatible(.Global, .CalledByEntry));

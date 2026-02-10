@@ -1,11 +1,11 @@
 //! Call Flags implementation
 //!
-//! Complete conversion from NeoSwift CallFlags.swift
+//! Neo N3 
 //! Defines contract invocation permission flags.
 
 const std = @import("std");
 
-/// Contract call flags (converted from Swift CallFlags)
+/// Contract call flags
 pub const CallFlags = enum(u8) {
     /// No permissions
     None = 0x00,
@@ -26,7 +26,7 @@ pub const CallFlags = enum(u8) {
 
     const Self = @This();
 
-    /// Gets flag value (equivalent to Swift .value property)
+    /// Gets flag value
     pub fn getValue(self: Self) u8 {
         return @intFromEnum(self);
     }
@@ -56,7 +56,7 @@ pub const CallFlags = enum(u8) {
         return @enumFromInt(value);
     }
 
-    /// Gets flag description (equivalent to Swift description)
+    /// Gets flag description
     pub fn getDescription(self: Self) []const u8 {
         return switch (self) {
             .None => "None",
@@ -71,11 +71,11 @@ pub const CallFlags = enum(u8) {
     }
 };
 
-// Tests (converted from Swift CallFlags tests)
+// Tests
 test "CallFlags values and operations" {
     const testing = std.testing;
 
-    // Test flag values (equivalent to Swift value tests)
+    // Test flag values
     try testing.expectEqual(@as(u8, 0x00), CallFlags.None.getValue());
     try testing.expectEqual(@as(u8, 0x01), CallFlags.ReadStates.getValue());
     try testing.expectEqual(@as(u8, 0x02), CallFlags.WriteStates.getValue());
@@ -87,7 +87,7 @@ test "CallFlags values and operations" {
 test "CallFlags permission checking" {
     const testing = std.testing;
 
-    // Test permission detection (equivalent to Swift permission tests)
+    // Test permission detection
     try testing.expect(CallFlags.ReadStates.hasReadStates());
     try testing.expect(!CallFlags.ReadStates.hasWriteStates());
     try testing.expect(!CallFlags.ReadStates.hasAllowCall());
@@ -119,7 +119,7 @@ test "CallFlags combination" {
 test "CallFlags from value" {
     const testing = std.testing;
 
-    // Test creation from value (equivalent to Swift fromValue tests)
+    // Test creation from value
     const flags_from_value = CallFlags.fromValue(0x0F);
     try testing.expectEqual(CallFlags.All, flags_from_value);
 

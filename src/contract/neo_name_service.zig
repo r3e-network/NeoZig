@@ -1,6 +1,6 @@
 //! Neo Name Service implementation
 //!
-//! Complete conversion from NeoSwift NeoNameService.swift
+//! Neo N3 
 //! Provides complete NeoNameService contract interaction and domain management.
 
 const std = @import("std");
@@ -15,13 +15,13 @@ const TransactionBuilder = @import("../transaction/transaction_builder.zig").Tra
 const StackItem = @import("../rpc/responses.zig").StackItem;
 const RecordType = @import("../types/record_type.zig").RecordType;
 const Iterator = @import("iterator.zig").Iterator;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
 
-/// Neo Name Service contract (converted from Swift NeoNameService)
+/// Neo Name Service contract
 pub const NeoNameService = struct {
-    /// Method names (match Swift constants)
+    /// Method names
     pub const ADD_ROOT = "addRoot";
     pub const ROOTS = "roots";
     pub const SET_PRICE = "setPrice";
@@ -37,7 +37,7 @@ pub const NeoNameService = struct {
     pub const RESOLVE = "resolve";
     pub const PROPERTIES = "properties";
 
-    /// Property names (match Swift property constants)
+    /// Property names
     pub const NAME_PROPERTY = "name";
     pub const EXPIRATION_PROPERTY = "expiration";
     pub const ADMIN_PROPERTY = "admin";
@@ -47,10 +47,10 @@ pub const NeoNameService = struct {
 
     const Self = @This();
 
-    /// Creates NeoNameService instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, nns_resolver: Hash160, neo_swift: ?*anyopaque) Self {
+    /// Creates NeoNameService instance
+    pub fn init(allocator: std.mem.Allocator, nns_resolver: Hash160, client: ?*anyopaque) Self {
         return Self{
-            .non_fungible_token = NonFungibleToken.init(allocator, nns_resolver, neo_swift),
+            .non_fungible_token = NonFungibleToken.init(allocator, nns_resolver, client),
         };
     }
 
@@ -69,65 +69,65 @@ pub const NeoNameService = struct {
         return self.non_fungible_token.isNativeContract();
     }
 
-    /// Gets contract name (equivalent to Swift getName() override)
+    /// Gets contract name override)
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return "NameService";
     }
 
-    /// Gets contract symbol (equivalent to Swift getSymbol() override)
+    /// Gets contract symbol override)
     pub fn getSymbol(self: Self) ![]const u8 {
         _ = self;
         return "NNS";
     }
 
-    /// Gets contract decimals (equivalent to Swift getDecimals() override)
+    /// Gets contract decimals override)
     pub fn getDecimals(self: Self) !u8 {
         _ = self;
         return 0; // NFTs are not divisible
     }
 
     // ============================================================================
-    // ROOT MANAGEMENT (converted from Swift root management methods)
+    // ROOT MANAGEMENT
     // ============================================================================
 
-    /// Adds root domain (equivalent to Swift addRoot)
+    /// Adds root domain
     pub fn addRoot(self: Self, root: []const u8) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.string(root)};
         return try self.non_fungible_token.token.smart_contract.invokeFunction(ADD_ROOT, &params);
     }
 
-    /// Gets all root domains (equivalent to Swift roots)
+    /// Gets all root domains
     pub fn getRoots(self: Self) !Iterator([]const u8) {
         return try self.callFunctionReturningIterator([]const u8, ROOTS, &[_]ContractParameter{}, stringMapper);
     }
 
     // ============================================================================
-    // PRICING METHODS (converted from Swift pricing methods)
+    // PRICING METHODS
     // ============================================================================
 
-    /// Sets domain price (equivalent to Swift setPrice)
+    /// Sets domain price
     pub fn setPrice(self: Self, price: i64) !TransactionBuilder {
         const params = [_]ContractParameter{ContractParameter.integer(price)};
         return try self.non_fungible_token.token.smart_contract.invokeFunction(SET_PRICE, &params);
     }
 
-    /// Gets domain price (equivalent to Swift getPrice)
+    /// Gets domain price
     pub fn getPrice(self: Self) !i64 {
         return try self.non_fungible_token.token.smart_contract.callFunctionReturningInt(GET_PRICE, &[_]ContractParameter{});
     }
 
     // ============================================================================
-    // DOMAIN AVAILABILITY AND REGISTRATION (converted from Swift domain methods)
+    // DOMAIN AVAILABILITY AND REGISTRATION
     // ============================================================================
 
-    /// Checks if domain is available (equivalent to Swift isAvailable)
+    /// Checks if domain is available
     pub fn isAvailable(self: Self, domain_name: []const u8) !bool {
         const params = [_]ContractParameter{ContractParameter.string(domain_name)};
         return try self.non_fungible_token.token.smart_contract.callFunctionReturningBool(IS_AVAILABLE, &params);
     }
 
-    /// Registers domain (equivalent to Swift register)
+    /// Registers domain
     pub fn register(
         self: Self,
         domain_name: []const u8,
@@ -147,7 +147,7 @@ pub const NeoNameService = struct {
         return try self.non_fungible_token.token.smart_contract.invokeFunction(REGISTER, params.items);
     }
 
-    /// Renews domain registration (equivalent to Swift renew)
+    /// Renews domain registration
     pub fn renew(self: Self, domain_name: []const u8, years: u32) !TransactionBuilder {
         const params = [_]ContractParameter{
             ContractParameter.string(domain_name),
@@ -157,10 +157,10 @@ pub const NeoNameService = struct {
     }
 
     // ============================================================================
-    // DOMAIN ADMINISTRATION (converted from Swift admin methods)
+    // DOMAIN ADMINISTRATION
     // ============================================================================
 
-    /// Sets domain admin (equivalent to Swift setAdmin)
+    /// Sets domain admin
     pub fn setAdmin(self: Self, domain_name: []const u8, admin: Hash160) !TransactionBuilder {
         const params = [_]ContractParameter{
             ContractParameter.string(domain_name),
@@ -170,10 +170,10 @@ pub const NeoNameService = struct {
     }
 
     // ============================================================================
-    // RECORD MANAGEMENT (converted from Swift record methods)
+    // RECORD MANAGEMENT
     // ============================================================================
 
-    /// Sets domain record (equivalent to Swift setRecord)
+    /// Sets domain record
     pub fn setRecord(
         self: Self,
         domain_name: []const u8,
@@ -188,7 +188,7 @@ pub const NeoNameService = struct {
         return try self.non_fungible_token.token.smart_contract.invokeFunction(SET_RECORD, &params);
     }
 
-    /// Gets domain record (equivalent to Swift getRecord)
+    /// Gets domain record
     pub fn getRecord(
         self: Self,
         domain_name: []const u8,
@@ -201,13 +201,13 @@ pub const NeoNameService = struct {
         return try self.non_fungible_token.token.smart_contract.callFunctionReturningString(GET_RECORD, &params);
     }
 
-    /// Gets all domain records (equivalent to Swift getAllRecords)
+    /// Gets all domain records
     pub fn getAllRecords(self: Self, domain_name: []const u8) !Iterator(DomainRecord) {
         const params = [_]ContractParameter{ContractParameter.string(domain_name)};
         return try self.callFunctionReturningIterator(DomainRecord, GET_ALL_RECORDS, &params, recordMapper);
     }
 
-    /// Deletes domain record (equivalent to Swift deleteRecord)
+    /// Deletes domain record
     pub fn deleteRecord(
         self: Self,
         domain_name: []const u8,
@@ -220,7 +220,7 @@ pub const NeoNameService = struct {
         return try self.non_fungible_token.token.smart_contract.invokeFunction(DELETE_RECORD, &params);
     }
 
-    /// Resolves domain (equivalent to Swift resolve)
+    /// Resolves domain
     pub fn resolve(
         self: Self,
         domain_name: []const u8,
@@ -234,20 +234,20 @@ pub const NeoNameService = struct {
     }
 
     // ============================================================================
-    // DOMAIN PROPERTIES (converted from Swift property methods)
+    // DOMAIN PROPERTIES
     // ============================================================================
 
-    /// Gets domain properties (equivalent to Swift properties)
+    /// Gets domain properties
     pub fn getDomainProperties(self: Self, domain_name: []const u8) !DomainProperties {
         const params = [_]ContractParameter{ContractParameter.string(domain_name)};
 
         const smart_contract = self.non_fungible_token.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, PROPERTIES, &params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, PROPERTIES, &params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -364,12 +364,12 @@ pub const NeoNameService = struct {
         mapper: fn (StackItem, std.mem.Allocator) !T,
     ) !Iterator(T) {
         const smart_contract = self.non_fungible_token.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -385,7 +385,7 @@ pub const NeoNameService = struct {
 
         return try Iterator(T).init(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
             mapper,
@@ -601,14 +601,14 @@ pub const CompleteDomainInfo = struct {
     }
 };
 
-// Tests (converted from Swift NeoNameService tests)
+// Tests
 test "NeoNameService creation and basic properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     const nns = NeoNameService.init(allocator, NNSUtils.DEFAULT_NNS_RESOLVER, null);
 
-    // Test basic properties (equivalent to Swift NeoNameService tests)
+    // Test basic properties
     try testing.expectEqualStrings("NameService", try nns.getName());
     try testing.expectEqualStrings("NNS", try nns.getSymbol());
     try testing.expectEqual(@as(u8, 0), try nns.getDecimals());
@@ -620,7 +620,7 @@ test "NeoNameService domain operations" {
 
     const nns = NeoNameService.init(allocator, NNSUtils.DEFAULT_NNS_RESOLVER, null);
 
-    // Test domain availability check (equivalent to Swift domain tests)
+    // Test domain availability check
     try testing.expectError(errors.NeoError.InvalidConfiguration, nns.isAvailable("test.neo"));
 
     // Test domain registration
@@ -642,7 +642,7 @@ test "NeoNameService record management" {
 
     const nns = NeoNameService.init(allocator, NNSUtils.DEFAULT_NNS_RESOLVER, null);
 
-    // Test record operations (equivalent to Swift record tests)
+    // Test record operations
     var set_record_tx = try nns.setRecord("example.neo", RecordType.A, "192.168.1.1");
     defer set_record_tx.deinit();
 
@@ -663,7 +663,7 @@ test "NNSUtils validation and utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test domain validation (equivalent to Swift validation tests)
+    // Test domain validation
     try NNSUtils.validateDomainName("valid.neo");
 
     try testing.expectError(errors.ContractError.InvalidContract, NNSUtils.validateDomainName("invalid"));

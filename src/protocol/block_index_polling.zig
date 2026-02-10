@@ -1,6 +1,6 @@
 //! Block Index Polling implementation
 //!
-//! Complete conversion from NeoSwift BlockIndexPolling.swift
+//! Neo N3
 //! Provides block polling functionality for real-time blockchain monitoring.
 
 const std = @import("std");
@@ -13,7 +13,7 @@ const errors = @import("../core/errors.zig");
 
 const log = std.log.scoped(.neo_protocol);
 
-/// Block index actor for thread-safe block tracking (converted from Swift BlockIndexActor)
+/// Block index actor for thread-safe block tracking
 pub const BlockIndexActor = struct {
     block_index: ?u32,
     mutex: std.Thread.Mutex,
@@ -28,7 +28,7 @@ pub const BlockIndexActor = struct {
         };
     }
 
-    /// Sets block index (equivalent to Swift setIndex)
+    /// Sets block index
     pub fn setIndex(self: *Self, index: u32) void {
         self.mutex.lock();
         defer self.mutex.unlock();
@@ -36,7 +36,7 @@ pub const BlockIndexActor = struct {
         self.block_index = index;
     }
 
-    /// Gets block index (equivalent to Swift blockIndex access)
+    /// Gets block index
     pub fn getIndex(self: *Self) ?u32 {
         self.mutex.lock();
         defer self.mutex.unlock();
@@ -75,7 +75,7 @@ pub const PollingSource = struct {
     get_block_count: *const fn (?*anyopaque) anyerror!u32,
 };
 
-/// Block index polling (converted from Swift BlockIndexPolling)
+/// Block index polling
 pub const BlockIndexPolling = struct {
     current_block_index: BlockIndexActor,
 
@@ -88,7 +88,7 @@ pub const BlockIndexPolling = struct {
         };
     }
 
-    /// Starts polling for new blocks (equivalent to Swift blockIndexPublisher)
+    /// Starts polling for new blocks
     pub fn startPolling(
         self: *Self,
         source: PollingSource,
@@ -128,7 +128,7 @@ pub const BlockIndexPolling = struct {
         return control;
     }
 
-    /// Polls for new block indices (equivalent to Swift polling logic)
+    /// Polls for new block indices
     pub fn pollForNewBlocks(
         self: *Self,
         source: PollingSource,
@@ -395,11 +395,11 @@ fn pollingTestGetBlockCount(ctx: ?*anyopaque) anyerror!u32 {
     return handle.value;
 }
 
-// Tests (converted from Swift BlockIndexPolling tests)
+// Tests
 test "BlockIndexActor operations" {
     const testing = std.testing;
 
-    // Test block index actor (equivalent to Swift BlockIndexActor tests)
+    // Test block index actor
     var actor = BlockIndexActor.init();
 
     try testing.expect(!actor.hasIndex());
@@ -422,7 +422,7 @@ test "BlockIndexActor operations" {
 test "BlockIndexPolling basic operations" {
     const testing = std.testing;
 
-    // Test polling creation (equivalent to Swift BlockIndexPolling tests)
+    // Test polling creation
     var polling = BlockIndexPolling.init();
 
     try testing.expect(polling.getCurrentBlockIndex() == null);
@@ -461,7 +461,7 @@ test "BlockIndexPolling new blocks detection" {
 test "PollingConfig operations" {
     const testing = std.testing;
 
-    // Test polling configuration (equivalent to Swift configuration tests)
+    // Test polling configuration
     const default_config = PollingConfig.neoDefault();
     try testing.expectEqual(@as(u32, 15000), default_config.interval_ms);
     try testing.expectEqual(@as(u32, 10), default_config.max_blocks_per_poll);
@@ -481,7 +481,7 @@ test "PollingConfig operations" {
 test "PollingUtils configuration validation" {
     const testing = std.testing;
 
-    // Test configuration validation (equivalent to Swift validation tests)
+    // Test configuration validation
     const valid_config = PollingUtils.createPollingConfig(15000, 10, true);
     try PollingUtils.validatePollingConfig(valid_config);
 

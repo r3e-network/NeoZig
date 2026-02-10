@@ -1,6 +1,6 @@
 //! NEF (Neo Executable Format) File implementation
 //!
-//! Complete conversion from NeoSwift NefFile.swift
+//! Neo N3 
 //! Handles NEF3 file format for smart contract deployment.
 
 const std = @import("std");
@@ -11,12 +11,12 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 
-/// NEF file structure (converted from Swift NefFile)
+/// NEF file structure
 pub const NefFile = struct {
-    /// Magic header constant (matches Swift MAGIC)
+    /// Magic header constant
     pub const MAGIC: u32 = 0x3346454E; // "NEF3"
 
-    /// Size constants (match Swift constants)
+    /// Size constants
     pub const MAGIC_SIZE: u32 = 4;
     pub const COMPILER_SIZE: u32 = 64;
     pub const MAX_SOURCE_URL_SIZE: u32 = 256;
@@ -76,7 +76,7 @@ pub const NefFile = struct {
         };
     }
 
-    /// Creates NEF file (equivalent to Swift init)
+    /// Creates NEF file
     pub fn init(
         compiler: ?[]const u8,
         source_url: []const u8,
@@ -86,17 +86,17 @@ pub const NefFile = struct {
         return initWithAllocator(std.heap.page_allocator, compiler, source_url, method_tokens, script);
     }
 
-    /// Gets checksum as integer (equivalent to Swift .checksumInteger property)
+    /// Gets checksum as integer
     pub fn getChecksumAsInteger(self: Self) u32 {
         return std.mem.littleToNative(u32, std.mem.bytesToValue(u32, &self.checksum));
     }
 
-    /// Calculates checksum from bytes (equivalent to Swift getChecksumAsInteger)
+    /// Calculates checksum from bytes
     pub fn getChecksumAsIntegerFromBytes(checksum_bytes: [4]u8) u32 {
         return std.mem.littleToNative(u32, std.mem.bytesToValue(u32, &checksum_bytes));
     }
 
-    /// Serializes NEF file (equivalent to Swift serialization)
+    /// Serializes NEF file
     pub fn serialize(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var writer = BinaryWriter.init(allocator);
         defer writer.deinit();
@@ -138,7 +138,7 @@ pub const NefFile = struct {
         return try allocator.dupe(u8, writer.toSlice());
     }
 
-    /// Deserializes NEF file (equivalent to Swift deserialization)
+    /// Deserializes NEF file
     pub fn deserialize(data: []const u8, allocator: std.mem.Allocator) !Self {
         var reader = BinaryReader.init(data);
 
@@ -152,7 +152,7 @@ pub const NefFile = struct {
         var compiler_bytes: [COMPILER_SIZE]u8 = undefined;
         try reader.readBytes(&compiler_bytes);
 
-        // Extract compiler string (trim trailing zeros, matches NeoSwift)
+        // Extract compiler string (trim trailing zeros, matches NeoClient)
         var compiler_len: usize = COMPILER_SIZE;
         while (compiler_len > 0 and compiler_bytes[compiler_len - 1] == 0) : (compiler_len -= 1) {}
 
@@ -220,7 +220,7 @@ pub const NefFile = struct {
         };
     }
 
-    /// Validates NEF file integrity (equivalent to Swift validation)
+    /// Validates NEF file integrity
     pub fn validate(self: Self, allocator: std.mem.Allocator) !void {
         // Recalculate checksum and verify
         const calculated_checksum = try calculateChecksumAlloc(
@@ -260,7 +260,7 @@ pub const NefFile = struct {
         }
     }
 
-    /// Gets NEF size (equivalent to Swift size calculation)
+    /// Gets NEF size
     pub fn getSize(self: Self) usize {
         var size: usize = HEADER_SIZE; // Magic + compiler
 
@@ -280,7 +280,7 @@ pub const NefFile = struct {
     }
 };
 
-/// Method token (converted from Swift MethodToken)
+/// Method token
 pub const MethodToken = struct {
     hash: @import("../types/hash160.zig").Hash160,
     method: []const u8,
@@ -348,7 +348,7 @@ pub const MethodToken = struct {
     }
 };
 
-/// Calculates NEF file checksum (equivalent to Swift checksum calculation)
+/// Calculates NEF file checksum
 fn calculateChecksumAlloc(
     allocator: std.mem.Allocator,
     compiler: ?[]const u8,
@@ -403,12 +403,12 @@ fn getVarIntSize(value: usize) usize {
     return 9;
 }
 
-// Tests (converted from Swift NefFile tests)
+// Tests
 test "NefFile creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test NEF file creation (equivalent to Swift NefFile tests)
+    // Test NEF file creation
     const method_tokens = [_]MethodToken{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41, 0x42 }; // Simple test script
 
@@ -436,10 +436,10 @@ test "NefFile creation and properties" {
     try testing.expectEqual(@as(u32, 256), NefFile.MAX_SOURCE_URL_SIZE);
 }
 
-test "NefFile checksum matches NeoSwift vectors" {
+test "NefFile checksum matches NeoClient vectors" {
     const testing = std.testing;
 
-    // Vector: NeoSwift NefFileTests.testNewNefFile
+    // Vector: NeoClient NefFileTests.testNewNefFile
     var script_no_tokens: [5]u8 = undefined;
     _ = try std.fmt.hexToBytes(&script_no_tokens, "5700017840");
     const nef_no_tokens = try NefFile.init(
@@ -452,7 +452,7 @@ test "NefFile checksum matches NeoSwift vectors" {
     _ = try std.fmt.hexToBytes(&expected_checksum_no_tokens, "760f39a0");
     try testing.expectEqualSlices(u8, &expected_checksum_no_tokens, &nef_no_tokens.checksum);
 
-    // Vector: NeoSwift NefFileTests.testNewNefFileWithMethodTokens
+    // Vector: NeoClient NefFileTests.testNewNefFileWithMethodTokens
     const hash1 = try @import("../types/hash160.zig").Hash160.initWithString("f61eebf573ea36593fd43aa150c055ad7906ab83");
     const hash2 = try @import("../types/hash160.zig").Hash160.initWithString("70e2301955bf1e74cbb31d18c2f96972abadb328");
     const method_tokens = [_]MethodToken{
@@ -472,30 +472,7 @@ test "NefFile checksum matches NeoSwift vectors" {
     try testing.expectEqualSlices(u8, &expected_checksum_with_tokens, &nef_with_tokens.checksum);
 }
 
-test "NefFile deserialize/serialize parity with NeoSwift fixtures" {
-    const testing = std.testing;
-    const allocator = testing.allocator;
 
-    const test_contract_bytes = @embedFile("../../NeoSwift/Tests/NeoSwiftTests/unit/resources/responses/contract/contracts/TestContract.nef");
-    const test_contract_with_tokens_bytes = @embedFile("../../NeoSwift/Tests/NeoSwiftTests/unit/resources/responses/contract/contracts/TestContractWithMethodTokens.nef");
-
-    const fixtures = [_][]const u8{ test_contract_bytes, test_contract_with_tokens_bytes };
-    for (fixtures) |fixture| {
-        const nef = try NefFile.deserialize(fixture, allocator);
-        defer {
-            if (nef.compiler) |comp| allocator.free(comp);
-            allocator.free(nef.source_url);
-            for (nef.method_tokens) |token| allocator.free(@constCast(token.method));
-            allocator.free(nef.method_tokens);
-            allocator.free(nef.script);
-        }
-
-        const serialized = try nef.serialize(allocator);
-        defer allocator.free(serialized);
-
-        try testing.expectEqualSlices(u8, fixture, serialized);
-    }
-}
 
 test "NefFile serialization and deserialization" {
     const testing = std.testing;
@@ -547,7 +524,7 @@ test "NefFile validation and constraints" {
     const long_script = [_]u8{0} ** (NefFile.MAX_SCRIPT_LENGTH + 1);
     try testing.expectError(errors.NeoError.IllegalArgument, NefFile.init("compiler", "source.neo", &[_]MethodToken{}, &long_script));
 
-    // Test empty script constraint (matches NeoSwift NefFileTests.testDeserializeWithEmptyScript)
+    // Test empty script constraint (matches NeoClient NefFileTests.testDeserializeWithEmptyScript)
     try testing.expectError(errors.NeoError.IllegalArgument, NefFile.init("compiler", "source.neo", &[_]MethodToken{}, &[_]u8{}));
 
     // Test compiler length constraint

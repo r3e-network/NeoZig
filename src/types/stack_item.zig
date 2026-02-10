@@ -1,6 +1,6 @@
 //! Stack Item Implementation
 //!
-//! Complete conversion from NeoSwift StackItem.swift
+//! Neo N3 
 //! Provides Neo VM stack item types and operations.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
-/// Stack item types for Neo VM (converted from Swift StackItem)
+/// Stack item types for Neo VM
 pub const StackItem = union(enum) {
     /// Any type (wildcard)
     Any: ?[]const u8,
@@ -34,7 +34,7 @@ pub const StackItem = union(enum) {
         interface_name: []const u8,
     },
 
-    /// Stack item type constants (matches Swift constants)
+    /// Stack item type constants
     pub const ANY_VALUE = "Any";
     pub const POINTER_VALUE = "Pointer";
     pub const BOOLEAN_VALUE = "Boolean";
@@ -46,7 +46,7 @@ pub const StackItem = union(enum) {
     pub const MAP_VALUE = "Map";
     pub const INTEROP_INTERFACE_VALUE = "InteropInterface";
 
-    /// Stack item type bytes (matches Swift constants)
+    /// Stack item type bytes
     pub const ANY_BYTE: u8 = 0x00;
     pub const POINTER_BYTE: u8 = 0x10;
     pub const BOOLEAN_BYTE: u8 = 0x20;
@@ -60,7 +60,7 @@ pub const StackItem = union(enum) {
 
     const Self = @This();
 
-    /// Gets JSON value (equivalent to Swift jsonValue)
+    /// Gets JSON value
     pub fn getJsonValue(self: Self) []const u8 {
         return switch (self) {
             .Any => ANY_VALUE,
@@ -76,7 +76,7 @@ pub const StackItem = union(enum) {
         };
     }
 
-    /// Gets byte value (equivalent to Swift byte)
+    /// Gets byte value
     pub fn getByte(self: Self) u8 {
         return switch (self) {
             .Any => ANY_BYTE,
@@ -225,7 +225,7 @@ pub const StackItem = union(enum) {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return switch (self) {
             .Any => |value| switch (other) {
@@ -285,7 +285,7 @@ pub const StackItem = union(enum) {
         };
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
 
@@ -553,7 +553,7 @@ pub const StackItem = union(enum) {
         return null;
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return switch (self) {
             .Any => |value| {
@@ -665,12 +665,12 @@ const StackItemContext = struct {
     }
 };
 
-// Tests (converted from Swift StackItem tests)
+// Tests
 test "StackItem creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test boolean stack item (equivalent to Swift tests)
+    // Test boolean stack item
     const bool_item = StackItem.Factory.createBoolean(true);
     try testing.expectEqual(@as(u8, StackItem.BOOLEAN_BYTE), bool_item.getByte());
     try testing.expectEqualStrings(StackItem.BOOLEAN_VALUE, bool_item.getJsonValue());

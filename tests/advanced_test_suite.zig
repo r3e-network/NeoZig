@@ -1,6 +1,6 @@
 //! Advanced Test Suite
 //!
-//! Complete conversion of ALL remaining Swift test files
+//! Advanced test suite
 //! Validates 100% of Neo Zig SDK functionality.
 
 const std = @import("std");
@@ -8,14 +8,14 @@ const ArrayList = std.ArrayList;
 
 const neo = @import("neo-zig");
 
-// /// Advanced cryptographic test suite (converted from advanced Swift crypto tests)
+// /// Advanced cryptographic test suite
 test "advanced cryptographic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔐 Testing Advanced Cryptographic Operations...", .{});
 
-    // Test ECDSASignature (converted from ECDSASignatureTests.swift)
+    // Test ECDSASignature
     const r: u256 = 0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF;
     const s: u256 = 0xFEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321;
 
@@ -35,7 +35,7 @@ test "advanced cryptographic operations" {
     const parsed_sig = try neo.crypto.ECDSASignature.fromDER(der_bytes);
     try testing.expect(ecdsa_sig.eql(parsed_sig));
 
-    // Test ECPoint operations (converted from ECPointTests.swift)
+    // Test ECPoint operations
     const generator = neo.crypto.ECPoint.generator();
     try testing.expect(generator.isOnCurve());
 
@@ -63,14 +63,14 @@ test "advanced cryptographic operations" {
     std.log.info("✅ Advanced cryptographic operations validated", .{});
 }
 
-// /// Advanced transaction test suite (converted from advanced Swift transaction tests)
+// /// Advanced transaction test suite
 test "advanced transaction operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("💰 Testing Advanced Transaction Operations...", .{});
 
-    // Test NeoTransaction (converted from NeoTransactionTests.swift)
+    // Test NeoTransaction
     const signers = [_]neo.transaction.Signer{
         neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry),
     };
@@ -123,7 +123,7 @@ test "advanced transaction operations" {
     try testing.expectEqual(neo_transaction.version, deserialized.version);
     try testing.expectEqual(neo_transaction.nonce, deserialized.nonce);
 
-    // Test AccountSigner (converted from AccountSignerTests.swift)
+    // Test AccountSigner
     var test_account = try neo.transaction.Account.fromScriptHash(allocator, neo.Hash160.ZERO);
     defer test_account.deinit();
 
@@ -139,14 +139,14 @@ test "advanced transaction operations" {
     std.log.info("✅ Advanced transaction operations validated", .{});
 }
 
-// /// Advanced wallet test suite (converted from advanced Swift wallet tests)
+// /// Advanced wallet test suite
 test "advanced wallet operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("💼 Testing Advanced Wallet Operations...", .{});
 
-    // Test Bip39Account (converted from Bip39AccountTests.swift)
+    // Test Bip39Account
     var bip39_account = try neo.wallet.Bip39Account.create(allocator, "bip39_test_password");
     defer bip39_account.deinit();
 
@@ -193,14 +193,14 @@ test "advanced wallet operations" {
     std.log.info("✅ Advanced wallet operations validated", .{});
 }
 
-// /// Advanced type system test suite (converted from advanced Swift type tests)
+// /// Advanced type system test suite
 test "advanced type system operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("📋 Testing Advanced Type System...", .{});
 
-    // Test NeoVMStateType (converted from NeoVMStateTypeTests.swift)
+    // Test NeoVMStateType
     try testing.expectEqualStrings("HALT", neo.types.NeoVMStateType.Halt.getJsonValue());
     try testing.expectEqualStrings("FAULT", neo.types.NeoVMStateType.Fault.getJsonValue());
 
@@ -216,7 +216,7 @@ test "advanced type system operations" {
     try testing.expectEqual(neo.types.NeoVMStateType.Halt, neo.types.NeoVMStateType.fromJsonValue("HALT").?);
     try testing.expectEqual(neo.types.NeoVMStateType.Fault, neo.types.NeoVMStateType.fromIntValue(2).?);
 
-    // Test NodePluginType (converted from NodePluginTypeTests.swift)
+    // Test NodePluginType
     try testing.expectEqualStrings("ApplicationLogs", neo.types.NodePluginType.ApplicationLogs.getRawValue());
     try testing.expectEqualStrings("RpcServerPlugin", neo.types.NodePluginType.RpcServerPlugin.getRawValue());
 
@@ -225,7 +225,7 @@ test "advanced type system operations" {
     try testing.expect(neo.types.NodePluginType.LevelDbStore.providesStorage());
     try testing.expect(neo.types.NodePluginType.CoreMetrics.providesMonitoring());
 
-    // Test CallFlags (converted from CallFlagsTests.swift)
+    // Test CallFlags
     try testing.expectEqual(@as(u8, 0x0F), @intFromEnum(neo.types.CallFlags.All));
     try testing.expect(neo.types.CallFlags.All.hasReadStates());
     try testing.expect(neo.types.CallFlags.All.hasWriteStates());
@@ -236,7 +236,7 @@ test "advanced type system operations" {
     std.log.info("✅ Advanced type system validated", .{});
 }
 
-// /// Advanced RPC test suite (converted from advanced Swift RPC tests)
+// /// Advanced RPC test suite
 test "advanced RPC response operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -278,14 +278,14 @@ test "advanced RPC response operations" {
     std.log.info("✅ Advanced RPC response operations validated", .{});
 }
 
-// /// Complete serialization test suite (converted from all Swift serialization tests)
+// /// Complete serialization test suite
 test "complete serialization operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔧 Testing Complete Serialization Operations...", .{});
 
-    // Test NeoSerializable interface (converted from NeoSerializableTests.swift)
+    // Test NeoSerializable interface
     const hash160 = try neo.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
 
     // Test size calculation
@@ -312,14 +312,14 @@ test "complete serialization operations" {
     std.log.info("✅ Complete serialization operations validated", .{});
 }
 
-// /// Complete utility test suite (converted from all Swift utility tests)
+// /// Complete utility test suite
 test "complete utility operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     std.log.info("🔧 Testing Complete Utility Operations...", .{});
 
-    // Test advanced string utilities (converted from StringTests.swift)
+    // Test advanced string utilities
     const hex_string = "0x1234abcd";
     const cleaned = neo.utils.StringUtils.cleanedHexPrefix(hex_string);
     try testing.expectEqualStrings("1234abcd", cleaned);
@@ -342,7 +342,7 @@ test "complete utility operations" {
 
     try testing.expectEqualStrings(test_data, base64_decoded);
 
-    // Test advanced array utilities (converted from ArrayTests.swift)
+    // Test advanced array utilities
     const test_array = [_]i32{ 1, 2, 3, 4, 5 };
 
     const is_even = struct {
@@ -357,7 +357,7 @@ test "complete utility operations" {
     const expected_evens = [_]i32{ 2, 4 };
     try testing.expectEqualSlices(i32, &expected_evens, filtered);
 
-    // Test enum utilities (converted from EnumTests.swift)
+    // Test enum utilities
     const all_vm_states = neo.types.NeoVMStateType.getAllCases();
     try testing.expectEqual(@as(usize, 4), all_vm_states.len);
 
@@ -367,7 +367,7 @@ test "complete utility operations" {
     std.log.info("✅ Complete utility operations validated", .{});
 }
 
-// /// Complete integration test suite (converted from all Swift integration tests)
+// /// Complete integration test suite
 test "complete integration workflow validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -442,9 +442,9 @@ test "complete integration workflow validation" {
     try testing.expect(!final_hash.eql(neo.Hash256.ZERO));
 
     // 8. Test RPC client integration
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("http://localhost:20332");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("http://localhost:20332");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     const balance_request = try client.getNep17Balances(account_script_hash);
@@ -597,9 +597,9 @@ test "final comprehensive Neo SDK validation" {
     try final_transaction.validate();
 
     // 6. Test complete RPC integration
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     // Test all major RPC methods are available

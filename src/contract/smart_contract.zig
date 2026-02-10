@@ -1,6 +1,6 @@
 //! Smart Contract implementation
 //!
-//! Complete conversion from NeoSwift SmartContract.swift
+//! Neo N3 
 //! Essential for contract interaction and deployment.
 
 const std = @import("std");
@@ -12,29 +12,29 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const NeoProtocol = @import("../protocol/neo_protocol.zig").NeoProtocol;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const responses = @import("../rpc/responses.zig");
 
-/// Smart contract representation (converted from Swift SmartContract)
+/// Smart contract representation
 pub const SmartContract = struct {
-    /// Default iterator count (matches Swift DEFAULT_ITERATOR_COUNT)
+    /// Default iterator count
     pub const DEFAULT_ITERATOR_COUNT: u32 = 100;
 
     /// Contract script hash
     script_hash: Hash160,
     /// Neo client reference
-    neo_swift: ?*anyopaque, // stub for NeoSwift reference
+    client: ?*anyopaque, // stub for NeoClient reference
     allocator: std.mem.Allocator,
 
     const Self = @This();
 
-    /// Creates smart contract instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, neo_swift: ?*anyopaque) Self {
+    /// Creates smart contract instance
+    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, client: ?*anyopaque) Self {
         return Self{
             .script_hash = script_hash,
-            .neo_swift = neo_swift,
+            .client = client,
             .allocator = allocator,
         };
     }
@@ -56,7 +56,7 @@ pub const SmartContract = struct {
         return isNativeScriptHash(self.script_hash);
     }
 
-    /// Invokes contract function (equivalent to Swift invokeFunction)
+    /// Invokes contract function
     pub fn invokeFunction(
         self: Self,
         function_name: []const u8,
@@ -70,7 +70,7 @@ pub const SmartContract = struct {
         return tx_builder;
     }
 
-    /// Builds invoke function script (equivalent to Swift buildInvokeFunctionScript)
+    /// Builds invoke function script
     pub fn buildInvokeFunctionScript(
         self: Self,
         function_name: []const u8,
@@ -103,16 +103,16 @@ pub const SmartContract = struct {
         }
     }
 
-    /// Calls function returning string (equivalent to Swift callFunctionReturningString)
+    /// Calls function returning string
     pub fn callFunctionReturningString(
         self: Self,
         function_name: []const u8,
         params: []const ContractParameter,
     ) ![]u8 {
-        const neo_swift = try self.getNeoSwift();
-        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        const client = try self.getClient();
+        var request = try client.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -123,16 +123,16 @@ pub const SmartContract = struct {
         return try stack_item.getString(self.allocator);
     }
 
-    /// Calls function returning integer (equivalent to Swift callFunctionReturningInt)
+    /// Calls function returning integer
     pub fn callFunctionReturningInt(
         self: Self,
         function_name: []const u8,
         params: []const ContractParameter,
     ) !i64 {
-        const neo_swift = try self.getNeoSwift();
-        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        const client = try self.getClient();
+        var request = try client.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -143,16 +143,16 @@ pub const SmartContract = struct {
         return try stack_item.getInteger();
     }
 
-    /// Calls function returning boolean (equivalent to Swift callFunctionReturningBool)
+    /// Calls function returning boolean
     pub fn callFunctionReturningBool(
         self: Self,
         function_name: []const u8,
         params: []const ContractParameter,
     ) !bool {
-        const neo_swift = try self.getNeoSwift();
-        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        const client = try self.getClient();
+        var request = try client.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -170,10 +170,10 @@ pub const SmartContract = struct {
         function_name: []const u8,
         params: []const ContractParameter,
     ) !Hash160 {
-        const neo_swift = try self.getNeoSwift();
-        var request = try neo_swift.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        const client = try self.getClient();
+        var request = try client.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -199,13 +199,13 @@ pub const SmartContract = struct {
         return try Hash160.initWithString(hex);
     }
 
-    /// Gets contract manifest (equivalent to Swift getManifest)
+    /// Gets contract manifest
     pub fn getManifest(self: Self) !ContractManifest {
-        const neo_swift = try self.getNeoSwift();
-        var protocol = NeoProtocol.init(neo_swift.getService());
+        const client = try self.getClient();
+        var protocol = NeoProtocol.init(client.getService());
         var request = try protocol.getContractState(self.script_hash);
         var response = try request.sendUsing(protocol.service);
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer response.deinit(service_allocator);
 
         var state = response.result orelse return errors.ContractError.InvalidContractState;
@@ -216,13 +216,13 @@ pub const SmartContract = struct {
         return manifest;
     }
 
-    /// Gets contract state (equivalent to Swift getContractState)
+    /// Gets contract state
     pub fn getContractState(self: Self) !ContractState {
-        const neo_swift = try self.getNeoSwift();
-        var protocol = NeoProtocol.init(neo_swift.getService());
+        const client = try self.getClient();
+        var protocol = NeoProtocol.init(client.getService());
         var request = try protocol.getContractState(self.script_hash);
         var response = try request.sendUsing(protocol.service);
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer response.deinit(service_allocator);
 
         const state = response.result orelse return errors.ContractError.InvalidContractState;
@@ -231,11 +231,11 @@ pub const SmartContract = struct {
     }
 
     pub fn hasClient(self: Self) bool {
-        return self.neo_swift != null;
+        return self.client != null;
     }
 
-    fn getNeoSwift(self: Self) !*NeoSwift {
-        const ptr = self.neo_swift orelse return errors.NeoError.InvalidConfiguration;
+    fn getClient(self: Self) !*NeoClient {
+        const ptr = self.client orelse return errors.NeoError.InvalidConfiguration;
         return @ptrCast(@alignCast(ptr));
     }
 };
@@ -264,7 +264,7 @@ pub const ContractMethod = responses.ContractMethod;
 pub const ContractEvent = responses.ContractEvent;
 pub const ContractPermission = responses.ContractPermission;
 
-// Tests (converted from Swift SmartContract tests)
+// Tests
 test "SmartContract creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -272,7 +272,7 @@ test "SmartContract creation and basic operations" {
     const contract_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const contract = SmartContract.init(allocator, contract_hash, null);
 
-    // Test script hash retrieval (equivalent to Swift scriptHash property)
+    // Test script hash retrieval
     try testing.expect(contract.getScriptHash().eql(contract_hash));
 }
 
@@ -283,7 +283,7 @@ test "SmartContract function invocation" {
     const contract_hash = Hash160.ZERO;
     const contract = SmartContract.init(allocator, contract_hash, null);
 
-    // Test function invocation (equivalent to Swift invokeFunction tests)
+    // Test function invocation
     const params = [_]ContractParameter{
         ContractParameter.string("test_param"),
         ContractParameter.integer(42),
@@ -304,7 +304,7 @@ test "SmartContract script building" {
     const contract_hash = Hash160.ZERO;
     const contract = SmartContract.init(allocator, contract_hash, null);
 
-    // Test script building (equivalent to Swift buildInvokeFunctionScript)
+    // Test script building
     const params = [_]ContractParameter{ContractParameter.boolean(true)};
     const script = try contract.buildInvokeFunctionScript("testMethod", &params);
     defer allocator.free(script);

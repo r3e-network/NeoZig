@@ -1,6 +1,6 @@
 //! BIP39 Account Tests
 //!
-//! Complete conversion from NeoSwift Bip39AccountTests.swift
+//!
 //! Tests BIP39 mnemonic account creation and derivation.
 
 const std = @import("std");

@@ -1,6 +1,6 @@
 //! Account Signer implementation
 //!
-//! Complete conversion from NeoSwift AccountSigner.swift
+//! Neo N3
 //! Provides account-based transaction signing with witness scopes.
 
 const std = @import("std");
@@ -12,7 +12,7 @@ const Signer = @import("transaction_builder.zig").Signer;
 const WitnessScope = @import("transaction_builder.zig").WitnessScope;
 const Account = @import("transaction_builder.zig").Account;
 
-/// Account signer for transactions (converted from Swift AccountSigner)
+/// Account signer for transactions
 pub const AccountSigner = struct {
     /// Associated account
     account: Account,
@@ -21,7 +21,7 @@ pub const AccountSigner = struct {
 
     const Self = @This();
 
-    /// Creates account signer (equivalent to Swift private init)
+    /// Creates account signer
     fn initPrivate(account: Account, scope: WitnessScope) !Self {
         const signer = Signer.init(try account.getScriptHash(), scope);
 
@@ -31,12 +31,12 @@ pub const AccountSigner = struct {
         };
     }
 
-    /// Creates signer with none scope (equivalent to Swift none(_ account: Account))
+    /// Creates signer with none scope)
     pub fn none(account: Account) !Self {
         return try initPrivate(account, .None);
     }
 
-    /// Creates signer with none scope from hash (equivalent to Swift none(_ accountHash: Hash160))
+    /// Creates signer with none scope from hash)
     pub fn noneFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);
@@ -48,12 +48,12 @@ pub const AccountSigner = struct {
         return try initPrivate(account, .None);
     }
 
-    /// Creates signer with calledByEntry scope (equivalent to Swift calledByEntry(_ account: Account))
+    /// Creates signer with calledByEntry scope)
     pub fn calledByEntry(account: Account) !Self {
         return try initPrivate(account, .CalledByEntry);
     }
 
-    /// Creates signer with calledByEntry scope from hash (equivalent to Swift calledByEntry(_ accountHash: Hash160))
+    /// Creates signer with calledByEntry scope from hash)
     pub fn calledByEntryFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);
@@ -65,12 +65,12 @@ pub const AccountSigner = struct {
         return try initPrivate(account, .CalledByEntry);
     }
 
-    /// Creates signer with global scope (equivalent to Swift global(_ account: Account))
+    /// Creates signer with global scope)
     pub fn global(account: Account) !Self {
         return try initPrivate(account, .Global);
     }
 
-    /// Creates signer with global scope from hash (equivalent to Swift global(_ accountHash: Hash160))
+    /// Creates signer with global scope from hash)
     pub fn globalFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);
@@ -96,27 +96,27 @@ pub const AccountSigner = struct {
         return signer;
     }
 
-    /// Gets account (equivalent to Swift .account property)
+    /// Gets account
     pub fn getAccount(self: Self) Account {
         return self.account;
     }
 
-    /// Gets signer (equivalent to Swift base signer access)
+    /// Gets signer
     pub fn getSigner(self: Self) Signer {
         return self.signer;
     }
 
-    /// Gets script hash (equivalent to Swift script hash access)
+    /// Gets script hash
     pub fn getScriptHash(self: Self) Hash160 {
         return self.signer.signer_hash;
     }
 
-    /// Gets witness scope (equivalent to Swift scope access)
+    /// Gets witness scope
     pub fn getWitnessScope(self: Self) WitnessScope {
         return self.signer.scopes;
     }
 
-    /// Validates signer configuration (equivalent to Swift validation)
+    /// Validates signer configuration
     pub fn validate(self: Self) !void {
         try self.signer.validate();
 
@@ -187,7 +187,7 @@ pub const AccountSignerFactory = struct {
     }
 };
 
-// Tests (converted from Swift AccountSigner tests)
+// Tests
 test "AccountSigner creation with different scopes" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -196,16 +196,16 @@ test "AccountSigner creation with different scopes" {
     var test_account = try Account.fromScriptHash(allocator, Hash160.ZERO);
     defer test_account.deinit();
 
-    // Test none scope (equivalent to Swift none tests)
+    // Test none scope
     const none_signer = try AccountSigner.none(test_account);
     try testing.expectEqual(WitnessScope.None, none_signer.getWitnessScope());
     try testing.expect(none_signer.getScriptHash().eql(Hash160.ZERO));
 
-    // Test calledByEntry scope (equivalent to Swift calledByEntry tests)
+    // Test calledByEntry scope
     const entry_signer = try AccountSigner.calledByEntry(test_account);
     try testing.expectEqual(WitnessScope.CalledByEntry, entry_signer.getWitnessScope());
 
-    // Test global scope (equivalent to Swift global tests)
+    // Test global scope
     const global_signer = try AccountSigner.global(test_account);
     try testing.expectEqual(WitnessScope.Global, global_signer.getWitnessScope());
 }
@@ -216,7 +216,7 @@ test "AccountSigner creation from hash" {
 
     const test_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
 
-    // Test none from hash (equivalent to Swift none hash tests)
+    // Test none from hash
     const none_signer = try AccountSigner.noneFromHash(test_hash, allocator);
     try testing.expectEqual(WitnessScope.None, none_signer.getWitnessScope());
     try testing.expect(none_signer.getScriptHash().eql(test_hash));
@@ -237,11 +237,11 @@ test "AccountSigner validation and context" {
     var test_account = try Account.fromScriptHash(allocator, Hash160.ZERO);
     defer test_account.deinit();
 
-    // Test signer validation (equivalent to Swift validation tests)
+    // Test signer validation
     const signer = try AccountSigner.calledByEntry(test_account);
     try signer.validate();
 
-    // Test signing context (equivalent to Swift context tests)
+    // Test signing context
     try testing.expect(signer.canBeUsedInContext(.EntryContract));
     try testing.expect(!signer.canBeUsedInContext(.AllowedContract));
 

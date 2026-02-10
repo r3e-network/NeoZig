@@ -4,6 +4,57 @@
 
 - (none)
 
+## 1.2.0 - 2026-02-10
+
+### NeoSwift → Neo Rename & Codebase Consolidation
+
+Major refactoring release that completes the migration from Swift-derived naming to
+idiomatic Zig conventions, consolidates fragmented modules, and removes dead code.
+
+#### Breaking Changes
+
+- Removed all `neo_swift_*` source files — replaced by clean `neo_*` equivalents
+- Removed `*_complete.zig` consolidation files — functionality merged into primary modules
+- Removed `swift_aliases.zig` and `aliases.zig` — use canonical type paths directly
+
+#### Renamed / Replaced Files
+
+| Removed                              | Replacement                           |
+| ------------------------------------ | ------------------------------------- |
+| `src/protocol/neo_swift_express.zig` | `src/protocol/neo_express_client.zig` |
+| `src/protocol/neo_swift_rx.zig`      | `src/protocol/neo_rx.zig`             |
+| `src/rpc/neo_swift_config.zig`       | `src/rpc/neo_config.zig`              |
+| `src/rpc/neo_swift_service.zig`      | `src/rpc/neo_service.zig`             |
+| `src/core/neo_swift_error.zig`       | (merged into `src/core/errors.zig`)   |
+| `src/types/swift_aliases.zig`        | (removed, no replacement needed)      |
+| `src/types/aliases.zig`              | (removed, no replacement needed)      |
+
+#### Consolidated Modules
+
+- `src/serialization/binary_reader_complete.zig` → merged into `binary_reader.zig` + `binary_reader_ext.zig`
+- `src/serialization/binary_writer_complete.zig` → merged into `binary_writer.zig` + `binary_writer_ext.zig`
+- `src/transaction/witness_complete.zig` → merged into `witness.zig`
+- `src/transaction/witness_scope_complete.zig` → `witness_scope.zig`
+- `src/wallet/nep6_complete.zig` → `nep6_extended.zig`
+- `src/script/verification_script_complete.zig` → merged into `wallet/verification_script.zig`
+- `src/script/interop_service_complete.zig` → merged into `interop_service.zig`
+- `src/protocol/response/complete_response_suite.zig` → `response_suite.zig`
+- `src/protocol/stack_item_complete.zig` → merged into `types/stack_item.zig`
+- `src/rpc/complete_responses.zig` → `extended_responses.zig`
+
+#### Cleanup
+
+- Removed 6 root-level scratch/demo files (`comprehensive_test.zig`, `final_demo.zig`, `minimal_build.zig`, `simple_test.zig`, `working_demo.zig`, `working_test.zig`)
+- Removed `tests/all_swift_tests.zig` and `tests/complete_swift_test_conversion.zig`
+- Cleaned Swift naming remnants from documentation and test log strings
+- Zero `TODO`/`FIXME` markers remain in source
+
+#### Quality
+
+- **Build**: `zig build` — zero errors, zero warnings
+- **Tests**: `zig build test` — all suites pass
+- **223 files changed**, ~13k lines removed, ~2.8k lines added (net −10.5k)
+
 ## 1.1.1 - 2026-01-25
 
 ### Neo N3 v3.9.1 Compatibility

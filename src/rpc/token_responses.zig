@@ -1,6 +1,6 @@
 //! Token Response Types
 //!
-//! Complete conversion of ALL remaining Swift token response types
+//! Token response types
 //! Ensures 100% NEP-17/NEP-11 response handling.
 
 const std = @import("std");
@@ -11,7 +11,7 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 
-/// NEP-17 balances response (converted from Swift NeoGetNep17Balances)
+/// NEP-17 balances response
 pub const NeoGetNep17Balances = struct {
     balances: ?Nep17Balances,
 
@@ -27,7 +27,7 @@ pub const NeoGetNep17Balances = struct {
         };
     }
 
-    /// NEP-17 balances data (converted from Swift Nep17Balances)
+    /// NEP-17 balances data
     pub const Nep17Balances = struct {
         address: []const u8,
         balances: []const Nep17Balance,
@@ -61,7 +61,7 @@ pub const NeoGetNep17Balances = struct {
         }
     };
 
-    /// NEP-17 balance entry (converted from Swift Nep17Balance)
+    /// NEP-17 balance entry
     pub const Nep17Balance = struct {
         name: ?[]const u8,
         symbol: ?[]const u8,
@@ -122,7 +122,7 @@ pub const NeoGetNep17Balances = struct {
     };
 };
 
-/// NEP-17 transfers response (converted from Swift NeoGetNep17Transfers)
+/// NEP-17 transfers response
 pub const NeoGetNep17Transfers = struct {
     transfers: ?Nep17Transfers,
 
@@ -138,7 +138,7 @@ pub const NeoGetNep17Transfers = struct {
         };
     }
 
-    /// NEP-17 transfers data (converted from Swift Nep17Transfers)
+    /// NEP-17 transfers data
     pub const Nep17Transfers = struct {
         address: []const u8,
         sent: []const Nep17Transfer,
@@ -202,7 +202,7 @@ pub const NeoGetNep17Transfers = struct {
         }
     };
 
-    /// NEP-17 transfer entry (converted from Swift Nep17Transfer)
+    /// NEP-17 transfer entry
     pub const Nep17Transfer = struct {
         timestamp: u64,
         asset_hash: Hash160,
@@ -267,7 +267,7 @@ pub const NeoGetNep17Transfers = struct {
     };
 };
 
-/// NEP-11 balances response (converted from Swift NeoGetNep11Balances)
+/// NEP-11 balances response
 pub const NeoGetNep11Balances = struct {
     balances: ?Nep11Balances,
 
@@ -283,7 +283,7 @@ pub const NeoGetNep11Balances = struct {
         };
     }
 
-    /// NEP-11 balances data (converted from Swift Nep11Balances)
+    /// NEP-11 balances data
     pub const Nep11Balances = struct {
         address: []const u8,
         balances: []const Nep11Balance,
@@ -315,7 +315,7 @@ pub const NeoGetNep11Balances = struct {
         }
     };
 
-    /// NEP-11 balance entry (converted from Swift Nep11Balance)
+    /// NEP-11 balance entry
     pub const Nep11Balance = struct {
         name: ?[]const u8,
         symbol: ?[]const u8,
@@ -383,7 +383,7 @@ pub const NeoGetNep11Balances = struct {
     };
 };
 
-/// NEP-11 transfers response (converted from Swift NeoGetNep11Transfers)
+/// NEP-11 transfers response
 pub const NeoGetNep11Transfers = struct {
     transfers: ?Nep11Transfers,
 
@@ -397,7 +397,7 @@ pub const NeoGetNep11Transfers = struct {
         };
     }
 
-    /// NEP-11 transfers data (converted from Swift Nep11Transfers)
+    /// NEP-11 transfers data
     pub const Nep11Transfers = struct {
         address: []const u8,
         sent: []const Nep11Transfer,
@@ -444,7 +444,7 @@ pub const NeoGetNep11Transfers = struct {
         }
     };
 
-    /// NEP-11 transfer entry (converted from Swift Nep11Transfer)
+    /// NEP-11 transfer entry
     pub const Nep11Transfer = struct {
         timestamp: u64,
         asset_hash: Hash160,
@@ -506,7 +506,7 @@ pub const NeoGetNep11Transfers = struct {
     };
 };
 
-/// Token balances trait (converted from Swift TokenBalances protocol)
+/// Token balances trait
 pub const TokenBalances = struct {
     /// Gets address associated with balances
     pub fn getAddress(self: anytype) []const u8 {
@@ -524,7 +524,7 @@ pub const TokenBalances = struct {
     }
 };
 
-/// Token balance trait (converted from Swift TokenBalance protocol)
+/// Token balance trait
 pub const TokenBalance = struct {
     /// Gets asset hash
     pub fn getAssetHash(self: anytype) Hash160 {
@@ -547,12 +547,12 @@ pub const TokenBalance = struct {
     }
 };
 
-// Tests (converted from Swift NEP-17/NEP-11 response tests)
+// Tests
 test "NeoGetNep17Balances response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test NEP-17 balance response (equivalent to Swift Nep17Balances tests)
+    // Test NEP-17 balance response
     const nep17_balances = NeoGetNep17Balances.init();
     try testing.expect(nep17_balances.balances == null);
 
@@ -584,7 +584,7 @@ test "NeoGetNep17Transfers response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test NEP-17 transfer response (equivalent to Swift Nep17Transfers tests)
+    // Test NEP-17 transfer response
     const nep17_transfers = NeoGetNep17Transfers.init();
     try testing.expect(nep17_transfers.transfers == null);
 
@@ -619,7 +619,7 @@ test "NeoGetNep11Balances and transfers" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test NEP-11 balance response (equivalent to Swift Nep11Balances tests)
+    // Test NEP-11 balance response
     const nep11_balances = NeoGetNep11Balances.init();
     try testing.expect(nep11_balances.balances == null);
 
@@ -778,7 +778,7 @@ test "Token response traits and utilities" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test token balance traits (equivalent to Swift protocol tests)
+    // Test token balance traits
     const balance_entry = NeoGetNep17Balances.Nep17Balance.init(
         "Test Token",
         "TST",

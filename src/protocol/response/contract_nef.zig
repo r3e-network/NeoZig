@@ -1,6 +1,6 @@
 //! Contract NEF Implementation
 //!
-//! Complete conversion from NeoSwift ContractNef.swift
+//! Neo N3
 //! Provides contract NEF (Neo Executable Format) representation.
 
 const std = @import("std");
@@ -66,7 +66,7 @@ pub const ContractMethodToken = struct {
     }
 };
 
-/// Contract NEF (Neo Executable Format) (converted from Swift ContractNef)
+/// Contract NEF (Neo Executable Format)
 pub const ContractNef = struct {
     /// NEF magic number
     magic: u32,
@@ -86,7 +86,7 @@ pub const ContractNef = struct {
     /// NEF magic number constant
     pub const NEF_MAGIC: u32 = 0x3346454E; // "NEF3" in little-endian
 
-    /// Creates new ContractNef (equivalent to Swift init)
+    /// Creates new ContractNef
     pub fn init(
         magic: u32,
         compiler: []const u8,
@@ -105,7 +105,7 @@ pub const ContractNef = struct {
         };
     }
 
-    /// Equality comparison (equivalent to Swift Hashable)
+    /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         if (self.magic != other.magic or
             self.checksum != other.checksum or
@@ -137,7 +137,7 @@ pub const ContractNef = struct {
         return true;
     }
 
-    /// Hash function (equivalent to Swift Hashable)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.magic));
@@ -222,7 +222,7 @@ pub const ContractNef = struct {
         return try method_names.toOwnedSlice();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const source_str = if (self.source) |source|
             try std.fmt.allocPrint(allocator, "\"{s}\"", .{source})
@@ -247,7 +247,7 @@ pub const ContractNef = struct {
         return try std.fmt.allocPrint(allocator, "{{\"magic\":{},\"compiler\":\"{s}\",\"source\":{s},\"tokens\":{s},\"script\":\"{s}\",\"checksum\":{}}}", .{ self.magic, self.compiler, source_str, tokens_json.items, self.script, self.checksum });
     }
 
-    /// JSON decoding (equivalent to Swift Codable)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();
@@ -355,7 +355,7 @@ fn base64Decode(encoded: []const u8, allocator: std.mem.Allocator) ![]u8 {
     return decoded;
 }
 
-// Tests (converted from Swift ContractNef tests)
+// Tests
 test "ContractMethodToken creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -382,7 +382,7 @@ test "ContractNef creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test NEF creation (equivalent to Swift tests)
+    // Test NEF creation
     const compiler = try allocator.dupe(u8, "neon");
     const source = try allocator.dupe(u8, "test.neo");
     const script = try allocator.dupe(u8, "VgEMDEhlbGxvIFdvcmxkIQ=="); // "Hello World!" in base64
@@ -482,7 +482,7 @@ test "ContractNef JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON encoding/decoding (equivalent to Swift Codable tests)
+    // Test JSON encoding/decoding
     const compiler = try allocator.dupe(u8, "neon");
     const source = try allocator.dupe(u8, "test.neo");
     const script = try allocator.dupe(u8, "VgEMDEhlbGxvIFdvcmxkIQ==");

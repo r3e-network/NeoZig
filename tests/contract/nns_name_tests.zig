@@ -1,6 +1,6 @@
 //! NNS Name Tests
 //!
-//! Complete conversion from NeoSwift NNSNameTests.swift
+//!
 //! Tests Neo Name Service domain name validation and operations.
 
 const std = @import("std");

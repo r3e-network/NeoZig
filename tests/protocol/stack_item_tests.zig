@@ -1,6 +1,6 @@
 //! Stack Item Tests
 //!
-//! Complete conversion from NeoSwift StackItemTests.swift
+//! StackItem tests
 //! Tests Neo VM stack item types and operations.
 
 const std = @import("std");

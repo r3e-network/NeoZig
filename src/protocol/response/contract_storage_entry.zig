@@ -1,6 +1,6 @@
 //! Contract StorageEntry Implementation
 //!
-//! Complete conversion from NeoSwift ContractStorageEntry.swift
+//! Neo N3
 
 const std = @import("std");
 

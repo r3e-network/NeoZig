@@ -1,6 +1,6 @@
 //! NNS Name implementation
 //!
-//! Complete conversion from NeoSwift NNSName.swift
+//! Neo N3 
 //! Handles Neo Name Service domain name validation and operations.
 
 const std = @import("std");
@@ -9,14 +9,14 @@ const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 
-/// Neo Name Service domain name (converted from Swift NNSName)
+/// Neo Name Service domain name
 pub const NNSName = struct {
     /// Domain name
     name: []const u8,
 
     const Self = @This();
 
-    /// Creates NNS name with validation (equivalent to Swift init)
+    /// Creates NNS name with validation
     pub fn init(name: []const u8, allocator: std.mem.Allocator) !Self {
         if (!isValidNNSName(name, true)) {
             return errors.throwIllegalArgument("Invalid NNS domain name");
@@ -32,22 +32,22 @@ pub const NNSName = struct {
         allocator.free(self.name);
     }
 
-    /// Gets name (equivalent to Swift .name property)
+    /// Gets name
     pub fn getName(self: Self) []const u8 {
         return self.name;
     }
 
-    /// Gets UTF-8 bytes (equivalent to Swift .bytes property)
+    /// Gets UTF-8 bytes
     pub fn getBytes(self: Self) []const u8 {
         return self.name; // Already UTF-8 in Zig
     }
 
-    /// Checks if second-level domain (equivalent to Swift .isSecondLevelDomain property)
+    /// Checks if second-level domain
     pub fn isSecondLevelDomain(self: Self) bool {
         return isValidNNSName(self.name, false);
     }
 
-    /// Validates NNS name (equivalent to Swift isValidNNSName)
+    /// Validates NNS name
     pub fn isValidNNSName(name: []const u8, allow_multiple_fragments: bool) bool {
         // Check length constraints (3-255 characters)
         if (name.len < 3 or name.len > 255) return false;
@@ -84,7 +84,7 @@ pub const NNSName = struct {
         return true;
     }
 
-    /// Validates individual fragment (equivalent to Swift checkFragment)
+    /// Validates individual fragment
     fn checkFragment(fragment: []const u8, is_root: bool) bool {
         const max_length: usize = if (is_root) 16 else 63;
 
@@ -106,7 +106,7 @@ pub const NNSName = struct {
         return true;
     }
 
-    /// Checks if character is valid for NNS (equivalent to Swift character validation)
+    /// Checks if character is valid for NNS
     fn isValidNNSChar(char: u8, is_root: bool) bool {
         // Letters are always valid
         if (std.ascii.isAlphabetic(char)) return true;
@@ -120,7 +120,7 @@ pub const NNSName = struct {
         return false;
     }
 
-    /// Gets root domain (equivalent to Swift root domain extraction)
+    /// Gets root domain
     pub fn getRootDomain(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const last_dot = std.mem.lastIndexOf(u8, self.name, ".") orelse {
             return errors.throwIllegalArgument("Invalid domain format");
@@ -129,7 +129,7 @@ pub const NNSName = struct {
         return try allocator.dupe(u8, self.name[last_dot + 1 ..]);
     }
 
-    /// Gets subdomain parts (equivalent to Swift subdomain extraction)
+    /// Gets subdomain parts
     pub fn getSubdomains(self: Self, allocator: std.mem.Allocator) ![][]u8 {
         var subdomains = ArrayList([]u8).init(allocator);
         errdefer {
@@ -228,12 +228,12 @@ pub const NNSUtils = struct {
     }
 };
 
-// Tests (converted from Swift NNSName tests)
+// Tests
 test "NNSName creation and validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test valid NNS name creation (equivalent to Swift NNSName tests)
+    // Test valid NNS name creation
     var valid_name = try NNSName.init("example.neo", allocator);
     defer valid_name.deinit(allocator);
 
@@ -266,7 +266,7 @@ test "NNSName validation rules" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test valid names (equivalent to Swift validation tests)
+    // Test valid names
     try testing.expect(NNSName.isValidNNSName("test.neo", true));
     try testing.expect(NNSName.isValidNNSName("sub.domain.neo", true));
     try testing.expect(NNSName.isValidNNSName("valid-name.neo", true));
@@ -291,7 +291,7 @@ test "NNSName validation rules" {
 test "NNSName fragment validation" {
     const testing = std.testing;
 
-    // Test individual fragment validation (equivalent to Swift checkFragment tests)
+    // Test individual fragment validation
     try testing.expect(NNSName.checkFragment("valid", false));
     try testing.expect(NNSName.checkFragment("test123", false));
     try testing.expect(NNSName.checkFragment("with-hyphen", false));
@@ -316,7 +316,7 @@ test "NNSName error handling" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test invalid name creation (equivalent to Swift error tests)
+    // Test invalid name creation
     try testing.expectError(errors.NeoError.IllegalArgument, NNSName.init("", allocator));
 
     try testing.expectError(errors.NeoError.IllegalArgument, NNSName.init("invalid", allocator));

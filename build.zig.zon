@@ -3,7 +3,7 @@
     .name = .neo_zig,
 
     // Semantic version.
-    .version = "1.1.1",
+    .version = "1.2.0",
 
     // Generated once; never change unless intentionally forking/renaming.
     .fingerprint = 0xa85f40d41fd9a539, // Changing this has security and trust implications.
@@ -18,13 +18,14 @@
         "build.zig",
         "build.zig.zon",
         "docs/ARCHITECTURE.md",
+        "docs/API.md",
         "docs/SWIFT_MIGRATION.md",
+        "docs/TROUBLESHOOTING.md",
         "docs/USAGE.md",
         "src",
         "tests",
         "benchmarks",
         "examples",
-        "final_demo.zig",
         "CHANGELOG.md",
         "LICENSE",
         "README.md",

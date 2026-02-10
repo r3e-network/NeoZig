@@ -1,6 +1,6 @@
 //! Neo address implementation
 //!
-//! Complete conversion from Swift address handling with Base58Check encoding.
+//! Neo N3 address handling with Base58Check encoding.
 
 const std = @import("std");
 

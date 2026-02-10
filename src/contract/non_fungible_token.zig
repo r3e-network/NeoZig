@@ -1,6 +1,6 @@
 //! Non-Fungible Token (NEP-11) implementation
 //!
-//! Complete conversion from NeoSwift NonFungibleToken.swift
+//! Neo N3 
 //! Handles NEP-11 NFT operations and transfers.
 
 const std = @import("std");
@@ -13,13 +13,13 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const Token = @import("token.zig").Token;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
-const NeoSwift = @import("../rpc/neo_client.zig").NeoSwift;
+const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const iterator_mod = @import("iterator.zig");
 
-/// Non-fungible token contract (converted from Swift NonFungibleToken)
+/// Non-fungible token contract
 pub const NonFungibleToken = struct {
-    /// Method names (match Swift constants)
+    /// Method names
     pub const OWNER_OF = "ownerOf";
     pub const TOKENS_OF = "tokensOf";
     pub const BALANCE_OF = "balanceOf";
@@ -32,20 +32,20 @@ pub const NonFungibleToken = struct {
 
     const Self = @This();
 
-    /// Creates new NonFungibleToken instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, neo_swift: ?*anyopaque) Self {
+    /// Creates new NonFungibleToken instance
+    pub fn init(allocator: std.mem.Allocator, script_hash: Hash160, client: ?*anyopaque) Self {
         return Self{
-            .token = Token.init(allocator, script_hash, neo_swift),
+            .token = Token.init(allocator, script_hash, client),
         };
     }
 
-    /// Gets NFT balance for owner (equivalent to Swift balanceOf(_ owner: Hash160))
+    /// Gets NFT balance for owner)
     pub fn balanceOf(self: Self, owner: Hash160) !i64 {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.token.smart_contract.callFunctionReturningInt(BALANCE_OF, &params);
     }
 
-    /// Gets tokens owned by address (equivalent to Swift tokensOf(_ owner: Hash160))
+    /// Gets tokens owned by address)
     pub fn tokensOf(self: Self, owner: Hash160) !TokenIterator {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.callFunctionReturningIterator(TOKENS_OF, &params);
@@ -57,7 +57,7 @@ pub const NonFungibleToken = struct {
         return try self.callFunctionAndUnwrapIterator(TOKENS_OF, &params, max_items);
     }
 
-    /// Gets owner of specific token (equivalent to Swift ownerOf)
+    /// Gets owner of specific token
     pub fn ownerOf(self: Self, token_id: []const u8) !Hash160 {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
 
@@ -65,17 +65,17 @@ pub const NonFungibleToken = struct {
         return try self.token.smart_contract.callFunctionReturningHash160(OWNER_OF, &params);
     }
 
-    /// Gets token properties (equivalent to Swift properties)
+    /// Gets token properties
     pub fn properties(self: Self, token_id: []const u8) !TokenProperties {
         const params = [_]ContractParameter{ContractParameter.byteArray(token_id)};
 
         const smart_contract = self.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, PROPERTIES, &params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, PROPERTIES, &params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -86,7 +86,7 @@ pub const NonFungibleToken = struct {
         return try TokenProperties.fromStackItem(stack_item, smart_contract.allocator);
     }
 
-    /// Transfers NFT (equivalent to Swift transfer for non-divisible NFTs)
+    /// Transfers NFT
     pub fn transfer(
         self: Self,
         from: Hash160,
@@ -108,7 +108,7 @@ pub const NonFungibleToken = struct {
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
 
-    /// Transfers divisible NFT (equivalent to Swift transfer for divisible NFTs)
+    /// Transfers divisible NFT
     pub fn transferDivisible(
         self: Self,
         from: Hash160,
@@ -132,7 +132,7 @@ pub const NonFungibleToken = struct {
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
 
-    /// Gets all tokens (equivalent to Swift tokens())
+    /// Gets all tokens)
     pub fn tokens(self: Self) !TokenIterator {
         return try self.callFunctionReturningIterator(TOKENS, &[_]ContractParameter{});
     }
@@ -164,12 +164,12 @@ pub const NonFungibleToken = struct {
         params: []const ContractParameter,
     ) !TokenIterator {
         const smart_contract = self.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -185,7 +185,7 @@ pub const NonFungibleToken = struct {
 
         return try TokenIterator.initWithIterator(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
         );
@@ -198,12 +198,12 @@ pub const NonFungibleToken = struct {
         max_items: u32,
     ) ![][]u8 {
         const smart_contract = self.token.smart_contract;
-        if (smart_contract.neo_swift == null) return errors.NeoError.InvalidConfiguration;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
 
-        const neo_swift: *NeoSwift = @ptrCast(@alignCast(smart_contract.neo_swift.?));
-        var request = try neo_swift.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, function_name, params, &[_]Signer{});
         var invocation = try request.send();
-        const service_allocator = neo_swift.getService().getAllocator();
+        const service_allocator = client.getService().getAllocator();
         defer invocation.deinit(service_allocator);
 
         if (invocation.hasFaulted()) {
@@ -225,7 +225,7 @@ pub const NonFungibleToken = struct {
 
         var iterator = try iterator_mod.AnyIterator([]u8).init(
             smart_contract.allocator,
-            smart_contract.neo_swift.?,
+            smart_contract.client.?,
             session_id,
             interop.iterator_id,
             mapper,
@@ -238,9 +238,9 @@ pub const NonFungibleToken = struct {
     }
 };
 
-/// Token iterator (converted from Swift Iterator pattern).
+/// Token iterator.
 /// Iterator traversal is performed via the Neo RPC `traverseiterator` mechanism.
-/// When constructed without a NeoSwift instance, this iterator is empty.
+/// When constructed without a NeoClient instance, this iterator is empty.
 pub const TokenIterator = struct {
     session_id: []const u8,
     iterator_id: []const u8,
@@ -268,7 +268,7 @@ pub const TokenIterator = struct {
 
     pub fn initWithIterator(
         allocator: std.mem.Allocator,
-        neo_swift: *anyopaque,
+        client: *anyopaque,
         session_id: []const u8,
         iterator_id: []const u8,
     ) !Self {
@@ -280,7 +280,7 @@ pub const TokenIterator = struct {
 
         const inner_iter = try iterator_mod.AnyIterator([]u8).init(
             allocator,
-            neo_swift,
+            client,
             session_id,
             iterator_id,
             mapper,
@@ -359,7 +359,7 @@ pub const TokenIterator = struct {
     }
 };
 
-/// Token properties (converted from Swift token properties)
+/// Token properties
 pub const TokenProperties = struct {
     name: ?[]const u8,
     description: ?[]const u8,
@@ -448,7 +448,7 @@ pub const StringContext = struct {
     }
 };
 
-// Tests (converted from Swift NonFungibleToken tests)
+// Tests
 test "NonFungibleToken creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
@@ -456,7 +456,7 @@ test "NonFungibleToken creation and basic operations" {
     const nft_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
 
-    // Test balance operations (equivalent to Swift balanceOf tests)
+    // Test balance operations
     try testing.expectError(errors.NeoError.InvalidConfiguration, nft.balanceOf(Hash160.ZERO));
 }
 
@@ -467,7 +467,7 @@ test "NonFungibleToken transfer operations" {
     const nft_hash = Hash160.ZERO;
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
 
-    // Test NFT transfer (equivalent to Swift transfer tests)
+    // Test NFT transfer
     const token_id = "test_token_123";
     var transfer_tx = try nft.transfer(
         Hash160.ZERO, // from
@@ -499,7 +499,7 @@ test "NonFungibleToken token enumeration" {
     const nft_hash = Hash160.ZERO;
     const nft = NonFungibleToken.init(allocator, nft_hash, null);
 
-    // Test tokens enumeration (equivalent to Swift tokens tests)
+    // Test tokens enumeration
     try testing.expectError(errors.NeoError.InvalidConfiguration, nft.tokens());
     try testing.expectError(errors.NeoError.InvalidConfiguration, nft.tokensOf(Hash160.ZERO));
 

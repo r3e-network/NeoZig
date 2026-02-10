@@ -1,6 +1,6 @@
 //! Elliptic Curve Point implementation
 //!
-//! Complete conversion from NeoSwift ECPoint.swift extensions
+//! Neo N3
 //! Provides elliptic curve point operations for secp256r1.
 
 const std = @import("std");
@@ -9,7 +9,7 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const secp256r1 = @import("secp256r1.zig");
 
-/// Elliptic curve point (converted from Swift ECPoint extensions)
+/// Elliptic curve point
 pub const ECPoint = struct {
     x: u256,
     y: u256,
@@ -17,22 +17,22 @@ pub const ECPoint = struct {
 
     const Self = @This();
 
-    /// Creates new EC point (equivalent to Swift ECPoint)
+    /// Creates new EC point
     pub fn init(x: u256, y: u256) Self {
         return Self{ .x = x, .y = y, .infinity = false };
     }
 
-    /// Creates point at infinity (equivalent to Swift infinity point)
+    /// Creates point at infinity
     pub fn infinityPoint() Self {
         return Self{ .x = 0, .y = 0, .infinity = true };
     }
 
-    /// Gets generator point (equivalent to Swift generator access)
+    /// Gets generator point
     pub fn generator() Self {
         return Self.init(secp256r1.Secp256r1.GX, secp256r1.Secp256r1.GY);
     }
 
-    /// Point multiplication (equivalent to Swift multiply(_ k: BInt))
+    /// Point multiplication)
     pub fn multiply(self: Self, k: u256) Self {
         if (k == 0 or self.infinity) return Self.infinityPoint();
         if (k == 1) return self;
@@ -52,7 +52,7 @@ pub const ECPoint = struct {
         return result;
     }
 
-    /// Point addition (equivalent to Swift point addition)
+    /// Point addition
     pub fn add(self: Self, other: Self) Self {
         if (self.infinity) return other;
         if (other.infinity) return self;
@@ -76,7 +76,7 @@ pub const ECPoint = struct {
         return Self.init(x3, y3);
     }
 
-    /// Point doubling (equivalent to Swift point doubling)
+    /// Point doubling
     pub fn double(self: Self) Self {
         if (self.infinity or self.y == 0) return Self.infinityPoint();
 
@@ -92,7 +92,7 @@ pub const ECPoint = struct {
         return Self.init(x3, y3);
     }
 
-    /// Gets encoded point (equivalent to Swift getEncoded(_ compressed: Bool))
+    /// Gets encoded point)
     pub fn getEncoded(self: Self, compressed: bool, allocator: std.mem.Allocator) ![]u8 {
         if (self.infinity) return errors.CryptoError.InvalidCurvePoint;
 
@@ -123,7 +123,7 @@ pub const ECPoint = struct {
         }
     }
 
-    /// Decodes point from encoded bytes (equivalent to Swift point decoding)
+    /// Decodes point from encoded bytes
     pub fn fromEncoded(encoded: []const u8) !Self {
         if (encoded.len == 33) {
             // Compressed point
@@ -160,7 +160,7 @@ pub const ECPoint = struct {
         }
     }
 
-    /// Validates point is on curve (equivalent to Swift curve validation)
+    /// Validates point is on curve
     pub fn isOnCurve(self: Self) bool {
         if (self.infinity) return true;
 
@@ -254,13 +254,13 @@ fn modPow(base: u256, exponent: u256, modulus: u256) u256 {
     return result;
 }
 
-// Tests (converted from Swift ECPoint tests)
+// Tests
 test "ECPoint creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
     _ = allocator;
 
-    // Test generator point (equivalent to Swift generator tests)
+    // Test generator point
     const generator = ECPoint.generator();
     try testing.expect(generator.isOnCurve());
     try testing.expect(!generator.infinity);
@@ -278,7 +278,7 @@ test "ECPoint multiplication operations" {
 
     const generator = ECPoint.generator();
 
-    // Test point multiplication (equivalent to Swift multiply tests)
+    // Test point multiplication
     const doubled = generator.multiply(2);
     try testing.expect(doubled.isOnCurve());
     try testing.expect(!doubled.infinity);
@@ -304,14 +304,14 @@ test "ECPoint encoding operations" {
 
     const generator = ECPoint.generator();
 
-    // Test compressed encoding (equivalent to Swift getEncoded(true))
+    // Test compressed encoding)
     const compressed = try generator.getEncoded(true, allocator);
     defer allocator.free(compressed);
 
     try testing.expectEqual(@as(usize, 33), compressed.len);
     try testing.expect(compressed[0] == 0x02 or compressed[0] == 0x03);
 
-    // Test uncompressed encoding (equivalent to Swift getEncoded(false))
+    // Test uncompressed encoding)
     const uncompressed = try generator.getEncoded(false, allocator);
     defer allocator.free(uncompressed);
 
@@ -331,7 +331,7 @@ test "ECPoint addition and doubling" {
 
     const generator = ECPoint.generator();
 
-    // Test point doubling (equivalent to Swift doubling tests)
+    // Test point doubling
     const doubled_direct = generator.double();
     const doubled_mult = generator.multiply(2);
 

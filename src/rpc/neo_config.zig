@@ -1,6 +1,6 @@
-//! Neo Swift Configuration Implementation
+//! Neo Configuration Implementation
 //!
-//! Complete conversion from NeoSwift NeoSwiftConfig.swift
+//! Neo N3
 //! Provides configuration settings for Neo RPC client.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const std = @import("std");
 const constants = @import("../core/constants.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
-/// Request counter for RPC calls (converted from Swift Counter)
+/// Request counter for RPC calls
 pub const Counter = struct {
     value: std.atomic.Value(u32),
 
@@ -33,8 +33,8 @@ pub const Counter = struct {
     }
 };
 
-/// Neo Swift configuration (converted from Swift NeoSwiftConfig)
-pub const NeoSwiftConfig = struct {
+/// Neo SDK configuration
+pub const NeoConfig = struct {
     /// Default block time in milliseconds
     pub const DEFAULT_BLOCK_TIME: u32 = 15000;
     /// Default address version byte
@@ -65,7 +65,7 @@ pub const NeoSwiftConfig = struct {
 
     const Self = @This();
 
-    /// Creates new configuration (equivalent to Swift init)
+    /// Creates new configuration
     pub fn init() Self {
         return Self{
             .network_magic = null,
@@ -96,54 +96,54 @@ pub const NeoSwiftConfig = struct {
         };
     }
 
-    /// Sets network magic (equivalent to Swift setNetworkMagic)
+    /// Sets network magic
     pub fn setNetworkMagic(self: *Self, magic: u32) *Self {
         self.network_magic = magic;
         return self;
     }
 
-    /// Sets block interval (equivalent to Swift setBlockInterval)
+    /// Sets block interval
     pub fn setBlockInterval(self: *Self, interval: u32) *Self {
         self.block_interval = interval;
         self.max_valid_until_block_increment = MAX_VALID_UNTIL_BLOCK_INCREMENT_BASE / interval;
         return self;
     }
 
-    /// Sets polling interval (equivalent to Swift setPollingInterval)
+    /// Sets polling interval
     pub fn setPollingInterval(self: *Self, interval: u32) *Self {
         self.polling_interval = interval;
         return self;
     }
 
-    /// Allows transmission on fault (equivalent to Swift allowTransmissionOnFault)
+    /// Allows transmission on fault
     pub fn allowTransmissionOnFault(self: *Self) *Self {
         self.allows_transmission_on_fault = true;
         return self;
     }
 
-    /// Prevents transmission on fault (equivalent to Swift preventTransmissionOnFault)
+    /// Prevents transmission on fault
     pub fn preventTransmissionOnFault(self: *Self) *Self {
         self.allows_transmission_on_fault = false;
         return self;
     }
 
-    /// Sets NNS resolver (equivalent to Swift setNnsResolver)
+    /// Sets NNS resolver
     pub fn setNnsResolver(self: *Self, resolver: Hash160) *Self {
         self.nns_resolver = resolver;
         return self;
     }
 
-    /// Gets global address version (equivalent to Swift static addressVersion)
+    /// Gets global address version
     pub fn getAddressVersion() u8 {
         return address_version;
     }
 
-    /// Sets global address version (equivalent to Swift static addressVersion setter)
+    /// Sets global address version
     pub fn setAddressVersion(version: u8) void {
         address_version = version;
     }
 
-    /// Gets next request ID (equivalent to Swift REQUEST_COUNTER)
+    /// Gets next request ID
     pub fn getNextRequestId() u32 {
         return REQUEST_COUNTER.next();
     }
@@ -326,32 +326,32 @@ pub const NeoSwiftConfig = struct {
         else
             "Unknown";
 
-        return try std.fmt.allocPrint(allocator, "NeoSwiftConfig(network: {s}, block_time: {}ms, polling: {}ms, fault_allowed: {})", .{ network_name, self.block_interval, self.polling_interval, self.allows_transmission_on_fault });
+        return try std.fmt.allocPrint(allocator, "NeoConfig(network: {s}, block_time: {}ms, polling: {}ms, fault_allowed: {})", .{ network_name, self.block_interval, self.polling_interval, self.allows_transmission_on_fault });
     }
 };
 
-// Tests (converted from Swift NeoSwiftConfig tests)
-test "NeoSwiftConfig creation and defaults" {
+// Tests
+test "NeoConfig creation and defaults" {
     const testing = std.testing;
 
-    // Test default configuration (equivalent to Swift tests)
-    const config = NeoSwiftConfig.init();
+    // Test default configuration
+    const config = NeoConfig.init();
 
     try testing.expect(config.network_magic == null);
-    try testing.expectEqual(@as(u32, NeoSwiftConfig.DEFAULT_BLOCK_TIME), config.block_interval);
-    try testing.expectEqual(@as(u32, NeoSwiftConfig.DEFAULT_BLOCK_TIME), config.polling_interval);
+    try testing.expectEqual(@as(u32, NeoConfig.DEFAULT_BLOCK_TIME), config.block_interval);
+    try testing.expectEqual(@as(u32, NeoConfig.DEFAULT_BLOCK_TIME), config.polling_interval);
     try testing.expect(!config.allows_transmission_on_fault);
-    try testing.expect(config.nns_resolver.eql(NeoSwiftConfig.MAINNET_NNS_CONTRACT_HASH));
+    try testing.expect(config.nns_resolver.eql(NeoConfig.MAINNET_NNS_CONTRACT_HASH));
 
     // Test validation
     try config.validate();
 }
 
-test "NeoSwiftConfig parameter configuration" {
+test "NeoConfig parameter configuration" {
     const testing = std.testing;
 
     // Test configuration with parameters
-    var config = NeoSwiftConfig.init();
+    var config = NeoConfig.init();
 
     _ = config.setNetworkMagic(constants.NetworkMagic.MAINNET);
     try testing.expect(config.hasNetworkMagic());
@@ -371,71 +371,71 @@ test "NeoSwiftConfig parameter configuration" {
     try testing.expect(!config.allows_transmission_on_fault);
 }
 
-test "NeoSwiftConfig preset configurations" {
+test "NeoConfig preset configurations" {
     const testing = std.testing;
 
     // Test MainNet configuration
-    const mainnet_config = NeoSwiftConfig.createMainNetConfig();
+    const mainnet_config = NeoConfig.createMainNetConfig();
     try testing.expect(mainnet_config.isMainnet());
     try testing.expect(!mainnet_config.isTestnet());
     try testing.expectEqual(constants.NetworkMagic.MAINNET, mainnet_config.network_magic.?);
 
     // Test TestNet configuration
-    const testnet_config = NeoSwiftConfig.createTestNetConfig();
+    const testnet_config = NeoConfig.createTestNetConfig();
     try testing.expect(testnet_config.isTestnet());
     try testing.expect(!testnet_config.isMainnet());
     try testing.expectEqual(constants.NetworkMagic.TESTNET, testnet_config.network_magic.?);
 
     // Test development configuration
-    const dev_config = NeoSwiftConfig.createDevConfig();
+    const dev_config = NeoConfig.createDevConfig();
     try testing.expectEqual(@as(u32, 1000), dev_config.block_interval);
     try testing.expectEqual(@as(u32, 500), dev_config.polling_interval);
     try testing.expect(dev_config.allows_transmission_on_fault);
 
     // Test production configuration
-    const prod_config = NeoSwiftConfig.createProductionConfig();
-    try testing.expectEqual(@as(u32, NeoSwiftConfig.DEFAULT_BLOCK_TIME), prod_config.block_interval);
-    try testing.expectEqual(@as(u32, NeoSwiftConfig.DEFAULT_BLOCK_TIME * 2), prod_config.polling_interval);
+    const prod_config = NeoConfig.createProductionConfig();
+    try testing.expectEqual(@as(u32, NeoConfig.DEFAULT_BLOCK_TIME), prod_config.block_interval);
+    try testing.expectEqual(@as(u32, NeoConfig.DEFAULT_BLOCK_TIME * 2), prod_config.polling_interval);
     try testing.expect(!prod_config.allows_transmission_on_fault);
 }
 
-test "NeoSwiftConfig global settings" {
+test "NeoConfig global settings" {
     const testing = std.testing;
 
     // Test global address version
-    const original_version = NeoSwiftConfig.getAddressVersion();
+    const original_version = NeoConfig.getAddressVersion();
 
-    NeoSwiftConfig.setAddressVersion(0x99);
-    try testing.expectEqual(@as(u8, 0x99), NeoSwiftConfig.getAddressVersion());
+    NeoConfig.setAddressVersion(0x99);
+    try testing.expectEqual(@as(u8, 0x99), NeoConfig.getAddressVersion());
 
     // Restore original
-    NeoSwiftConfig.setAddressVersion(original_version);
-    try testing.expectEqual(original_version, NeoSwiftConfig.getAddressVersion());
+    NeoConfig.setAddressVersion(original_version);
+    try testing.expectEqual(original_version, NeoConfig.getAddressVersion());
 }
 
-test "NeoSwiftConfig request counter" {
+test "NeoConfig request counter" {
     const testing = std.testing;
 
     // Test request counter
 
-    const id1 = NeoSwiftConfig.getNextRequestId();
-    const id2 = NeoSwiftConfig.getNextRequestId();
-    const id3 = NeoSwiftConfig.getNextRequestId();
+    const id1 = NeoConfig.getNextRequestId();
+    const id2 = NeoConfig.getNextRequestId();
+    const id3 = NeoConfig.getNextRequestId();
 
     try testing.expect(id2 == id1 + 1);
     try testing.expect(id3 == id2 + 1);
 
     // Reset counter
-    NeoSwiftConfig.resetRequestCounter();
-    const reset_id = NeoSwiftConfig.getNextRequestId();
+    NeoConfig.resetRequestCounter();
+    const reset_id = NeoConfig.getNextRequestId();
     try testing.expectEqual(@as(u32, 0), reset_id);
 }
 
-test "NeoSwiftConfig time calculations" {
+test "NeoConfig time calculations" {
     const testing = std.testing;
 
     // Test time calculations
-    const config = NeoSwiftConfig.init();
+    const config = NeoConfig.init();
 
     const block_time_seconds = config.getBlockTimeSeconds();
     try testing.expectEqual(@as(f64, 15.0), block_time_seconds);
@@ -444,12 +444,12 @@ test "NeoSwiftConfig time calculations" {
     try testing.expect(max_lifetime_seconds > 3600.0); // Should be over 1 hour
 }
 
-test "NeoSwiftConfig JSON serialization" {
+test "NeoConfig JSON serialization" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     // Test JSON encoding/decoding
-    var original_config = NeoSwiftConfig.createMainNetConfig();
+    var original_config = NeoConfig.createMainNetConfig();
     _ = original_config.setBlockInterval(10000);
     _ = original_config.allowTransmissionOnFault();
 
@@ -461,7 +461,7 @@ test "NeoSwiftConfig JSON serialization" {
     try testing.expect(std.mem.indexOf(u8, json_str, "true") != null);
     try testing.expect(std.mem.indexOf(u8, json_str, "networkMagic") != null);
 
-    const decoded_config = try NeoSwiftConfig.decodeFromJson(json_str, allocator);
+    const decoded_config = try NeoConfig.decodeFromJson(json_str, allocator);
 
     try testing.expectEqual(original_config.network_magic, decoded_config.network_magic);
     try testing.expectEqual(original_config.block_interval, decoded_config.block_interval);

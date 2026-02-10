@@ -1,6 +1,6 @@
 //! JSON-RPC 2.0 Rx Tests
 //!
-//! Complete conversion from NeoSwift JsonRpc2_0RxTests.swift
+//! JSON-RPC 2.0 Rx tests
 //! Tests reactive JSON-RPC functionality.
 
 const std = @import("std");

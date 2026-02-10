@@ -1,6 +1,6 @@
 //! BIP32 HD Wallet implementation
 //!
-//! Complete conversion from NeoSwift Bip32ECKeyPair.swift
+//! Neo N3
 //! Provides hierarchical deterministic wallet functionality.
 
 const std = @import("std");
@@ -16,9 +16,9 @@ const KeyPair = @import("keys.zig").KeyPair;
 const hashing = @import("hashing.zig");
 const secure = @import("../utils/secure.zig");
 
-/// BIP32 HD key pair (converted from Swift Bip32ECKeyPair)
+/// BIP32 HD key pair
 pub const Bip32ECKeyPair = struct {
-    /// Hardened derivation bit (matches Swift HARDENED_BIT)
+    /// Hardened derivation bit
     pub const HARDENED_BIT: i32 = -2147483648; // 0x80000000
 
     /// Base key pair
@@ -42,7 +42,7 @@ pub const Bip32ECKeyPair = struct {
 
     const Self = @This();
 
-    /// Creates BIP32 key pair (equivalent to Swift init)
+    /// Creates BIP32 key pair
     pub fn init(
         private_key: PrivateKey,
         public_key: PublicKey,
@@ -84,19 +84,19 @@ pub const Bip32ECKeyPair = struct {
         };
     }
 
-    /// Creates from private key and chain code (equivalent to Swift create(privateKey:chainCode:))
+    /// Creates from private key and chain code)
     pub fn createFromPrivateKey(private_key: PrivateKey, chain_code: [32]u8) !Self {
         const public_key = try private_key.getPublicKey(true);
         return try Self.init(private_key, public_key, 0, chain_code, null);
     }
 
-    /// Creates from bytes (equivalent to Swift create(privateKey:chainCode:))
+    /// Creates from bytes)
     pub fn createFromBytes(private_key_bytes: [32]u8, chain_code: [32]u8) !Self {
         const private_key = try PrivateKey.init(private_key_bytes);
         return try Self.createFromPrivateKey(private_key, chain_code);
     }
 
-    /// Generates key pair from seed (equivalent to Swift generateKeyPair(seed:))
+    /// Generates key pair from seed)
     pub fn generateKeyPair(seed: []const u8) !Self {
         const hmac_key = "Bitcoin seed";
 
@@ -114,7 +114,7 @@ pub const Bip32ECKeyPair = struct {
         return try Self.createFromBytes(private_key_bytes, chain_code);
     }
 
-    /// Derives child key (equivalent to Swift deriveChild)
+    /// Derives child key
     pub fn deriveChild(self: Self, child_number: u32, hardened: bool, allocator: std.mem.Allocator) !Self {
         const actual_child_number = if (hardened)
             @as(i32, @bitCast(child_number | 0x80000000))
@@ -169,7 +169,7 @@ pub const Bip32ECKeyPair = struct {
         return try Self.init(new_private_key, new_public_key, actual_child_number, new_chain_code, &self);
     }
 
-    /// Derives from path (equivalent to Swift derivation path operations)
+    /// Derives from path
     pub fn deriveFromPath(self: Self, derivation_path: []const u32, allocator: std.mem.Allocator) !Self {
         var current_key = self;
 
@@ -190,7 +190,7 @@ pub const Bip32ECKeyPair = struct {
         std.crypto.secureZero(u8, &self.identifier);
     }
 
-    /// Gets extended private key (equivalent to Swift extended key serialization)
+    /// Gets extended private key
     pub fn getExtendedPrivateKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var extended_key = ArrayList(u8).init(allocator);
         defer {
@@ -224,7 +224,7 @@ pub const Bip32ECKeyPair = struct {
         return try base58.encodeCheck(extended_key.items, allocator);
     }
 
-    /// Gets extended public key (equivalent to Swift extended public key serialization)
+    /// Gets extended public key
     pub fn getExtendedPublicKey(self: Self, allocator: std.mem.Allocator) ![]u8 {
         var extended_key = ArrayList(u8).init(allocator);
         defer {
@@ -257,19 +257,19 @@ pub const Bip32ECKeyPair = struct {
         return try base58.encodeCheck(extended_key.items, allocator);
     }
 
-    /// Checks if derivation index is hardened (equivalent to Swift hardened checking)
+    /// Checks if derivation index is hardened
     pub fn isHardened(index: u32) bool {
         return (index & 0x80000000) != 0;
     }
 
-    /// Creates hardened index (equivalent to Swift hardened index creation)
+    /// Creates hardened index
     pub fn hardenedIndex(index: u32) u32 {
         return index | 0x80000000;
     }
 };
 
 /// Helper functions
-/// Calculates identifier from public key (equivalent to Swift identifier calculation)
+/// Calculates identifier from public key
 fn calculateIdentifier(compressed_public_key: []const u8) ![20]u8 {
     // Hash160 of compressed public key
     const ripemd160_impl = @import("ripemd160.zig");
@@ -277,7 +277,7 @@ fn calculateIdentifier(compressed_public_key: []const u8) ![20]u8 {
     return ripemd160_impl.ripemd160(sha_hash.toSlice());
 }
 
-/// Calculates fingerprint from identifier (equivalent to Swift fingerprint calculation)
+/// Calculates fingerprint from identifier
 fn calculateFingerprint(identifier: [20]u8) i32 {
     // Take first 4 bytes of identifier and convert to int32
     const a = @as(i32, identifier[3]);
@@ -295,15 +295,15 @@ fn hmacSha512(key: []const u8, message: []const u8) [64]u8 {
     return out;
 }
 
-// Tests (converted from Swift Bip32ECKeyPair tests)
+// Tests
 test "Bip32ECKeyPair creation and properties" {
     const testing = std.testing;
 
-    // Test key pair generation from seed (equivalent to Swift generateKeyPair tests)
+    // Test key pair generation from seed
     const test_seed = "test seed for BIP32 key generation";
     const master_key = try Bip32ECKeyPair.generateKeyPair(test_seed);
 
-    // Test master key properties (equivalent to Swift master key tests)
+    // Test master key properties
     try testing.expectEqual(@as(i32, 0), master_key.depth);
     try testing.expectEqual(@as(i32, 0), master_key.child_number);
     try testing.expectEqual(@as(i32, 0), master_key.parent_fingerprint);
@@ -320,7 +320,7 @@ test "Bip32ECKeyPair child derivation" {
     const test_seed = "test seed for child derivation";
     const master_key = try Bip32ECKeyPair.generateKeyPair(test_seed);
 
-    // Test non-hardened child derivation (equivalent to Swift child derivation tests)
+    // Test non-hardened child derivation
     const child_key = try master_key.deriveChild(0, false, allocator);
 
     try testing.expectEqual(@as(i32, 1), child_key.depth);
@@ -345,7 +345,7 @@ test "Bip32ECKeyPair derivation path" {
     const test_seed = "test seed for derivation path";
     const master_key = try Bip32ECKeyPair.generateKeyPair(test_seed);
 
-    // Test derivation path: m/44'/60'/0'/0/0 (equivalent to Swift path derivation tests)
+    // Test derivation path: m/44'/60'/0'/0/0
     const derivation_path = [_]u32{
         Bip32ECKeyPair.hardenedIndex(44), // 44'
         Bip32ECKeyPair.hardenedIndex(60), // 60'
@@ -370,7 +370,7 @@ test "Bip32ECKeyPair extended key serialization" {
     const test_seed = "test seed for extended key serialization";
     const master_key = try Bip32ECKeyPair.generateKeyPair(test_seed);
 
-    // Test extended private key (equivalent to Swift extended private key tests)
+    // Test extended private key
     const extended_private = try master_key.getExtendedPrivateKey(allocator);
     defer allocator.free(extended_private);
 
@@ -379,7 +379,7 @@ test "Bip32ECKeyPair extended key serialization" {
     // Extended private keys should start with "xprv" when base58 decoded
     // (This is validated by the version bytes 0x0488ADE4)
 
-    // Test extended public key (equivalent to Swift extended public key tests)
+    // Test extended public key
     const extended_public = try master_key.getExtendedPublicKey(allocator);
     defer allocator.free(extended_public);
 
@@ -390,7 +390,7 @@ test "Bip32ECKeyPair extended key serialization" {
 test "Bip32ECKeyPair hardened index operations" {
     const testing = std.testing;
 
-    // Test hardened index operations (equivalent to Swift hardened tests)
+    // Test hardened index operations
     const normal_index: u32 = 123;
     const hardened_index = Bip32ECKeyPair.hardenedIndex(normal_index);
 

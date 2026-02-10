@@ -1,7 +1,7 @@
 //! Neo RPC client implementation
 //!
-//! Complete conversion from NeoSwift protocol layer
-//! Implements all RPC methods with Swift API compatibility.
+//! Neo N3
+//! Implements all RPC methods.
 
 const std = @import("std");
 const constants = @import("../core/constants.zig");
@@ -12,23 +12,23 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const Address = @import("../types/address.zig").Address;
 const Transaction = @import("../transaction/transaction_builder.zig").Transaction;
 const responses = @import("responses.zig");
-pub const NeoSwiftConfig = @import("neo_swift_config.zig").NeoSwiftConfig;
-pub const NeoSwiftService = @import("neo_swift_service.zig").NeoSwiftService;
+pub const NeoConfig = @import("neo_config.zig").NeoConfig;
+pub const NeoService = @import("neo_service.zig").NeoService;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const Request = @import("request.zig").Request;
 const json_utils = @import("../utils/json_utils.zig");
 
-/// Neo RPC client (converted from Swift NeoSwift class)
-pub const NeoSwift = struct {
+/// Neo RPC client
+pub const NeoClient = struct {
     allocator: std.mem.Allocator,
-    config: NeoSwiftConfig,
-    service: NeoSwiftService,
+    config: NeoConfig,
+    service: NeoService,
 
     const Self = @This();
 
-    /// Creates new NeoSwift instance (equivalent to Swift init)
-    pub fn init(allocator: std.mem.Allocator, config: NeoSwiftConfig, service: NeoSwiftService) Self {
+    /// Creates new NeoClient instance
+    pub fn init(allocator: std.mem.Allocator, config: NeoConfig, service: NeoService) Self {
         return Self{
             .allocator = allocator,
             .config = config,
@@ -36,64 +36,64 @@ pub const NeoSwift = struct {
         };
     }
 
-    /// Builder method (equivalent to Swift build method).
+    /// Builder method.
     ///
     /// Ownership: this function moves `service` into the returned client. The
     /// passed-in `service` pointer is invalidated (its owned transport is
     /// relinquished and the internal pointer cleared) to prevent double-free.
-    pub fn build(allocator: std.mem.Allocator, service: *NeoSwiftService, config: ?NeoSwiftConfig) Self {
-        const final_config = config orelse NeoSwiftConfig.init();
+    pub fn build(allocator: std.mem.Allocator, service: *NeoService, config: ?NeoConfig) Self {
+        const final_config = config orelse NeoConfig.init();
         const owned_service = service.*;
         service.relinquish();
         service.service_impl.http_service = undefined;
         return Self.init(allocator, final_config, owned_service);
     }
 
-    /// NNS resolver property (equivalent to Swift nnsResolver)
+    /// NNS resolver property
     pub fn getNnsResolver(self: Self) Hash160 {
         return self.config.nns_resolver;
     }
 
-    /// Block interval property (equivalent to Swift blockInterval)
+    /// Block interval property
     pub fn getBlockInterval(self: Self) u32 {
         return self.config.block_interval;
     }
 
-    /// Polling interval property (equivalent to Swift pollingInterval)
+    /// Polling interval property
     pub fn getPollingInterval(self: Self) u32 {
         return self.config.polling_interval;
     }
 
-    /// Max valid until block increment (equivalent to Swift maxValidUntilBlockIncrement)
+    /// Max valid until block increment
     pub fn getMaxValidUntilBlockIncrement(self: Self) u32 {
         return self.config.max_valid_until_block_increment;
     }
 
-    /// Allow transmission on fault (equivalent to Swift allowTransmissionOnFault)
+    /// Allow transmission on fault
     pub fn allowTransmissionOnFault(self: *Self) void {
         self.config.allows_transmission_on_fault = true;
     }
 
-    /// Prevent transmission on fault (equivalent to Swift preventTransmissionOnFault)
+    /// Prevent transmission on fault
     pub fn preventTransmissionOnFault(self: *Self) void {
         self.config.allows_transmission_on_fault = false;
     }
 
-    pub fn getService(self: *Self) *NeoSwiftService {
+    pub fn getService(self: *Self) *NeoService {
         return &self.service;
     }
 
-    /// Releases owned service resources (mirrors Swift deallocation paths)
+    /// Releases owned service resources
     pub fn deinit(self: *Self) void {
         self.service.deinit();
     }
 
-    /// Sets NNS resolver (equivalent to Swift setNNSResolver)
+    /// Sets NNS resolver
     pub fn setNNSResolver(self: *Self, nns_resolver: Hash160) void {
         self.config.nns_resolver = nns_resolver;
     }
 
-    /// Gets network magic number (equivalent to Swift getNetworkMagicNumber)
+    /// Gets network magic number
     pub fn getNetworkMagicNumber(self: *Self) !u32 {
         if (self.config.network_magic == null) {
             var request = try self.getVersion();
@@ -102,7 +102,7 @@ pub const NeoSwift = struct {
 
             if (version.protocol) |protocol| {
                 self.config.network_magic = protocol.network;
-                NeoSwiftConfig.setAddressVersion(protocol.address_version);
+                NeoConfig.setAddressVersion(protocol.address_version);
                 if (protocol.ms_per_block) |ms_per_block| {
                     self.config.block_interval = ms_per_block;
                 }
@@ -117,28 +117,28 @@ pub const NeoSwift = struct {
         return self.config.network_magic.?;
     }
 
-    /// Gets network magic as bytes (equivalent to Swift getNetworkMagicNumberBytes)
+    /// Gets network magic as bytes
     pub fn getNetworkMagicNumberBytes(self: *Self) ![4]u8 {
         const magic_int = try self.getNetworkMagicNumber();
         return std.mem.toBytes(std.mem.nativeToBig(u32, magic_int));
     }
 
     // ============================================================================
-    // BLOCKCHAIN METHODS (converted from Swift)
+    // BLOCKCHAIN METHODS
     // ============================================================================
 
-    /// Gets best block hash (equivalent to Swift getBestBlockHash)
+    /// Gets best block hash
     pub fn getBestBlockHash(self: *Self) !RpcRequest(Hash256) {
         return RpcRequest(Hash256).init(self, "getbestblockhash", &[_]RpcParam{});
     }
 
-    /// Gets block hash by index (equivalent to Swift getBlockHash)
+    /// Gets block hash by index
     pub fn getBlockHash(self: *Self, block_index: u32) !RpcRequest(Hash256) {
         const params = [_]RpcParam{RpcParam.initInt(block_index)};
         return RpcRequest(Hash256).init(self, "getblockhash", &params);
     }
 
-    /// Gets block by hash (equivalent to Swift getBlock)
+    /// Gets block by hash
     pub fn getBlock(self: *Self, block_hash: Hash256, full_transactions: bool) !RpcRequest(NeoBlock) {
         const hash_str = try block_hash.string(self.allocator);
         defer self.allocator.free(hash_str);
@@ -151,7 +151,7 @@ pub const NeoSwift = struct {
         return RpcRequest(NeoBlock).init(self, "getblock", &params);
     }
 
-    /// Gets block by index (equivalent to Swift getBlock)
+    /// Gets block by index
     pub fn getBlockByIndex(self: *Self, block_index: u32, full_transactions: bool) !RpcRequest(NeoBlock) {
         const verbose = if (full_transactions) @as(i32, 1) else @as(i32, 0);
         const params = [_]RpcParam{
@@ -161,7 +161,7 @@ pub const NeoSwift = struct {
         return RpcRequest(NeoBlock).init(self, "getblock", &params);
     }
 
-    /// Gets raw block (equivalent to Swift getRawBlock)
+    /// Gets raw block
     pub fn getRawBlock(self: *Self, block_hash: Hash256) !RpcRequest([]const u8) {
         const hash_str = try block_hash.string(self.allocator);
         defer self.allocator.free(hash_str);
@@ -173,12 +173,12 @@ pub const NeoSwift = struct {
         return RpcRequest([]const u8).init(self, "getblock", &params);
     }
 
-    /// Gets block count (equivalent to Swift getBlockCount)
+    /// Gets block count
     pub fn getBlockCount(self: *Self) !RpcRequest(u32) {
         return RpcRequest(u32).init(self, "getblockcount", &[_]RpcParam{});
     }
 
-    /// Gets transaction (equivalent to Swift getTransaction)
+    /// Gets transaction
     pub fn getTransaction(self: *Self, tx_hash: Hash256) !RpcRequest(Transaction) {
         const hash_str = try tx_hash.string(self.allocator);
         defer self.allocator.free(hash_str);
@@ -190,21 +190,21 @@ pub const NeoSwift = struct {
         return RpcRequest(Transaction).init(self, "getrawtransaction", &params);
     }
 
-    /// Gets connection count (equivalent to Swift getConnectionCount)
+    /// Gets connection count
     pub fn getConnectionCount(self: *Self) !RpcRequest(u32) {
         return RpcRequest(u32).init(self, "getconnectioncount", &[_]RpcParam{});
     }
 
-    /// Gets version (equivalent to Swift getVersion)
+    /// Gets version
     pub fn getVersion(self: *Self) !RpcRequest(NeoVersion) {
         return RpcRequest(NeoVersion).init(self, "getversion", &[_]RpcParam{});
     }
 
     // ============================================================================
-    // SMART CONTRACT METHODS (converted from Swift)
+    // SMART CONTRACT METHODS
     // ============================================================================
 
-    /// Invokes function (equivalent to Swift invokeFunction)
+    /// Invokes function
     pub fn invokeFunction(
         self: *Self,
         contract_hash: Hash160,
@@ -225,7 +225,7 @@ pub const NeoSwift = struct {
         return RpcRequest(InvocationResult).init(self, "invokefunction", &rpc_params);
     }
 
-    /// Invokes script (equivalent to Swift invokeScript)
+    /// Invokes script
     pub fn invokeScript(
         self: *Self,
         script_hex: []const u8,
@@ -239,23 +239,23 @@ pub const NeoSwift = struct {
         return RpcRequest(InvocationResult).init(self, "invokescript", &rpc_params);
     }
 
-    /// Sends raw transaction (equivalent to Swift sendRawTransaction)
+    /// Sends raw transaction
     pub fn sendRawTransaction(self: *Self, raw_transaction_hex: []const u8) !RpcRequest(SendRawTransactionResponse) {
         const params = [_]RpcParam{RpcParam.initString(raw_transaction_hex)};
         return RpcRequest(SendRawTransactionResponse).init(self, "sendrawtransaction", &params);
     }
 
-    /// Calculates network fee (equivalent to Swift calculateNetworkFee)
+    /// Calculates network fee
     pub fn calculateNetworkFee(self: *Self, transaction_hex: []const u8) !RpcRequest(NetworkFeeResponse) {
         const params = [_]RpcParam{RpcParam.initString(transaction_hex)};
         return RpcRequest(NetworkFeeResponse).init(self, "calculatenetworkfee", &params);
     }
 
     // ============================================================================
-    // WALLET METHODS (converted from Swift)
+    // WALLET METHODS
     // ============================================================================
 
-    /// Gets NEP-17 balances (equivalent to Swift getNep17Balances)
+    /// Gets NEP-17 balances
     pub fn getNep17Balances(self: *Self, script_hash: Hash160) !RpcRequest(Nep17Balances) {
         const address = try script_hash.toAddress(self.allocator);
         defer self.allocator.free(address);
@@ -264,7 +264,7 @@ pub const NeoSwift = struct {
         return RpcRequest(Nep17Balances).init(self, "getnep17balances", &params);
     }
 
-    /// Gets NEP-17 transfers (equivalent to Swift getNep17Transfers)
+    /// Gets NEP-17 transfers
     pub fn getNep17Transfers(
         self: *Self,
         script_hash: Hash160,
@@ -289,7 +289,7 @@ pub const NeoSwift = struct {
         return RpcRequest(Nep17Transfers).init(self, "getnep17transfers", params.items);
     }
 
-    /// Validates address (equivalent to Swift validateAddress)
+    /// Validates address
     pub fn validateAddress(self: *Self, address: []const u8) !RpcRequest(AddressValidation) {
         const params = [_]RpcParam{RpcParam.initString(address)};
         return RpcRequest(AddressValidation).init(self, "validateaddress", &params);
@@ -327,16 +327,16 @@ pub const RpcParam = union(enum) {
     }
 };
 
-/// Generic RPC request (converted from Swift Request pattern)
+/// Generic RPC request
 pub fn RpcRequest(comptime T: type) type {
     return struct {
-        client: *NeoSwift,
+        client: *NeoClient,
         method: []const u8,
         params: []const RpcParam,
 
         const Self = @This();
 
-        pub fn init(client: *NeoSwift, method: []const u8, params: []const RpcParam) Self {
+        pub fn init(client: *NeoClient, method: []const u8, params: []const RpcParam) Self {
             return Self{
                 .client = client,
                 .method = method,
@@ -344,7 +344,7 @@ pub fn RpcRequest(comptime T: type) type {
             };
         }
 
-        /// Sends the request (equivalent to Swift .send())
+        /// Sends the request)
         pub fn send(self: Self) !T {
             const allocator = self.client.allocator;
 
@@ -408,7 +408,7 @@ fn paramToJson(param: RpcParam, allocator: std.mem.Allocator) !std.json.Value {
 }
 
 // ============================================================================
-// RESPONSE TYPES (converted from Swift response classes)
+// RESPONSE TYPES
 // ============================================================================
 
 /// Re-export response types for convenience
@@ -433,19 +433,19 @@ pub const SendRawTransactionResponse = responses.SendRawTransactionResponse;
 pub const NetworkFeeResponse = responses.NetworkFeeResponse;
 
 /// Address validation response.
-pub const AddressValidation = @import("complete_responses.zig").NeoValidateAddress;
+pub const AddressValidation = @import("extended_responses.zig").NeoValidateAddress;
 
-// Tests (converted from Swift RPC tests)
-test "NeoSwift client creation and configuration" {
+// Tests
+test "NeoClient client creation and configuration" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    const config = NeoSwiftConfig.init();
-    var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, &service, config);
+    const config = NeoConfig.init();
+    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
-    // Test configuration properties (matches Swift tests)
+    // Test configuration properties
     try testing.expectEqual(@as(u32, 15000), client.getBlockInterval());
     try testing.expectEqual(@as(u32, 15000), client.getPollingInterval());
     try testing.expectEqual(@as(u32, 5760), client.getMaxValidUntilBlockIncrement());
@@ -458,16 +458,16 @@ test "NeoSwift client creation and configuration" {
     try testing.expect(!client.config.allows_transmission_on_fault);
 }
 
-test "NeoSwift RPC method creation" {
+test "NeoClient RPC method creation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    const config = NeoSwiftConfig.init();
-    var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, &service, config);
+    const config = NeoConfig.init();
+    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
-    // Test RPC request creation (matches Swift Request pattern)
+    // Test RPC request creation
     const best_block_request = try client.getBestBlockHash();
     try testing.expectEqualStrings("getbestblockhash", best_block_request.method);
 
@@ -478,16 +478,16 @@ test "NeoSwift RPC method creation" {
     try testing.expectEqualStrings("getconnectioncount", connection_count_request.method);
 }
 
-test "NeoSwift contract invocation" {
+test "NeoClient contract invocation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    const config = NeoSwiftConfig.init();
-    var service = try @import("neo_swift_service.zig").ServiceFactory.localhost(allocator, null);
-    var client = NeoSwift.build(allocator, &service, config);
+    const config = NeoConfig.init();
+    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
-    // Test contract function invocation (matches Swift invokeFunction)
+    // Test contract function invocation
     const contract_hash = Hash160.ZERO;
     const params = [_]ContractParameter{ContractParameter.integer(42)};
     const signers = [_]Signer{};

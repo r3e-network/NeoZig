@@ -1,6 +1,6 @@
 //! Request implementation
 //!
-//! Complete conversion from NeoSwift Request.swift
+//! Neo N3
 //! Provides JSON-RPC 2.0 request structure and handling.
 
 const std = @import("std");
@@ -17,7 +17,7 @@ pub fn getAndIncrementRequestId() u32 {
     return request_counter.fetchAdd(1, .seq_cst);
 }
 
-/// JSON-RPC 2.0 request (converted from Swift Request)
+/// JSON-RPC 2.0 request
 pub fn Request(comptime T: type, comptime U: type) type {
     return struct {
         /// JSON-RPC version (constant)
@@ -34,7 +34,7 @@ pub fn Request(comptime T: type, comptime U: type) type {
 
         const Self = @This();
 
-        /// Creates request (equivalent to Swift init)
+        /// Creates request
         pub fn init(
             allocator: std.mem.Allocator,
             method: []const u8,
@@ -81,13 +81,13 @@ pub fn Request(comptime T: type, comptime U: type) type {
             self.method = "";
         }
 
-        /// Sends request (equivalent to Swift send())
+        /// Sends request)
         pub fn sendUsing(self: *Self, service: anytype) !T {
             defer self.deinit();
             return try service.send(T, U, self);
         }
 
-        /// Serializes request to JSON (equivalent to Swift Codable encoding)
+        /// Serializes request to JSON
         pub fn toJson(self: *const Self) !std.json.Value {
             var request_obj = std.json.ObjectMap.init(self.allocator);
             errdefer {
@@ -143,7 +143,7 @@ pub fn Request(comptime T: type, comptime U: type) type {
             return std.json.Value{ .object = request_obj };
         }
 
-        /// Parses request from JSON (equivalent to Swift Codable decoding)
+        /// Parses request from JSON
         pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
             const obj = json_value.object;
 
@@ -315,14 +315,14 @@ pub const RequestUtils = struct {
     }
 };
 
-// Tests (converted from Swift Request tests)
+// Tests
 test "Request creation and basic operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
     // Create test service
 
-    // Test request creation (equivalent to Swift Request tests)
+    // Test request creation
     const TestResponse = struct {
         result: ?u32,
 
@@ -392,7 +392,7 @@ test "Request utilities" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test JSON-RPC validation (equivalent to Swift validation tests)
+    // Test JSON-RPC validation
     const valid_request =
         \\{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":1}
     ;

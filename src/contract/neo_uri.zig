@@ -1,6 +1,6 @@
 //! Neo URI implementation
 //!
-//! Complete conversion from NeoSwift NeoURI.swift
+//! Neo N3 
 //! Handles NEP-9 compatible URI schemes for token transfers.
 
 const std = @import("std");
@@ -10,22 +10,22 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
-/// Neo URI for NEP-9 compatible transfers (converted from Swift NeoURI)
+/// Neo URI for NEP-9 compatible transfers
 pub const NeoURI = struct {
-    /// NEP-9 scheme constant (matches Swift NEO_SCHEME)
+    /// NEP-9 scheme constant
     pub const NEO_SCHEME = "neo";
 
-    /// Minimum URI length (matches Swift MIN_NEP9_URI_LENGTH)
+    /// Minimum URI length
     pub const MIN_NEP9_URI_LENGTH: u32 = 38;
 
-    /// Token name constants (match Swift constants)
+    /// Token name constants
     pub const NEO_TOKEN_STRING = "neo";
     pub const GAS_TOKEN_STRING = "gas";
 
     /// URI string
     uri: ?[]const u8,
     /// Neo client reference
-    neo_swift: ?*anyopaque,
+    client: ?*anyopaque,
     /// Recipient script hash
     recipient: ?Hash160,
     /// Token script hash
@@ -37,11 +37,11 @@ pub const NeoURI = struct {
 
     const Self = @This();
 
-    /// Creates Neo URI (equivalent to Swift init)
+    /// Creates Neo URI
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .uri = null,
-            .neo_swift = null,
+            .client = null,
             .recipient = null,
             .token = null,
             .amount = null,
@@ -56,12 +56,12 @@ pub const NeoURI = struct {
         }
     }
 
-    /// Gets URI string (equivalent to Swift .uriString property)
+    /// Gets URI string
     pub fn getUriString(self: Self) ?[]const u8 {
         return self.uri;
     }
 
-    /// Gets recipient address (equivalent to Swift .recipientAddress property)
+    /// Gets recipient address
     pub fn getRecipientAddress(self: Self, allocator: std.mem.Allocator) !?[]u8 {
         if (self.recipient) |rec| {
             return try rec.toAddress(allocator);
@@ -69,7 +69,7 @@ pub const NeoURI = struct {
         return null;
     }
 
-    /// Gets token string (equivalent to Swift .tokenString property)
+    /// Gets token string
     pub fn getTokenString(self: Self, allocator: std.mem.Allocator) !?[]u8 {
         if (self.token) |tok| {
             // Check for native tokens
@@ -87,7 +87,7 @@ pub const NeoURI = struct {
         return null;
     }
 
-    /// Gets token address (equivalent to Swift .tokenAddress property)
+    /// Gets token address
     pub fn getTokenAddress(self: Self, allocator: std.mem.Allocator) !?[]u8 {
         if (self.token) |tok| {
             return try tok.toAddress(allocator);
@@ -95,7 +95,7 @@ pub const NeoURI = struct {
         return null;
     }
 
-    /// Gets amount string (equivalent to Swift .amountString property)
+    /// Gets amount string
     pub fn getAmountString(self: Self, allocator: std.mem.Allocator) !?[]u8 {
         if (self.amount) |amt| {
             return try std.fmt.allocPrint(allocator, "{d}", .{amt});
@@ -103,7 +103,7 @@ pub const NeoURI = struct {
         return null;
     }
 
-    /// Sets recipient (equivalent to Swift recipient setting)
+    /// Sets recipient
     pub fn setRecipient(self: *Self, recipient_hash: Hash160) *Self {
         self.recipient = recipient_hash;
         try self.buildUri();
@@ -116,7 +116,7 @@ pub const NeoURI = struct {
         return self.setRecipient(recipient_hash);
     }
 
-    /// Sets token (equivalent to Swift token setting)
+    /// Sets token
     pub fn setToken(self: *Self, token_hash: Hash160) *Self {
         self.token = token_hash;
         try self.buildUri();
@@ -135,14 +135,14 @@ pub const NeoURI = struct {
         return self.setToken(gas_token_hash);
     }
 
-    /// Sets amount (equivalent to Swift amount setting)
+    /// Sets amount
     pub fn setAmount(self: *Self, transfer_amount: f64) *Self {
         self.amount = transfer_amount;
         try self.buildUri();
         return self;
     }
 
-    /// Parses URI from string (equivalent to Swift fromURI)
+    /// Parses URI from string
     pub fn fromURI(uri_string: []const u8, allocator: std.mem.Allocator) !Self {
         if (uri_string.len < MIN_NEP9_URI_LENGTH) {
             return errors.throwIllegalArgument("URI too short for NEP-9");
@@ -161,7 +161,7 @@ pub const NeoURI = struct {
         return neo_uri;
     }
 
-    /// Builds URI string from components (equivalent to Swift URI building)
+    /// Builds URI string from components
     fn buildUri(self: *Self) !void {
         if (self.recipient == null) return;
 
@@ -217,7 +217,7 @@ pub const NeoURI = struct {
         self.uri = try uri_builder.toOwnedSlice();
     }
 
-    /// Parses URI components (equivalent to Swift URI parsing)
+    /// Parses URI components
     fn parseUriComponents(self: *Self, uri_string: []const u8) !void {
         // Remove scheme prefix
         const address_part = uri_string[NEO_SCHEME.len + 1 ..]; // Skip "neo:"
@@ -237,7 +237,7 @@ pub const NeoURI = struct {
         self.recipient = try Hash160.fromAddress(recipient_address, self.allocator);
     }
 
-    /// Parses query parameters (equivalent to Swift query parsing)
+    /// Parses query parameters
     fn parseQueryParameters(self: *Self, query_string: []const u8) !void {
         var param_iterator = std.mem.splitScalar(u8, query_string, '&');
 
@@ -262,7 +262,7 @@ pub const NeoURI = struct {
         }
     }
 
-    /// Creates transfer transaction from URI (equivalent to Swift transaction creation)
+    /// Creates transfer transaction from URI
     pub fn createTransferTransaction(self: Self, from_account: Hash160, allocator: std.mem.Allocator) !@import("../transaction/transaction_builder.zig").TransactionBuilder {
         if (self.recipient == null or self.token == null or self.amount == null) {
             return errors.throwIllegalArgument("Incomplete URI for transaction creation");
@@ -341,7 +341,7 @@ pub const NeoURIBuilder = struct {
 
 /// URI validation utilities
 pub const URIUtils = struct {
-    /// Validates NEO URI format (equivalent to Swift validation)
+    /// Validates NEO URI format
     pub fn validateNeoURI(uri_string: []const u8) bool {
         if (uri_string.len < NeoURI.MIN_NEP9_URI_LENGTH) return false;
         if (!std.mem.startsWith(u8, uri_string, NeoURI.NEO_SCHEME ++ ":")) return false;
@@ -411,12 +411,12 @@ pub const StringContext = struct {
     }
 };
 
-// Tests (converted from Swift NeoURI tests)
+// Tests
 test "NeoURI creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URI creation (equivalent to Swift NeoURI tests)
+    // Test URI creation
     var neo_uri = NeoURI.init(allocator);
     defer neo_uri.deinit();
 
@@ -440,7 +440,7 @@ test "NeoURI token operations" {
     var neo_uri = NeoURI.init(allocator);
     defer neo_uri.deinit();
 
-    // Test NEO token setting (equivalent to Swift NEO token tests)
+    // Test NEO token setting
     _ = neo_uri.setNeoToken();
 
     const neo_token_string = try neo_uri.getTokenString(allocator);
@@ -448,7 +448,7 @@ test "NeoURI token operations" {
 
     try testing.expectEqualStrings(NeoURI.NEO_TOKEN_STRING, neo_token_string.?);
 
-    // Test GAS token setting (equivalent to Swift GAS token tests)
+    // Test GAS token setting
     _ = neo_uri.setGasToken();
 
     const gas_token_string = try neo_uri.getTokenString(allocator);
@@ -470,7 +470,7 @@ test "NeoURI builder pattern" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URI builder (equivalent to Swift builder pattern tests)
+    // Test URI builder
     var builder = NeoURIBuilder.init(allocator);
     defer builder.neo_uri.deinit();
 
@@ -493,7 +493,7 @@ test "NeoURI parsing and validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test URI validation (equivalent to Swift validation tests)
+    // Test URI validation
     const valid_uri = "neo:NPeaW6X5q2p7BoP6hYpLYA6jBFhEL6n1A7?asset=gas&amount=1.5";
     try testing.expect(URIUtils.validateNeoURI(valid_uri));
 
@@ -530,7 +530,7 @@ test "NeoURI transaction creation" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    // Test transaction creation from URI (equivalent to Swift transaction tests)
+    // Test transaction creation from URI
     var neo_uri = NeoURI.init(allocator);
     defer neo_uri.deinit();
 

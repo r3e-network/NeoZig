@@ -1,6 +1,6 @@
 //! Neo GetNep17Balances Implementation
 //!
-//! Complete conversion from NeoSwift NeoGetNep17Balances.swift
+//! Neo N3
 //! Provides NEP-17 token balance information for accounts.
 
 const std = @import("std");
@@ -8,7 +8,7 @@ const ArrayList = std.ArrayList;
 
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 
-/// NEP-17 balance for a specific token (converted from Swift Nep17Balance)
+/// NEP-17 balance for a specific token
 pub const Nep17Balance = struct {
     /// Token name
     name: ?[]const u8,
@@ -25,7 +25,7 @@ pub const Nep17Balance = struct {
 
     const Self = @This();
 
-    /// Creates new NEP-17 balance (equivalent to Swift init)
+    /// Creates new NEP-17 balance
     pub fn init(
         name: ?[]const u8,
         symbol: ?[]const u8,
@@ -91,7 +91,7 @@ pub const Nep17Balance = struct {
         return hasher.final();
     }
 
-    /// JSON encoding (equivalent to Swift Codable)
+    /// JSON encoding
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const asset_hash_str = try self.asset_hash.toString(allocator);
         defer allocator.free(asset_hash_str);
@@ -168,7 +168,7 @@ pub const Nep17Balance = struct {
     }
 };
 
-/// NEP-17 balances collection (converted from Swift Nep17Balances)
+/// NEP-17 balances collection
 pub const Nep17Balances = struct {
     /// Account address
     address: []const u8,
@@ -177,7 +177,7 @@ pub const Nep17Balances = struct {
 
     const Self = @This();
 
-    /// Creates new NEP-17 balances (equivalent to Swift init)
+    /// Creates new NEP-17 balances
     pub fn init(address: []const u8, balances: []Nep17Balance) Self {
         return Self{
             .address = address,
@@ -244,7 +244,7 @@ pub const Nep17Balances = struct {
     }
 };
 
-/// GetNep17Balances RPC response wrapper (converted from Swift NeoGetNep17Balances)
+/// GetNep17Balances RPC response wrapper
 pub const NeoGetNep17Balances = struct {
     /// The balances result
     result: ?Nep17Balances,
@@ -256,7 +256,7 @@ pub const NeoGetNep17Balances = struct {
         return Self{ .result = result };
     }
 
-    /// Gets the balances (equivalent to Swift balances property)
+    /// Gets the balances
     pub fn getBalances(self: Self) ?Nep17Balances {
         return self.result;
     }
@@ -274,7 +274,7 @@ pub const NeoGetNep17Balances = struct {
     }
 };
 
-// Tests (converted from Swift NeoGetNep17Balances tests)
+// Tests
 test "Nep17Balance creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

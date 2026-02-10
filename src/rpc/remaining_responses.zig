@@ -1,6 +1,6 @@
 //! Remaining Response Types
 //!
-//! Complete conversion of ALL remaining Swift protocol response types
+//! Remaining protocol response types
 //! Ensures absolute 100% protocol coverage.
 
 const std = @import("std");
@@ -14,7 +14,7 @@ const StackItem = @import("../types/stack_item.zig").StackItem;
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
-/// Generic token balances response (converted from Swift NeoGetTokenBalances)
+/// Generic token balances response
 pub fn NeoGetTokenBalances(comptime T: type) type {
     return struct {
         result: ?T,
@@ -37,7 +37,7 @@ pub fn NeoGetTokenBalances(comptime T: type) type {
     };
 }
 
-/// Token balances protocol trait (converted from Swift TokenBalances protocol)
+/// Token balances protocol trait
 pub fn TokenBalances(comptime BalanceType: type) type {
     return struct {
         address: []const u8,
@@ -91,7 +91,7 @@ pub fn TokenBalances(comptime BalanceType: type) type {
     };
 }
 
-/// Token balance protocol trait (converted from Swift TokenBalance protocol)
+/// Token balance protocol trait
 pub fn TokenBalance(comptime T: type) type {
     return struct {
         pub fn getAssetHash(self: T) Hash160 {
@@ -114,7 +114,7 @@ pub fn TokenBalance(comptime T: type) type {
     };
 }
 
-/// Neo get token transfers (converted from Swift NeoGetTokenTransfers)
+/// Neo get token transfers
 pub const NeoGetTokenTransfers = struct {
     address: []const u8,
     sent: []const TokenTransfer,
@@ -193,7 +193,7 @@ pub const NeoGetTokenTransfers = struct {
 pub const NeoGetWalletUnclaimedGas = ResponseAliases.NeoGetWalletUnclaimedGas;
 pub const NeoGetProof = ResponseAliases.NeoGetProof;
 
-/// Neo get version response (converted from Swift NeoGetVersion)
+/// Neo get version response
 pub const NeoGetVersion = struct {
     tcp_port: u16,
     ws_port: u16,
@@ -237,7 +237,7 @@ pub const NeoGetVersion = struct {
         self.protocol = null;
     }
 
-    /// Protocol settings (converted from Swift protocol data)
+    /// Protocol settings
     pub const ProtocolSettings = struct {
         network: u32,
         address_version: u8,
@@ -388,7 +388,7 @@ pub const NeoGetVersion = struct {
     };
 };
 
-/// Neo send raw transaction response (converted from Swift NeoSendRawTransaction)
+/// Neo send raw transaction response
 pub const NeoSendRawTransaction = struct {
     hash: Hash256,
 
@@ -406,7 +406,7 @@ pub const NeoSendRawTransaction = struct {
     }
 };
 
-/// Neo find states response (converted from Swift NeoFindStates)
+/// Neo find states response
 pub const NeoFindStates = struct {
     first_proof: ?[]const u8,
     last_proof: ?[]const u8,
@@ -476,7 +476,7 @@ pub const NeoFindStates = struct {
     };
 };
 
-/// Neo get unspents response (converted from Swift NeoGetUnspents)
+/// Neo get unspents response
 pub const NeoGetUnspents = struct {
     balance: []const UnspentOutput,
     address: []const u8,
@@ -538,7 +538,7 @@ pub const NeoGetUnspents = struct {
 /// Transaction attribute response (typed)
 pub const TransactionAttributeResponse = @import("../protocol/response/transaction_attribute.zig").TransactionAttribute;
 
-/// Notification response (converted from Swift Notification)
+/// Notification response
 pub const NotificationResponse = struct {
     contract: Hash160,
     event_name: []const u8,
@@ -593,7 +593,7 @@ pub const NotificationResponse = struct {
     }
 };
 
-/// Response aliases and specialized types (converted from Swift NeoResponseAliases)
+/// Response aliases and specialized types
 pub const ResponseAliases = struct {
     // Blockchain response aliases
     pub const NeoBlockHash = Hash256;
@@ -612,7 +612,7 @@ pub const ResponseAliases = struct {
     pub const NeoDumpPrivKey = []const u8;
     pub const NeoGetNewAddress = []const u8;
     pub const NeoGetWalletUnclaimedGas = []const u8;
-    pub const NeoImportPrivKey = @import("complete_responses.zig").NeoAddress;
+    pub const NeoImportPrivKey = @import("extended_responses.zig").NeoAddress;
     pub const NeoOpenWallet = bool;
     pub const NeoSendFrom = @import("responses.zig").Transaction;
     pub const NeoSendMany = @import("responses.zig").Transaction;
@@ -620,7 +620,7 @@ pub const ResponseAliases = struct {
 
     // Contract response aliases
     pub const NeoGetContractState = @import("responses.zig").ContractState;
-    pub const NeoGetNativeContracts = []const @import("complete_responses.zig").NativeContractState;
+    pub const NeoGetNativeContracts = []const @import("extended_responses.zig").NativeContractState;
     pub const NeoInvokeFunction = @import("responses.zig").InvocationResult;
     pub const NeoInvokeScript = @import("responses.zig").InvocationResult;
     pub const NeoInvokeContractVerify = @import("responses.zig").InvocationResult;
@@ -676,7 +676,7 @@ pub const ResponseAliases = struct {
     };
 };
 
-/// Express shutdown response (converted from Swift ExpressShutdown)
+/// Express shutdown response
 pub const ExpressShutdownResponse = struct {
     process_id: u32,
     message: []const u8,
@@ -726,12 +726,12 @@ pub const DiagnosticsResponse = struct {
     }
 };
 
-// Tests (converted from remaining Swift response tests)
+// Tests
 test "Generic token balance responses" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test generic token balances (equivalent to Swift token balance tests)
+    // Test generic token balances
     const TestBalance = struct {
         asset_hash: Hash160,
         amount: []const u8,
@@ -758,7 +758,7 @@ test "Neo version response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test version response (equivalent to Swift NeoGetVersion tests)
+    // Test version response
     const version_response = NeoGetVersion.init();
     try testing.expectEqual(@as(u16, 0), version_response.tcp_port);
     try testing.expectEqual(@as(u16, 0), version_response.ws_port);
@@ -800,7 +800,7 @@ test "Transaction and state responses" {
 test "Response type registry" {
     const testing = std.testing;
 
-    // Test response type registry (equivalent to Swift type mapping tests)
+    // Test response type registry
     try testing.expect(ResponseAliases.ResponseTypeRegistry.isMethodSupported("getbestblockhash"));
     try testing.expect(ResponseAliases.ResponseTypeRegistry.isMethodSupported("getblockcount"));
     try testing.expect(ResponseAliases.ResponseTypeRegistry.isMethodSupported("invokefunction"));

@@ -1,6 +1,6 @@
 //! Notification Implementation
 //!
-//! Complete conversion from NeoSwift Notification.swift
+//! Neo N3
 //! Provides smart contract event notification structure.
 
 const std = @import("std");
@@ -9,7 +9,7 @@ const Hash160 = @import("../../types/hash160.zig").Hash160;
 const StackItem = @import("../../types/stack_item.zig").StackItem;
 const errors = @import("../../core/errors.zig");
 
-/// Smart contract notification (converted from Swift Notification)
+/// Smart contract notification
 pub const Notification = struct {
     /// Contract hash that emitted the notification
     contract: Hash160,
@@ -20,7 +20,7 @@ pub const Notification = struct {
 
     const Self = @This();
 
-    /// Creates new Notification (equivalent to Swift init)
+    /// Creates new Notification
     pub fn init(contract: Hash160, event_name: []const u8, state: StackItem) Self {
         return Self{
             .contract = contract,
@@ -106,7 +106,7 @@ pub const Notification = struct {
     }
 };
 
-// Tests (converted from Swift Notification tests)
+// Tests
 test "Notification creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;

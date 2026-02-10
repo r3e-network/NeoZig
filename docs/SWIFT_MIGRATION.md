@@ -1,6 +1,6 @@
 # Swift → Zig Migration Guide
 
-This SDK aims to stay API-compatible with the original Swift **NeoSwift** library, while adopting Zig conventions around:
+This SDK aims to stay API-compatible with the original Swift **NeoClient** library, while adopting Zig conventions around:
 
 - explicit memory management (`deinit`, allocators)
 - explicit error propagation (`try`)
@@ -13,12 +13,12 @@ const neo = @import("neo-zig");
 // or: const neo = @import("neo_zig");
 ```
 
-## RPC client (NeoSwift.build)
+## RPC client (NeoClient.build)
 
 Swift:
 
 ```swift
-let neoSwift = NeoSwift.build(HttpService(URL(string: "https://testnet1.neo.coz.io:443")!))
+let neoSwift = NeoClient.build(HttpService(URL(string: "https://testnet1.neo.coz.io:443")!))
 let response = try await neoSwift.getBlockCount().send()
 ```
 
@@ -31,11 +31,11 @@ const neo = @import("neo-zig");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    const config = neo.rpc.NeoSwiftConfig.init();
-    var service = neo.rpc.NeoSwiftService.init("https://testnet1.neo.coz.io:443");
+    const config = neo.rpc.NeoConfig.init();
+    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
 
-    // `NeoSwift.build` takes `*NeoSwiftService` and moves ownership into the client.
-    var client = neo.rpc.NeoSwift.build(allocator, &service, config);
+    // `NeoClient.build` takes `*NeoService` and moves ownership into the client.
+    var client = neo.rpc.NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
     const request = try client.getBlockCount();
@@ -82,7 +82,7 @@ Notes:
 
 ## Transactions / scripts
 
-Transaction building follows the same high-level flow as NeoSwift, but in Zig you’ll typically:
+Transaction building follows the same high-level flow as NeoClient, but in Zig you’ll typically:
 
 - pass an allocator to builders/utilities
 - `deinit()` transactions/builders that own heap data

@@ -1,6 +1,6 @@
 //! Binary writer for Neo serialization
 //!
-//! Converted from Swift BinaryWriter with full API compatibility.
+//! Neo N3 binary writer.
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
