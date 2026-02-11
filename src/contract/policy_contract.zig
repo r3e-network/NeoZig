@@ -35,6 +35,12 @@ pub const PolicyContract = struct {
     pub const BLOCK_ACCOUNT = "blockAccount";
     pub const UNBLOCK_ACCOUNT = "unblockAccount";
 
+    // v3.9.0 (Faun hardfork) additions
+    pub const RECOVER_FUND = "recoverFund";
+    pub const GET_WHITELIST_FEE_CONTRACTS = "getWhitelistFeeContracts";
+    pub const SET_WHITELIST_FEE_CONTRACT = "setWhitelistFeeContract";
+    pub const REMOVE_WHITELIST_FEE_CONTRACT = "removeWhitelistFeeContract";
+
     /// Base smart contract
     smart_contract: SmartContract,
 
@@ -116,6 +122,114 @@ pub const PolicyContract = struct {
         return try self.smart_contract.invokeFunction(UNBLOCK_ACCOUNT, &params);
     }
 
+    // -----------------------------------------------------------------
+    // v3.9.0 (Faun hardfork) methods
+    // -----------------------------------------------------------------
+
+    /// Recovers funds from a blocked account into the Treasury (committee-only).
+    ///
+    /// Introduced in Neo N3 v3.9.0 (Faun hardfork). Transfers the remaining
+    /// balance of a blocked account's specified token to the Treasury.
+    ///
+    /// Parameters:
+    /// - `account`: The blocked account to recover funds from.
+    /// - `token`: The NEP-17 token contract to recover (e.g. GAS hash).
+    pub fn recoverFund(self: Self, account: Hash160, token: Hash160) !TransactionBuilder {
+        const params = [_]ContractParameter{
+            ContractParameter.hash160(account),
+            ContractParameter.hash160(token),
+        };
+        return try self.smart_contract.invokeFunction(RECOVER_FUND, &params);
+    }
+
+    /// Adds a contract method to the fee-exempt whitelist (committee-only).
+    ///
+    /// Whitelisted contract methods are exempt from execution fees.
+    /// Introduced in Neo N3 v3.9.0 (Faun hardfork).
+    ///
+    /// Parameters:
+    /// - `contract_hash`: The contract to whitelist.
+    /// - `method`: The method name to whitelist.
+    /// - `arg_count`: The number of arguments the method takes.
+    /// - `fixed_fee`: The fixed execution fee for the method.
+    pub fn setWhitelistFeeContract(
+        self: Self,
+        contract_hash: Hash160,
+        method: []const u8,
+        arg_count: i64,
+        fixed_fee: i64,
+    ) !TransactionBuilder {
+        const params = [_]ContractParameter{
+            ContractParameter.hash160(contract_hash),
+            ContractParameter.string(method),
+            ContractParameter.integer(arg_count),
+            ContractParameter.integer(fixed_fee),
+        };
+        return try self.smart_contract.invokeFunction(SET_WHITELIST_FEE_CONTRACT, &params);
+    }
+
+    /// Removes a contract method from the fee-exempt whitelist (committee-only).
+    ///
+    /// Introduced in Neo N3 v3.9.0 (Faun hardfork).
+    ///
+    /// Parameters:
+    /// - `contract_hash`: The contract to remove from whitelist.
+    /// - `method`: The method name to remove.
+    /// - `arg_count`: The number of arguments the method takes.
+    pub fn removeWhitelistFeeContract(
+        self: Self,
+        contract_hash: Hash160,
+        method: []const u8,
+        arg_count: i64,
+    ) !TransactionBuilder {
+        const params = [_]ContractParameter{
+            ContractParameter.hash160(contract_hash),
+            ContractParameter.string(method),
+            ContractParameter.integer(arg_count),
+        };
+        return try self.smart_contract.invokeFunction(REMOVE_WHITELIST_FEE_CONTRACT, &params);
+    }
+
+    /// Gets the list of fee-exempt whitelisted contracts.
+    ///
+    /// Requires an attached RPC client. Introduced in Neo N3 v3.9.0.
+    pub fn getWhitelistFeeContracts(self: Self) ![]Hash160 {
+        const smart_contract = self.smart_contract;
+        if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
+
+        const client: *NeoClient = @ptrCast(@alignCast(smart_contract.client.?));
+        var request = try client.invokeFunction(smart_contract.script_hash, GET_WHITELIST_FEE_CONTRACTS, &[_]ContractParameter{}, &[_]Signer{});
+        var invocation = try request.send();
+        const service_allocator = client.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const session_id = invocation.session orelse return errors.NetworkError.InvalidResponse;
+        const first_item = try invocation.getFirstStackItem();
+        const interop = switch (first_item) {
+            .InteropInterface => |iface| iface,
+            else => return errors.SerializationError.InvalidFormat,
+        };
+
+        const mapper = mapStackItemToHash160;
+
+        var iterator = try iterator_mod.AnyIterator(Hash160).init(
+            smart_contract.allocator,
+            smart_contract.client.?,
+            session_id,
+            interop.iterator_id,
+            mapper,
+        );
+        defer iterator.deinit();
+
+        const items = try iterator.traverseAll(SmartContract.DEFAULT_ITERATOR_COUNT);
+        iterator.terminateSession() catch {};
+        return items;
+    }
+
     /// Gets all blocked accounts
     pub fn getBlockedAccounts(self: Self) ![]Hash160 {
         const smart_contract = self.smart_contract;
@@ -138,19 +252,9 @@ pub const PolicyContract = struct {
             else => return errors.SerializationError.InvalidFormat,
         };
 
-        const mapper = struct {
-            fn map(stack_item: StackItem, allocator: std.mem.Allocator) !Hash160 {
-                const bytes = try stack_item.getByteArray(allocator);
-                defer allocator.free(bytes);
-                if (bytes.len != constants.HASH160_SIZE) return errors.SerializationError.InvalidFormat;
-                var buf: [constants.HASH160_SIZE]u8 = undefined;
-                @memcpy(&buf, bytes);
-                std.mem.reverse(u8, &buf);
-                return Hash160.fromArray(buf);
-            }
-        }.map;
+        const mapper = mapStackItemToHash160;
 
-        var iterator = try iterator_mod.Iterator(Hash160).init(
+        var iterator = try iterator_mod.AnyIterator(Hash160).init(
             smart_contract.allocator,
             smart_contract.client.?,
             session_id,
@@ -183,6 +287,17 @@ pub const PolicyContract = struct {
             .exec_fee_factor = try self.getExecFeeFactor(),
             .storage_price = try self.getStoragePrice(),
         };
+    }
+
+    /// Shared mapper: converts a StackItem (little-endian ByteString) to Hash160.
+    fn mapStackItemToHash160(stack_item: StackItem, allocator: std.mem.Allocator) !Hash160 {
+        const bytes = try stack_item.getByteArray(allocator);
+        defer allocator.free(bytes);
+        if (bytes.len != constants.HASH160_SIZE) return errors.SerializationError.InvalidFormat;
+        var buf: [constants.HASH160_SIZE]u8 = undefined;
+        @memcpy(&buf, bytes);
+        std.mem.reverse(u8, &buf);
+        return Hash160.fromArray(buf);
     }
 };
 
@@ -295,4 +410,39 @@ test "PolicyContract network policies" {
 
     // Test comprehensive policy retrieval
     try testing.expectError(errors.NeoError.InvalidConfiguration, policy_contract.getCurrentPolicies());
+}
+
+test "PolicyContract v3.9.0 fund recovery" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const policy_contract = PolicyContract.init(allocator, null);
+    const test_hash = Hash160.ZERO;
+
+    // recoverFund builds a transaction script without RPC (account + token)
+    var recover_tx = try policy_contract.recoverFund(test_hash, test_hash);
+    defer recover_tx.deinit();
+
+    try testing.expect(recover_tx.getScript() != null);
+}
+
+test "PolicyContract v3.9.0 whitelist operations" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const policy_contract = PolicyContract.init(allocator, null);
+    const test_hash = Hash160.ZERO;
+
+    // setWhitelistFeeContract builds a transaction script (4 params)
+    var set_tx = try policy_contract.setWhitelistFeeContract(test_hash, "transfer", 3, 1000);
+    defer set_tx.deinit();
+    try testing.expect(set_tx.getScript() != null);
+
+    // removeWhitelistFeeContract builds a transaction script (3 params)
+    var remove_tx = try policy_contract.removeWhitelistFeeContract(test_hash, "transfer", 3);
+    defer remove_tx.deinit();
+    try testing.expect(remove_tx.getScript() != null);
+
+    // getWhitelistFeeContracts requires RPC client
+    try testing.expectError(errors.NeoError.InvalidConfiguration, policy_contract.getWhitelistFeeContracts());
 }

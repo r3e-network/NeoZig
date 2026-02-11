@@ -3,7 +3,7 @@
     .name = .neo_zig,
 
     // Semantic version.
-    .version = "1.2.0",
+    .version = "1.3.0",
 
     // Generated once; never change unless intentionally forking/renaming.
     .fingerprint = 0xa85f40d41fd9a539, // Changing this has security and trust implications.

@@ -4,7 +4,61 @@
 
 - (none)
 
-## 1.2.0 - 2026-02-10
+## 1.3.0 - 2026-02-11
+
+### Neo N3 v3.9.0 Native Contract Implementations
+
+Adds full SDK wrappers for the three native contracts introduced in the Faun
+hardfork, plus protocol-compliance fixes verified against the `neo-project/neo`
+C# reference implementation.
+
+#### New Contracts
+
+- **CryptoLib** (`src/contract/crypto_lib.zig`) — Cryptographic hash and
+  signature operations: `sha256`, `ripemd160`, `murmur32`, `keccak256`
+  (HF_Cockatrice), `verifyWithECDsa` (HF_Cockatrice), `recoverSecp256K1`
+  (HF_Echidna), and 6 BLS12-381 methods (HF_Cockatrice).
+- **Notary** (`src/contract/notary.zig`) — Notary-assisted transaction
+  support: `lockDepositUntil`, `withdraw`, `balanceOf`, `expirationOf`,
+  `getMaxNotValidBeforeDelta`, `setMaxNotValidBeforeDelta`, `verify`.
+- **Treasury** (`src/contract/treasury.zig`) — Passive fund holder for
+  recovered blocked-account assets. Exposes `verify` only (NEP-26/27/30).
+
+#### New Types
+
+- **`NamedCurveHash`** enum — Type-safe ECDSA curve+hash pairs (22/23/122/123)
+  replacing raw `u8` values, matching the Neo N3 `NamedCurveHash` enum.
+
+#### Protocol Compliance Fixes
+
+- **Hardfork enum**: Renamed `Aspidiske` → `Aspidochelone` to match
+  `HF_Aspidochelone` in the reference implementation.
+- **CryptoLib**: Removed non-existent SHA3/Blake2b methods; added real
+  `keccak256`, `recoverSecp256K1`, and BLS12-381 operations.
+- **Treasury**: Removed fabricated `requestFund`/`getFundBalance` — Treasury
+  is a passive contract with only `verify` and payment callbacks.
+- **PolicyContract.recoverFund**: Fixed signature from 1 param to 2
+  (`account` + `token`).
+- **PolicyContract.setWhitelistFeeContract**: Fixed from 1 param to 4
+  (`contractHash`, `method`, `argCount`, `fixedFee`).
+- **PolicyContract.removeWhitelistFeeContract**: Fixed from 1 param to 3
+  (`contractHash`, `method`, `argCount`).
+- **Notary.withdraw**: Made `to` parameter nullable (`?Hash160`), matching
+  the reference `UInt160?`.
+- **CryptoLibAlgorithm**: Removed fake SHA3/Blake2b constants, added
+  `KECCAK256`.
+
+#### Infrastructure
+
+- Added `callFunctionReturningBytes` to `SmartContract` for byte-array
+  return values.
+- Exported `NamedCurveHash` from the contract module.
+
+#### Quality
+
+- **Build**: `zig build` — zero errors, zero warnings
+- **Tests**: `zig build test` — 358 tests passing
+- **7 files changed**, ~800 lines added
 
 ### NeoSwift → Neo Rename & Codebase Consolidation
 

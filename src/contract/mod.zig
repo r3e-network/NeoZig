@@ -17,6 +17,12 @@ pub const Role = @import("../types/role.zig").Role;
 pub const Token = @import("token.zig").Token;
 pub const TransferRecipient = @import("fungible_token.zig").TransferRecipient;
 
+// v3.9.0 (Faun hardfork) native contracts
+pub const Treasury = @import("treasury.zig").Treasury;
+pub const Notary = @import("notary.zig").Notary;
+pub const CryptoLib = @import("crypto_lib.zig").CryptoLib;
+pub const NamedCurveHash = @import("crypto_lib.zig").NamedCurveHash;
+
 // Export contract data structures
 pub const ContractManifest = @import("smart_contract.zig").ContractManifest;
 pub const ContractState = @import("smart_contract.zig").ContractState;

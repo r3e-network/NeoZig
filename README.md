@@ -49,17 +49,18 @@ The SDK includes comprehensive documentation covering all aspects of development
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Security](SECURITY.md)** - Security best practices
 
-## 🆕 v1.2.0 Release
+## 🆕 v1.3.0 Release
 
-`v1.2.0` completes the NeoSwift → Neo rename and consolidates the codebase. Highlights:
+`v1.3.0` adds full Neo N3 v3.9.0 (Faun hardfork) native contract support. Highlights:
 
-- 🔄 **Full rename** – All `neo_swift_*` files replaced by clean `neo_*` equivalents
-- 📦 **Module consolidation** – `*_complete.zig` files merged into primary modules (−10.5k lines net)
-- 🧹 **Dead code removal** – Scratch files, alias shims, and Swift-era test files removed
-- ✅ **Zero warnings** – `zig build` and `zig build test` pass cleanly
+- 🔐 **CryptoLib** – SHA-256, RIPEMD-160, Murmur32, Keccak256, ECDSA verification, secp256k1 recovery, BLS12-381 ops
+- 📜 **Notary** – Notary-assisted transaction support with deposit, withdrawal, and balance queries
+- 🏦 **Treasury** – Passive fund holder for recovered blocked-account assets
+- 🛡️ **Protocol compliance** – All method signatures verified against `neo-project/neo` C# reference
+- ✅ **358 tests passing** – `zig build` and `zig build test` pass with zero warnings
 
 ```bash
-git clone --branch v1.2.0 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v1.3.0 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
 ```
@@ -126,6 +127,9 @@ src/
 │   ├── gas_token.zig          # Native GAS token
 │   ├── neo_token.zig          # Native NEO token
 │   ├── policy_contract.zig    # Network policy
+│   ├── crypto_lib.zig         # CryptoLib (hashes, ECDSA, BLS12-381)
+│   ├── notary.zig             # Notary-assisted transactions
+│   ├── treasury.zig           # Treasury (passive fund holder)
 │   ├── role_management.zig    # Node roles
 │   ├── nef_file.zig           # NEF3 format
 │   ├── neo_uri.zig            # NEP-9 URI scheme
@@ -469,7 +473,7 @@ Networking notes:
 ## 🎖️ Project Status
 
 - **Status**: Core modules implemented; some helper APIs experimental
-- **Version**: 1.2.0
+- **Version**: 1.3.0
 - **Maintenance**: Actively maintained
 
 ---

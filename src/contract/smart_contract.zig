@@ -199,6 +199,26 @@ pub const SmartContract = struct {
         return try Hash160.initWithString(hex);
     }
 
+    /// Calls function returning byte array (used by CryptoLib hash operations).
+    pub fn callFunctionReturningBytes(
+        self: Self,
+        function_name: []const u8,
+        params: []const ContractParameter,
+    ) ![]u8 {
+        const client = try self.getClient();
+        var request = try client.invokeFunction(self.script_hash, function_name, params, &[_]Signer{});
+        var invocation = try request.send();
+        const service_allocator = client.getService().getAllocator();
+        defer invocation.deinit(service_allocator);
+
+        if (invocation.hasFaulted()) {
+            return errors.ContractError.ContractExecutionFailed;
+        }
+
+        const stack_item = try invocation.getFirstStackItem();
+        return try stack_item.getByteArray(self.allocator);
+    }
+
     /// Gets contract manifest
     pub fn getManifest(self: Self) !ContractManifest {
         const client = try self.getClient();

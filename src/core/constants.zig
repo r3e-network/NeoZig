@@ -120,6 +120,67 @@ pub const NativeContracts = struct {
     pub const TREASURY: [20]u8 = [_]u8{ 0x15, 0x63, 0x26, 0xf2, 0x5b, 0x1b, 0x5d, 0x83, 0x9a, 0x4d, 0x32, 0x6a, 0xea, 0xa7, 0x53, 0x83, 0xc9, 0x56, 0x3a, 0xc1 };
 };
 
+/// Neo N3 Hardfork identifiers (v3.9.0+)
+///
+/// Hardforks are protocol upgrades that activate at specific block heights.
+/// The node reports active hardforks via `getversion` → `protocol.hardforks`.
+pub const Hardfork = enum {
+    /// Aspidochelone hardfork (initial N3 hardfork)
+    Aspidochelone,
+    /// Basilisk hardfork
+    Basilisk,
+    /// Cockatrice hardfork
+    Cockatrice,
+    /// Domovoi hardfork
+    Domovoi,
+    /// Echidna hardfork
+    Echidna,
+    /// Faun hardfork (v3.9.0) — introduces Treasury, fund recovery, whitelist
+    Faun,
+    /// Gorgon hardfork (v3.9.0) — future protocol upgrade placeholder
+    Gorgon,
+
+    pub fn getName(self: Hardfork) []const u8 {
+        return switch (self) {
+            .Aspidochelone => "Aspidochelone",
+            .Basilisk => "Basilisk",
+            .Cockatrice => "Cockatrice",
+            .Domovoi => "Domovoi",
+            .Echidna => "Echidna",
+            .Faun => "Faun",
+            .Gorgon => "Gorgon",
+        };
+    }
+
+    /// Parses a hardfork name string (case-insensitive).
+    pub fn fromString(name: []const u8) ?Hardfork {
+        const hardforks = [_]struct { n: []const u8, v: Hardfork }{
+            .{ .n = "Aspidochelone", .v = .Aspidochelone },
+            .{ .n = "Basilisk", .v = .Basilisk },
+            .{ .n = "Cockatrice", .v = .Cockatrice },
+            .{ .n = "Domovoi", .v = .Domovoi },
+            .{ .n = "Echidna", .v = .Echidna },
+            .{ .n = "Faun", .v = .Faun },
+            .{ .n = "Gorgon", .v = .Gorgon },
+        };
+        for (hardforks) |hf| {
+            if (std.ascii.eqlIgnoreCase(hf.n, name)) return hf.v;
+        }
+        return null;
+    }
+};
+
+/// CryptoLib hash algorithm identifiers
+///
+/// Hash algorithms available in the CryptoLib native contract.
+pub const CryptoLibAlgorithm = struct {
+    pub const SHA256: []const u8 = "SHA256";
+    pub const RIPEMD160: []const u8 = "RIPEMD160";
+    pub const MURMUR32: []const u8 = "Murmur32";
+    /// Added in HF_Cockatrice
+    pub const KECCAK256: []const u8 = "Keccak256";
+};
+
 /// Fee constants
 pub const FeeConstants = struct {
     pub const MIN_NETWORK_FEE: u64 = 1000000;
