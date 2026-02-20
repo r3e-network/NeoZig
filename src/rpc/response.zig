@@ -40,7 +40,7 @@ pub fn Response(comptime T: type) type {
 
         const Self = @This();
 
-        /// Creates response with result)
+        /// Creates response with result
         pub fn init(allocator: std.mem.Allocator, result: T) Self {
             return Self{
                 .id = 1,
@@ -80,7 +80,7 @@ pub fn Response(comptime T: type) type {
             return self.response_error != null;
         }
 
-        /// Gets result or throws error)
+        /// Gets result or throws error
         pub fn getResult(self: Self) !T {
             if (self.response_error != null) {
                 return errors.NetworkError.ServerError;

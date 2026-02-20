@@ -12,6 +12,9 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const PrivateKey = @import("keys.zig").PrivateKey;
 const PublicKey = @import("keys.zig").PublicKey;
 const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
+const Signature = @import("signatures.zig").Signature;
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
+const wif_mod = @import("wif.zig");
 
 /// Elliptic Curve SECP-256r1 key pair
 pub const ECKeyPair = struct {
@@ -22,7 +25,7 @@ pub const ECKeyPair = struct {
 
     const Self = @This();
 
-    /// Creates EC key pair)
+    /// Creates EC key pair
     pub fn init(private_key: PrivateKey, public_key: PublicKey) Self {
         return Self{
             .private_key = private_key,
@@ -30,38 +33,38 @@ pub const ECKeyPair = struct {
         };
     }
 
-    /// Creates key pair from private key)
+    /// Creates key pair from private key
     pub fn create(private_key: PrivateKey) !Self {
         const public_key = try private_key.getPublicKey(true);
         return Self.init(private_key, public_key);
     }
 
-    /// Creates random key pair)
+    /// Creates random key pair
     pub fn createRandom() !Self {
         const private_key = PrivateKey.generate();
         const public_key = try private_key.getPublicKey(true);
         return Self.init(private_key, public_key);
     }
 
-    /// Creates key pair from private key bytes)
+    /// Creates key pair from private key bytes
     pub fn createFromBytes(private_key_bytes: [32]u8) !Self {
         const private_key = try PrivateKey.init(private_key_bytes);
         return try Self.create(private_key);
     }
 
-    /// Creates key pair from private key hex)
+    /// Creates key pair from private key hex
     pub fn createFromHex(private_key_hex: []const u8) !Self {
         const private_key = try PrivateKey.fromHex(private_key_hex);
         return try Self.create(private_key);
     }
 
-    /// Gets NEO address)
+    /// Gets NEO address
     pub fn getAddress(self: Self, allocator: std.mem.Allocator) ![]u8 {
         const script_hash = try self.getScriptHash(allocator);
         return try script_hash.toAddress(allocator);
     }
 
-    /// Gets script hash)
+    /// Gets script hash
     pub fn getScriptHash(self: Self, allocator: std.mem.Allocator) !Hash160 {
         // Avoid returning a slice referencing a temporary `PublicKey` created by
         // `toCompressed()`.
@@ -70,7 +73,7 @@ pub const ECKeyPair = struct {
             compressed_public_key_value = try compressed_public_key_value.toCompressed();
         }
 
-        const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
+        const script = try ScriptBuilder.buildVerificationScript(
             compressed_public_key_value.toSlice(),
             allocator,
         );
@@ -79,26 +82,19 @@ pub const ECKeyPair = struct {
         return try Hash160.fromScript(script);
     }
 
-    /// Signs message hash)
+    /// Signs message hash
     pub fn sign(self: Self, message_hash: []const u8) ![2]u256 {
         if (message_hash.len != constants.HASH256_SIZE) {
             return errors.ValidationError.InvalidLength;
         }
-        const signature = self.signAndGetECDSASignature(message_hash);
+        const signature = try self.signAndGetECDSASignature(message_hash);
         return [2]u256{ signature.getR(), signature.getS() };
     }
 
-    /// Signs and gets ECDSA signature)
-    pub fn signAndGetECDSASignature(self: Self, message_hash: []const u8) ECDSASignature {
-        const hash256 = Hash256.initWithBytes(message_hash) catch {
-            return ECDSASignature.init(0, 0);
-        };
-
-        // Create signature using secp256r1
-        const signature = self.private_key.sign(hash256) catch {
-            return ECDSASignature.init(0, 0); // Return zero signature on error
-        };
-
+    /// Signs and gets ECDSA signature
+    pub fn signAndGetECDSASignature(self: Self, message_hash: []const u8) !ECDSASignature {
+        const hash256 = try Hash256.initWithBytes(message_hash);
+        const signature = try self.private_key.sign(hash256);
         return ECDSASignature.fromBytes(signature.bytes);
     }
 
@@ -109,7 +105,7 @@ pub const ECKeyPair = struct {
         }
 
         const hash256 = try Hash256.initWithBytes(message_hash);
-        const zig_signature = @import("signatures.zig").Signature.init(signature.toBytes());
+        const zig_signature = Signature.init(signature.toBytes());
 
         return try zig_signature.verify(hash256, self.public_key);
     }
@@ -141,13 +137,13 @@ pub const ECKeyPair = struct {
     }
 
     /// Exports private key as WIF
-    pub fn exportWIF(self: Self, compressed: bool, network: @import("wif.zig").NetworkType, allocator: std.mem.Allocator) ![]u8 {
-        return try @import("wif.zig").encode(self.private_key, compressed, network, allocator);
+    pub fn exportWIF(self: Self, compressed: bool, network: wif_mod.NetworkType, allocator: std.mem.Allocator) ![]u8 {
+        return try wif_mod.encode(self.private_key, compressed, network, allocator);
     }
 
     /// Imports key pair from WIF
     pub fn importFromWIF(wif: []const u8, allocator: std.mem.Allocator) !Self {
-        const wif_result = try @import("wif.zig").decode(wif, allocator);
+        const wif_result = try wif_mod.decode(wif, allocator);
         defer @constCast(&wif_result).deinit();
         return try Self.create(wif_result.private_key);
     }
@@ -268,7 +264,7 @@ test "ECKeyPair signing operations" {
     try testing.expect(signature_components[1] != 0); // S component
 
     // Test ECDSA signature creation
-    const ecdsa_signature = key_pair.signAndGetECDSASignature(message_hash.toSlice());
+    const ecdsa_signature = try key_pair.signAndGetECDSASignature(message_hash.toSlice());
     try testing.expect(ecdsa_signature.isValid());
     try testing.expect(ecdsa_signature.isCanonical());
 
@@ -285,7 +281,7 @@ test "ECKeyPair signing operations" {
     const short_hash = "short";
     try testing.expectError(errors.ValidationError.InvalidLength, key_pair.sign(short_hash));
     try testing.expectError(errors.ValidationError.InvalidLength, key_pair.verifySignature(short_hash, ecdsa_signature));
-    try testing.expect(!key_pair.signAndGetECDSASignature(short_hash).isValid());
+    try testing.expectError(errors.NeoError.IllegalArgument, key_pair.signAndGetECDSASignature(short_hash));
 }
 
 test "ECKeyPair WIF operations" {

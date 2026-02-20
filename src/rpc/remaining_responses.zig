@@ -13,6 +13,10 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
+const responses = @import("responses.zig");
+const extended_responses = @import("extended_responses.zig");
+const token_responses = @import("token_responses.zig");
+const transaction_attribute_mod = @import("../protocol/response/transaction_attribute.zig");
 
 /// Generic token balances response
 pub fn NeoGetTokenBalances(comptime T: type) type {
@@ -536,7 +540,7 @@ pub const NeoGetUnspents = struct {
 };
 
 /// Transaction attribute response (typed)
-pub const TransactionAttributeResponse = @import("../protocol/response/transaction_attribute.zig").TransactionAttribute;
+pub const TransactionAttributeResponse = transaction_attribute_mod.TransactionAttribute;
 
 /// Notification response
 pub const NotificationResponse = struct {
@@ -612,18 +616,18 @@ pub const ResponseAliases = struct {
     pub const NeoDumpPrivKey = []const u8;
     pub const NeoGetNewAddress = []const u8;
     pub const NeoGetWalletUnclaimedGas = []const u8;
-    pub const NeoImportPrivKey = @import("extended_responses.zig").NeoAddress;
+    pub const NeoImportPrivKey = extended_responses.NeoAddress;
     pub const NeoOpenWallet = bool;
-    pub const NeoSendFrom = @import("responses.zig").Transaction;
-    pub const NeoSendMany = @import("responses.zig").Transaction;
-    pub const NeoSendToAddress = @import("responses.zig").Transaction;
+    pub const NeoSendFrom = responses.Transaction;
+    pub const NeoSendMany = responses.Transaction;
+    pub const NeoSendToAddress = responses.Transaction;
 
     // Contract response aliases
-    pub const NeoGetContractState = @import("responses.zig").ContractState;
-    pub const NeoGetNativeContracts = []const @import("extended_responses.zig").NativeContractState;
-    pub const NeoInvokeFunction = @import("responses.zig").InvocationResult;
-    pub const NeoInvokeScript = @import("responses.zig").InvocationResult;
-    pub const NeoInvokeContractVerify = @import("responses.zig").InvocationResult;
+    pub const NeoGetContractState = responses.ContractState;
+    pub const NeoGetNativeContracts = []const extended_responses.NativeContractState;
+    pub const NeoInvokeFunction = responses.InvocationResult;
+    pub const NeoInvokeScript = responses.InvocationResult;
+    pub const NeoInvokeContractVerify = responses.InvocationResult;
     pub const NeoTraverseIterator = []StackItem;
     pub const NeoTerminateSession = bool;
 
@@ -645,8 +649,8 @@ pub const ResponseAliases = struct {
             if (std.mem.eql(u8, method, "getblockcount")) return NeoBlockCount;
             if (std.mem.eql(u8, method, "getconnectioncount")) return NeoConnectionCount;
             if (std.mem.eql(u8, method, "getversion")) return NeoGetVersion;
-            if (std.mem.eql(u8, method, "getnep17balances")) return @import("token_responses.zig").NeoGetNep17Balances;
-            if (std.mem.eql(u8, method, "getnep11balances")) return @import("token_responses.zig").NeoGetNep11Balances;
+            if (std.mem.eql(u8, method, "getnep17balances")) return token_responses.NeoGetNep17Balances;
+            if (std.mem.eql(u8, method, "getnep11balances")) return token_responses.NeoGetNep11Balances;
             if (std.mem.eql(u8, method, "invokefunction")) return NeoInvokeFunction;
             if (std.mem.eql(u8, method, "sendrawtransaction")) return NeoSendRawTransaction;
             if (std.mem.eql(u8, method, "calculatenetworkfee")) return NeoCalculateNetworkFee;

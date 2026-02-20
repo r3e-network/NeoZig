@@ -51,7 +51,7 @@ pub const TransactionBuilder = struct {
 
     const Self = @This();
 
-    /// Creates a new transaction builder)
+    /// Creates a new transaction builder
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
@@ -84,31 +84,30 @@ pub const TransactionBuilder = struct {
         }
     }
 
-    /// Sets the version for this transaction)
+    /// Sets the version for this transaction
     pub fn version(self: *Self, transaction_version: u8) *Self {
         self.version_field = transaction_version;
         return self;
     }
 
-    /// Sets the nonce)
+    /// Sets the nonce
     pub fn nonce(self: *Self, transaction_nonce: u32) !*Self {
-        // Validate nonce range (0 to 2^32-1)
         self.nonce_field = transaction_nonce;
         return self;
     }
 
-    /// Sets valid until block)
+    /// Sets valid until block
     pub fn validUntilBlock(self: *Self, block_nr: u32) !*Self {
         self.valid_until_block_field = block_nr;
         return self;
     }
 
-    /// Sets the first signer by account)
+    /// Sets the first signer by account
     pub fn firstSignerAccount(self: *Self, sender_account: Account) !*Self {
         return try self.firstSigner(try sender_account.getScriptHash());
     }
 
-    /// Sets the first signer by script hash)
+    /// Sets the first signer by script hash
     pub fn firstSigner(self: *Self, sender: Hash160) !*Self {
         // Check for fee-only witness scope signers
         for (self.signers_list.items) |existing_signer| {
@@ -137,7 +136,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds signers to the transaction)
+    /// Adds signers to the transaction
     /// Note: signers are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn signers(self: *Self, new_signers: []const Signer) !*Self {
         var cloned_signers = ArrayList(Signer).init(self.allocator);
@@ -160,7 +159,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds a single signer)
+    /// Adds a single signer
     /// Note: the signer is deep-cloned into allocator-owned storage; the builder owns its copy.
     pub fn signer(self: *Self, new_signer: Signer) !*Self {
         var owned_signer = try new_signer.cloneOwned(self.allocator);
@@ -180,19 +179,19 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Sets additional network fee)
+    /// Sets additional network fee
     pub fn additionalNetworkFee(self: *Self, fee: u64) *Self {
         self.additional_network_fee = fee;
         return self;
     }
 
-    /// Sets additional system fee)
+    /// Sets additional system fee
     pub fn additionalSystemFee(self: *Self, fee: u64) *Self {
         self.additional_system_fee = fee;
         return self;
     }
 
-    /// Adds transaction attributes)
+    /// Adds transaction attributes
     /// Note: attributes are deep-cloned into allocator-owned storage; the builder owns its copies.
     pub fn attributes(self: *Self, new_attributes: []const TransactionAttribute) !*Self {
         // Validate maximum attributes
@@ -220,34 +219,34 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Adds high priority attribute)
+    /// Adds high priority attribute
     pub fn highPriority(self: *Self) !*Self {
         try self.attributes_list.append(TransactionAttribute.initHighPriority());
         return self;
     }
 
-    /// Adds not-valid-before attribute)
+    /// Adds not-valid-before attribute
     pub fn notValidBefore(self: *Self, height: u32) !*Self {
         const attribute = try TransactionAttribute.initNotValidBefore(height, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Adds conflicts attribute)
+    /// Adds conflicts attribute
     pub fn conflicts(self: *Self, conflict_hash: Hash256) !*Self {
         const attribute = try TransactionAttribute.initConflicts(conflict_hash, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Adds notary-assisted attribute)
+    /// Adds notary-assisted attribute
     pub fn notaryAssisted(self: *Self, n_keys: u8) !*Self {
         const attribute = try TransactionAttribute.initNotaryAssisted(n_keys, self.allocator);
         try self.attributes_list.append(attribute);
         return self;
     }
 
-    /// Sets the transaction script)
+    /// Sets the transaction script
     pub fn script(self: *Self, transaction_script: []const u8) !*Self {
         if (self.script_field == null) {
             self.script_field = ArrayList(u8).init(self.allocator);
@@ -295,7 +294,7 @@ pub const TransactionBuilder = struct {
         return self;
     }
 
-    /// Builds the transaction)
+    /// Builds the transaction
     pub fn build(self: *Self) !Transaction {
         // Validate required fields
         if (self.signers_list.items.len == 0) {
@@ -327,7 +326,7 @@ pub const TransactionBuilder = struct {
         );
     }
 
-    /// Signs the transaction)
+    /// Signs the transaction
     pub fn sign(self: *Self, accounts: []const Account, network_magic: u32) !Transaction {
         var transaction = try self.build();
         errdefer transaction.deinit(self.allocator);
@@ -1049,7 +1048,7 @@ pub const Transaction = struct {
         };
     }
 
-    /// Calculates transaction hash)
+    /// Calculates transaction hash
     pub fn getHash(self: Self, allocator: std.mem.Allocator) !Hash256 {
         var writer = BinaryWriter.init(allocator);
         defer writer.deinit();

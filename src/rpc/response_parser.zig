@@ -13,6 +13,13 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const json_utils = @import("../utils/json_utils.zig");
 
+const responses = @import("responses.zig");
+const aliases = @import("response_aliases.zig");
+const token_responses = @import("token_responses.zig");
+const extended = @import("extended_responses.zig");
+const protocol_responses = @import("protocol_responses.zig");
+const remaining = @import("remaining_responses.zig");
+
 const log = std.log.scoped(.neo_rpc);
 
 /// Parses RPC response result based on expected type
@@ -27,20 +34,20 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         []const u8 => try allocator.dupe(u8, result.string),
 
         // Complex response types
-        @import("responses.zig").NeoBlock => try @import("responses.zig").NeoBlock.fromJson(result, allocator),
-        @import("responses.zig").NeoVersion => try @import("responses.zig").NeoVersion.fromJson(result, allocator),
-        @import("responses.zig").InvocationResult => try @import("responses.zig").InvocationResult.fromJson(result, allocator),
-        @import("responses.zig").Nep17Balances => try @import("responses.zig").Nep17Balances.fromJson(result, allocator),
-        @import("responses.zig").Nep17Transfers => try @import("responses.zig").Nep17Transfers.fromJson(result, allocator),
-        @import("response_aliases.zig").NeoGetRawMemPool => try @import("response_aliases.zig").NeoGetRawMemPool.fromJson(result, allocator),
-        @import("response_aliases.zig").NeoGetRawTransaction => try @import("response_aliases.zig").NeoGetRawTransaction.fromJson(result, allocator),
-        @import("responses.zig").NetworkFeeResponse => try @import("responses.zig").NetworkFeeResponse.fromJson(result, allocator),
-        @import("token_responses.zig").NeoGetNep17Balances => try @import("token_responses.zig").NeoGetNep17Balances.fromJson(result, allocator),
-        @import("token_responses.zig").NeoGetNep11Balances => try @import("token_responses.zig").NeoGetNep11Balances.fromJson(result, allocator),
-        @import("extended_responses.zig").NeoAccountState => try @import("extended_responses.zig").NeoAccountState.fromJson(result, allocator),
-        @import("protocol_responses.zig").NeoGetPeers => try @import("protocol_responses.zig").NeoGetPeers.fromJson(result, allocator),
-        @import("extended_responses.zig").NeoListPlugins => try @import("extended_responses.zig").NeoListPlugins.fromJson(result, allocator),
-        @import("remaining_responses.zig").NeoGetVersion => try @import("remaining_responses.zig").NeoGetVersion.fromJson(result, allocator),
+        responses.NeoBlock => try responses.NeoBlock.fromJson(result, allocator),
+        responses.NeoVersion => try responses.NeoVersion.fromJson(result, allocator),
+        responses.InvocationResult => try responses.InvocationResult.fromJson(result, allocator),
+        responses.Nep17Balances => try responses.Nep17Balances.fromJson(result, allocator),
+        responses.Nep17Transfers => try responses.Nep17Transfers.fromJson(result, allocator),
+        aliases.NeoGetRawMemPool => try aliases.NeoGetRawMemPool.fromJson(result, allocator),
+        aliases.NeoGetRawTransaction => try aliases.NeoGetRawTransaction.fromJson(result, allocator),
+        responses.NetworkFeeResponse => try responses.NetworkFeeResponse.fromJson(result, allocator),
+        token_responses.NeoGetNep17Balances => try token_responses.NeoGetNep17Balances.fromJson(result, allocator),
+        token_responses.NeoGetNep11Balances => try token_responses.NeoGetNep11Balances.fromJson(result, allocator),
+        extended.NeoAccountState => try extended.NeoAccountState.fromJson(result, allocator),
+        protocol_responses.NeoGetPeers => try protocol_responses.NeoGetPeers.fromJson(result, allocator),
+        extended.NeoListPlugins => try extended.NeoListPlugins.fromJson(result, allocator),
+        remaining.NeoGetVersion => try remaining.NeoGetVersion.fromJson(result, allocator),
 
         else => blk: {
             if (@hasDecl(T, "fromJson")) break :blk try T.fromJson(result, allocator);

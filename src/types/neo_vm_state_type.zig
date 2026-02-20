@@ -73,7 +73,7 @@ pub const NeoVMStateType = enum {
         return &[_]Self{ .None, .Halt, .Fault, .Break };
     }
 
-    /// Decodes from JSON)
+    /// Decodes from JSON
     pub fn decodeFromJson(json_value: std.json.Value) !Self {
         return switch (json_value) {
             .string => |s| {
@@ -90,7 +90,7 @@ pub const NeoVMStateType = enum {
         };
     }
 
-    /// Encodes to JSON)
+    /// Encodes to JSON
     pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
         const value = try allocator.dupe(u8, self.getJsonValue());
         return std.json.Value{ .string = value };

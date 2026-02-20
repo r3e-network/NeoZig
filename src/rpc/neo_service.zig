@@ -11,6 +11,10 @@ const errors = @import("../core/errors.zig");
 const Request = @import("request.zig").Request;
 const json_utils = @import("../utils/json_utils.zig");
 const Response = @import("response.zig").Response;
+const http_service_mod = @import("http_service.zig");
+const HttpService = http_service_mod.HttpService;
+const HttpServiceFactory = http_service_mod.HttpServiceFactory;
+const RequestUtils = @import("request.zig").RequestUtils;
 
 /// Neo service protocol
 pub const NeoService = struct {
@@ -22,7 +26,6 @@ pub const NeoService = struct {
     /// Creates a service instance for a URL using the provided allocator.
     /// Prefer this over `init("https://...")` if you want to handle allocation failure.
     pub fn initWithAllocator(allocator: std.mem.Allocator, url: []const u8) !Self {
-        const HttpService = @import("http_service.zig").HttpService;
         const http_service = try allocator.create(HttpService);
         http_service.* = HttpService.init(allocator, url, false);
         const impl = ServiceImplementation.init(http_service, allocator, true);
@@ -69,7 +72,7 @@ pub const NeoService = struct {
         self.service_impl.deinit();
     }
 
-    /// Sends request)
+    /// Sends request
     pub fn send(
         self: *Self,
         comptime T: type,
@@ -128,7 +131,7 @@ pub const NeoService = struct {
 /// Service implementation interface
 pub const ServiceImplementation = struct {
     /// HTTP service reference
-    http_service: *@import("http_service.zig").HttpService,
+    http_service: *HttpService,
     /// Ownership flag for http_service
     owns_http_service: bool,
     /// Allocator used to manage http_service lifetime
@@ -141,7 +144,7 @@ pub const ServiceImplementation = struct {
     const Self = @This();
 
     /// Creates service implementation
-    pub fn init(http_service: *@import("http_service.zig").HttpService, allocator: std.mem.Allocator, owns_http_service: bool) Self {
+    pub fn init(http_service: *HttpService, allocator: std.mem.Allocator, owns_http_service: bool) Self {
         return Self{
             .http_service = http_service,
             .owns_http_service = owns_http_service,
@@ -215,7 +218,7 @@ pub const ServiceImplementation = struct {
         defer self.http_service.allocator.free(response_body);
 
         // Parse batch response
-        return try @import("request.zig").RequestUtils.parseBatchResponse(response_body, allocator);
+        return try RequestUtils.parseBatchResponse(response_body, allocator);
     }
 
     /// Checks connectivity
@@ -331,27 +334,27 @@ pub const ServiceStatistics = struct {
 pub const ServiceFactory = struct {
     /// Creates service for MainNet
     pub fn mainnet(allocator: std.mem.Allocator) !NeoService {
-        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        const http_service = try allocator.create(HttpService);
         errdefer allocator.destroy(http_service);
-        http_service.* = @import("http_service.zig").HttpServiceFactory.mainnet(allocator);
+        http_service.* = HttpServiceFactory.mainnet(allocator);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoService.init(service_impl);
     }
 
     /// Creates service for TestNet
     pub fn testnet(allocator: std.mem.Allocator) !NeoService {
-        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        const http_service = try allocator.create(HttpService);
         errdefer allocator.destroy(http_service);
-        http_service.* = @import("http_service.zig").HttpServiceFactory.testnet(allocator);
+        http_service.* = HttpServiceFactory.testnet(allocator);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoService.init(service_impl);
     }
 
     /// Creates service for local node
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoService {
-        const http_service = try allocator.create(@import("http_service.zig").HttpService);
+        const http_service = try allocator.create(HttpService);
         errdefer allocator.destroy(http_service);
-        http_service.* = @import("http_service.zig").HttpServiceFactory.localhost(allocator, port);
+        http_service.* = HttpServiceFactory.localhost(allocator, port);
         const service_impl = ServiceImplementation.init(http_service, allocator, true);
         return NeoService.init(service_impl);
     }
@@ -363,9 +366,9 @@ pub const ServiceFactory = struct {
         timeout_ms: u32,
         max_retries: u32,
     ) !NeoService {
-        var http_service = try allocator.create(@import("http_service.zig").HttpService);
+        var http_service = try allocator.create(HttpService);
         errdefer allocator.destroy(http_service);
-        http_service.* = @import("http_service.zig").HttpService.init(allocator, endpoint, false);
+        http_service.* = HttpService.init(allocator, endpoint, false);
         http_service.setTimeout(timeout_ms);
         http_service.setMaxRetries(max_retries);
 
@@ -380,8 +383,8 @@ test "NeoService creation and configuration" {
     const allocator = testing.allocator;
 
     // Test service creation
-    var http_service = try allocator.create(@import("http_service.zig").HttpService);
-    http_service.* = @import("http_service.zig").HttpService.init(allocator, "http://localhost:20332", false);
+    var http_service = try allocator.create(HttpService);
+    http_service.* = HttpService.init(allocator, "http://localhost:20332", false);
     defer {
         http_service.deinit();
         allocator.destroy(http_service);

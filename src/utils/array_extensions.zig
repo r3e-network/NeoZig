@@ -106,7 +106,7 @@ pub const ArrayUtils = struct {
     }
 
     /// Sorts array in place
-    pub fn sort(comptime T: type, array: []T, lessThan: *const fn (void, T, T) bool) void {
+    pub fn sort(comptime T: type, array: []T, comptime lessThan: fn (void, T, T) bool) void {
         std.sort.block(T, array, {}, lessThan);
     }
 
@@ -114,7 +114,7 @@ pub const ArrayUtils = struct {
     pub fn sorted(
         comptime T: type,
         array: []const T,
-        lessThan: *const fn (void, T, T) bool,
+        comptime lessThan: fn (void, T, T) bool,
         allocator: std.mem.Allocator,
     ) ![]T {
         const result = try allocator.dupe(T, array);
@@ -144,7 +144,7 @@ pub const ArrayUtils = struct {
         return true;
     }
 
-    /// Checks if any element satisfies condition)
+    /// Checks if any element satisfies condition
     pub fn anySatisfy(comptime T: type, array: []const T, predicate: *const fn (T) bool) bool {
         for (array) |item| {
             if (predicate(item)) {
@@ -154,7 +154,7 @@ pub const ArrayUtils = struct {
         return false;
     }
 
-    /// Gets first element satisfying condition)
+    /// Gets first element satisfying condition
     pub fn first(comptime T: type, array: []const T, predicate: *const fn (T) bool) ?T {
         for (array) |item| {
             if (predicate(item)) {
@@ -164,12 +164,12 @@ pub const ArrayUtils = struct {
         return null;
     }
 
-    /// Removes element at index)
+    /// Removes element at index
     pub fn removeAt(comptime T: type, array: *ArrayList(T), index: usize) T {
         return array.orderedRemove(index);
     }
 
-    /// Inserts element at index)
+    /// Inserts element at index
     pub fn insertAt(comptime T: type, array: *ArrayList(T), element: T, index: usize) !void {
         try array.insert(index, element);
     }

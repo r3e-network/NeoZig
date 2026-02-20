@@ -12,6 +12,8 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const ContractParameterContext = @import("../types/contract_parameter.zig").ContractParameterContext;
 const json_utils = @import("../utils/json_utils.zig");
+const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
+const bytes_mod = @import("../utils/bytes.zig");
 
 /// Converts ContractParameter to JSON for RPC calls
 pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !std.json.Value {
@@ -28,7 +30,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
         },
         .String => |value| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "String") });
-            const base64_value = try @import("../utils/string_extensions.zig").StringUtils.base64Encoded(value, allocator);
+            const base64_value = try StringUtils.base64Encoded(value, allocator);
             var base64_owned = false;
             errdefer if (!base64_owned) allocator.free(base64_value);
             try json_utils.putOwnedKey(&param_obj, allocator, "value", std.json.Value{ .string = base64_value });
@@ -36,7 +38,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
         },
         .ByteArray => |value| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "ByteArray") });
-            const base64_value = try @import("../utils/string_extensions.zig").StringUtils.base64Encoded(value, allocator);
+            const base64_value = try StringUtils.base64Encoded(value, allocator);
             var base64_owned = false;
             errdefer if (!base64_owned) allocator.free(base64_value);
             try json_utils.putOwnedKey(&param_obj, allocator, "value", std.json.Value{ .string = base64_value });
@@ -60,7 +62,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
         },
         .PublicKey => |value| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "PublicKey") });
-            const key_hex = try @import("../utils/bytes.zig").toHex(&value, allocator);
+            const key_hex = try bytes_mod.toHex(&value, allocator);
             var key_owned = false;
             errdefer if (!key_owned) allocator.free(key_hex);
             try json_utils.putOwnedKey(&param_obj, allocator, "value", std.json.Value{ .string = key_hex });
@@ -68,7 +70,7 @@ pub fn parameterToJson(param: ContractParameter, allocator: std.mem.Allocator) !
         },
         .Signature => |value| {
             try json_utils.putOwnedKey(&param_obj, allocator, "type", std.json.Value{ .string = try allocator.dupe(u8, "Signature") });
-            const sig_hex = try @import("../utils/bytes.zig").toHex(&value, allocator);
+            const sig_hex = try bytes_mod.toHex(&value, allocator);
             var sig_owned = false;
             errdefer if (!sig_owned) allocator.free(sig_hex);
             try json_utils.putOwnedKey(&param_obj, allocator, "value", std.json.Value{ .string = sig_hex });
@@ -133,7 +135,7 @@ pub fn parameterFromJson(param_json: std.json.Value, allocator: std.mem.Allocato
         if (value != .string) return errors.SerializationError.InvalidFormat;
         const raw = value.string;
 
-        const decoded = @import("../utils/string_extensions.zig").StringUtils.base64Decoded(raw, allocator) catch {
+        const decoded = StringUtils.base64Decoded(raw, allocator) catch {
             return ContractParameter.string(try allocator.dupe(u8, raw));
         };
         return ContractParameter.string(decoded);
@@ -143,8 +145,8 @@ pub fn parameterFromJson(param_json: std.json.Value, allocator: std.mem.Allocato
         if (value != .string) return errors.SerializationError.InvalidFormat;
         const raw = value.string;
 
-        const decoded = @import("../utils/string_extensions.zig").StringUtils.base64Decoded(raw, allocator) catch blk: {
-            const bytes = @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(raw, allocator) catch return errors.SerializationError.InvalidFormat;
+        const decoded = StringUtils.base64Decoded(raw, allocator) catch blk: {
+            const bytes = StringUtils.bytesFromHex(raw, allocator) catch return errors.SerializationError.InvalidFormat;
             break :blk bytes;
         };
         return ContractParameter.byteArray(decoded);
@@ -257,7 +259,7 @@ pub fn parseStackItemValue(stack_item: std.json.Value, expected_type: []const u8
     }
 
     return switch (std.hash_map.hashString(item_type)) {
-        std.hash_map.hashString("ByteString") => try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(item_value, allocator),
+        std.hash_map.hashString("ByteString") => try StringUtils.base64Decoded(item_value, allocator),
         std.hash_map.hashString("Integer") => try allocator.dupe(u8, item_value),
         std.hash_map.hashString("Boolean") => try allocator.dupe(u8, item_value),
         else => try allocator.dupe(u8, item_value),
@@ -305,7 +307,7 @@ test "parameterToJson conversion" {
     // Test boolean parameter
     const bool_param = ContractParameter.boolean(true);
     const bool_json = try parameterToJson(bool_param, allocator);
-    defer @import("../utils/json_utils.zig").freeValue(bool_json, allocator);
+    defer json_utils.freeValue(bool_json, allocator);
 
     const bool_obj = bool_json.object;
     try testing.expectEqualStrings("Boolean", bool_obj.get("type").?.string);
@@ -314,7 +316,7 @@ test "parameterToJson conversion" {
     // Test integer parameter
     const int_param = ContractParameter.integer(12345);
     const int_json = try parameterToJson(int_param, allocator);
-    defer @import("../utils/json_utils.zig").freeValue(int_json, allocator);
+    defer json_utils.freeValue(int_json, allocator);
 
     const int_obj = int_json.object;
     try testing.expectEqualStrings("Integer", int_obj.get("type").?.string);
@@ -323,7 +325,7 @@ test "parameterToJson conversion" {
     // Test string parameter
     const string_param = ContractParameter.string("Hello Neo");
     const string_json = try parameterToJson(string_param, allocator);
-    defer @import("../utils/json_utils.zig").freeValue(string_json, allocator);
+    defer json_utils.freeValue(string_json, allocator);
 
     const string_obj = string_json.object;
     try testing.expectEqualStrings("String", string_obj.get("type").?.string);

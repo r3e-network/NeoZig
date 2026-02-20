@@ -30,18 +30,18 @@ pub const Token = struct {
         };
     }
 
-    /// Gets token symbol)
+    /// Gets token symbol
     pub fn getSymbol(self: Self) ![]u8 {
         return try self.smart_contract.callFunctionReturningString(SYMBOL, &[_]ContractParameter{});
     }
 
-    /// Gets token decimals)
+    /// Gets token decimals
     pub fn getDecimals(self: Self) !u8 {
         const decimals_result = try self.smart_contract.callFunctionReturningInt(DECIMALS, &[_]ContractParameter{});
         return @intCast(decimals_result);
     }
 
-    /// Gets total supply)
+    /// Gets total supply
     pub fn getTotalSupply(self: Self) !i64 {
         return try self.smart_contract.callFunctionReturningInt(TOTAL_SUPPLY, &[_]ContractParameter{});
     }

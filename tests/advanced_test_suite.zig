@@ -173,7 +173,7 @@ test "advanced wallet operations" {
 
     // Test BIP-32 HD wallet functionality
     const bip32_seed = "bip32 test seed for advanced wallet";
-    const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
+    const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed);
 
     try testing.expectEqual(@as(i32, 0), master_key.depth);
     try testing.expect(master_key.key_pair.isValid());
@@ -197,6 +197,7 @@ test "advanced wallet operations" {
 test "advanced type system operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     std.log.info("📋 Testing Advanced Type System...", .{});
 
@@ -240,6 +241,7 @@ test "advanced type system operations" {
 test "advanced RPC response operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     std.log.info("🌐 Testing Advanced RPC Response Operations...", .{});
 
@@ -347,7 +349,7 @@ test "complete utility operations" {
 
     const is_even = struct {
         fn predicate(x: i32) bool {
-            return x % 2 == 0;
+            return @mod(x, 2) == 0;
         }
     }.predicate;
 
@@ -475,7 +477,7 @@ test "performance and stress validation" {
 
     var i: usize = 0;
     while (i < 10) : (i += 1) { // Reduced for memory
-        var account = try neo.wallet.Bip39Account.create(allocator, "stress_test");
+        const account = try neo.wallet.Bip39Account.create(allocator, "stress_test");
         try bip39_accounts.append(account);
     }
     const bip39_time = timer.read();
@@ -552,11 +554,15 @@ test "final comprehensive Neo SDK validation" {
         &nep6_accounts,
         null,
     );
+    _ = nep6_wallet;
 
     // 3. Create complex smart contract interaction
     const contract_mgmt = neo.contract.ContractManagement.init(allocator, null);
     const policy_contract = neo.contract.PolicyContract.init(allocator, null);
     const role_mgmt = neo.contract.RoleManagement.init(allocator, null);
+    _ = contract_mgmt;
+    _ = policy_contract;
+    _ = role_mgmt;
 
     // 4. Build advanced transaction with multiple operations
     var advanced_builder = neo.script.ScriptBuilder.init(allocator);

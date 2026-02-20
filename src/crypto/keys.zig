@@ -8,6 +8,8 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const Address = @import("../types/address.zig").Address;
 const random = @import("random.zig");
 const secp256r1 = @import("secp256r1.zig");
+const signatures_mod = @import("signatures.zig");
+const Hash160 = @import("../types/hash160.zig").Hash160;
 
 /// Private key for ECDSA operations on secp256r1 curve
 pub const PrivateKey = struct {
@@ -46,6 +48,7 @@ pub const PrivateKey = struct {
             if (scalar > 0 and scalar < secp256r1.Secp256r1.N) {
                 return Self{ .bytes = bytes };
             }
+            std.crypto.secureZero(u8, &bytes);
         }
     }
 
@@ -59,8 +62,7 @@ pub const PrivateKey = struct {
     }
 
     pub fn sign(self: Self, hash: Hash256) !Signature {
-        const signatures = @import("signatures.zig");
-        return try signatures.Signature.create(hash, self);
+        return try signatures_mod.Signature.create(hash, self);
     }
 
     pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
@@ -151,7 +153,7 @@ pub const PublicKey = struct {
         return Address.fromHash160WithVersion(script_hash, version);
     }
 
-    pub fn toHash160(self: Self) !@import("../types/hash160.zig").Hash160 {
+    pub fn toHash160(self: Self) !Hash160 {
         // Build the verification script without heap allocation.
         var script_buf: [72]u8 = undefined;
         var offset: usize = 0;
@@ -173,7 +175,7 @@ pub const PublicKey = struct {
         offset += syscall_bytes.len;
 
         // Neo N3 script hash = RIPEMD160(SHA256(script)), returned as a Hash160.
-        return try @import("../types/hash160.zig").Hash160.fromScript(script_buf[0..offset]);
+        return try Hash160.fromScript(script_buf[0..offset]);
     }
 
     pub fn toSlice(self: *const Self) []const u8 {

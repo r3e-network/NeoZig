@@ -39,13 +39,13 @@ pub const NonFungibleToken = struct {
         };
     }
 
-    /// Gets NFT balance for owner)
+    /// Gets NFT balance for owner
     pub fn balanceOf(self: Self, owner: Hash160) !i64 {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.token.smart_contract.callFunctionReturningInt(BALANCE_OF, &params);
     }
 
-    /// Gets tokens owned by address)
+    /// Gets tokens owned by address
     pub fn tokensOf(self: Self, owner: Hash160) !TokenIterator {
         const params = [_]ContractParameter{ContractParameter.hash160(owner)};
         return try self.callFunctionReturningIterator(TOKENS_OF, &params);
@@ -132,7 +132,7 @@ pub const NonFungibleToken = struct {
         return try self.token.smart_contract.invokeFunction(TRANSFER, params.items);
     }
 
-    /// Gets all tokens)
+    /// Gets all tokens
     pub fn tokens(self: Self) !TokenIterator {
         return try self.callFunctionReturningIterator(TOKENS, &[_]ContractParameter{});
     }

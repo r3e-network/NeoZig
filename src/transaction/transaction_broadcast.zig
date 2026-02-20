@@ -10,6 +10,7 @@ const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const NeoTransaction = @import("neo_transaction.zig").NeoTransaction;
 const HttpClient = @import("../rpc/http_client.zig").HttpClient;
+const bytes_util = @import("../utils/bytes.zig");
 
 /// Transaction broadcaster for network submission
 pub const TransactionBroadcaster = struct {
@@ -103,7 +104,7 @@ pub const TransactionBroadcaster = struct {
             const serialized = try transaction.serialize(self.http_client.allocator);
             defer self.http_client.allocator.free(serialized);
 
-            break :blk try @import("../utils/bytes.zig").toHex(serialized, self.http_client.allocator);
+            break :blk try bytes_util.toHex(serialized, self.http_client.allocator);
         };
         defer self.http_client.allocator.free(hex_transaction);
 

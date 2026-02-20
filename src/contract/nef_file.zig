@@ -8,6 +8,7 @@ const std = @import("std");
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const Hash160 = @import("../types/hash160.zig").Hash160;
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
 
@@ -178,7 +179,7 @@ pub const NefFile = struct {
 
         // Read method tokens
         const tokens_count = try reader.readVarInt();
-        var method_tokens = try allocator.alloc(MethodToken, @intCast(tokens_count));
+        const method_tokens = try allocator.alloc(MethodToken, @intCast(tokens_count));
         for (method_tokens) |*token| {
             token.* = try MethodToken.deserialize(&reader, allocator);
         }
@@ -282,7 +283,7 @@ pub const NefFile = struct {
 
 /// Method token
 pub const MethodToken = struct {
-    hash: @import("../types/hash160.zig").Hash160,
+    hash: Hash160,
     method: []const u8,
     parameters_count: u16,
     has_return_value: bool,
@@ -291,7 +292,7 @@ pub const MethodToken = struct {
     const Self = @This();
 
     pub fn init(
-        hash: @import("../types/hash160.zig").Hash160,
+        hash: Hash160,
         method: []const u8,
         parameters_count: u16,
         has_return_value: bool,
@@ -316,7 +317,7 @@ pub const MethodToken = struct {
     }
 
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
-        const hash = try @import("../types/hash160.zig").Hash160.deserialize(reader);
+        const hash = try Hash160.deserialize(reader);
 
         const method_len = try reader.readVarInt();
         const method = try allocator.alloc(u8, @intCast(method_len));
@@ -407,6 +408,7 @@ fn getVarIntSize(value: usize) usize {
 test "NefFile creation and properties" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     // Test NEF file creation
     const method_tokens = [_]MethodToken{};
@@ -453,13 +455,13 @@ test "NefFile checksum matches NeoClient vectors" {
     try testing.expectEqualSlices(u8, &expected_checksum_no_tokens, &nef_no_tokens.checksum);
 
     // Vector: NeoClient NefFileTests.testNewNefFileWithMethodTokens
-    const hash1 = try @import("../types/hash160.zig").Hash160.initWithString("f61eebf573ea36593fd43aa150c055ad7906ab83");
-    const hash2 = try @import("../types/hash160.zig").Hash160.initWithString("70e2301955bf1e74cbb31d18c2f96972abadb328");
+    const hash1 = try Hash160.initWithString("f61eebf573ea36593fd43aa150c055ad7906ab83");
+    const hash2 = try Hash160.initWithString("70e2301955bf1e74cbb31d18c2f96972abadb328");
     const method_tokens = [_]MethodToken{
         MethodToken.init(hash1, "getGasPerBlock", 0, true, 0x0F),
         MethodToken.init(hash2, "totalSupply", 0, true, 0x0F),
     };
-    var script_with_tokens: [16]u8 = undefined;
+    var script_with_tokens: [15]u8 = undefined;
     _ = try std.fmt.hexToBytes(&script_with_tokens, "213701004021370000405700017840");
     const nef_with_tokens = try NefFile.init(
         "neon-3.0.0.0",
@@ -545,17 +547,18 @@ test "NefFile validation and constraints" {
 test "MethodToken operations" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     // Test method token creation
     const method_token = MethodToken.init(
-        @import("../types/hash160.zig").Hash160.ZERO,
+        Hash160.ZERO,
         "testMethod",
         2, // parameters count
         true, // has return value
         0x0F, // call flags
     );
 
-    try testing.expect(method_token.hash.eql(@import("../types/hash160.zig").Hash160.ZERO));
+    try testing.expect(method_token.hash.eql(Hash160.ZERO));
     try testing.expectEqualStrings("testMethod", method_token.method);
     try testing.expectEqual(@as(u16, 2), method_token.parameters_count);
     try testing.expect(method_token.has_return_value);
@@ -566,7 +569,7 @@ test "MethodToken operations" {
 
     // Test invalid method token
     const invalid_token = MethodToken.init(
-        @import("../types/hash160.zig").Hash160.ZERO,
+        Hash160.ZERO,
         "", // Empty method name
         0,
         false,
@@ -587,14 +590,14 @@ test "NefFile with method tokens" {
     // Test NEF file with method tokens
     const method_tokens = [_]MethodToken{
         MethodToken.init(
-            @import("../types/hash160.zig").Hash160.ZERO,
+            Hash160.ZERO,
             "balanceOf",
             1,
             true,
             0x01,
         ),
         MethodToken.init(
-            @import("../types/hash160.zig").Hash160.ZERO,
+            Hash160.ZERO,
             "transfer",
             3,
             true,

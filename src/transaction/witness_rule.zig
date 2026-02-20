@@ -31,13 +31,13 @@ pub const WitnessRule = struct {
         return 1 + self.condition.size();
     }
 
-    /// Serializes witness rule)
+    /// Serializes witness rule
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         try writer.writeByte(@intFromEnum(self.action));
         try self.condition.serialize(writer);
     }
 
-    /// Deserializes witness rule)
+    /// Deserializes witness rule
     pub fn deserialize(reader: *BinaryReader, allocator: std.mem.Allocator) !Self {
         const action_byte = try reader.readByte();
         const action = WitnessAction.fromByte(action_byte) orelse {
@@ -176,9 +176,19 @@ pub const WitnessCondition = union(enum(u8)) {
         return Self{ .And = .{ .conditions = conditions, .owns_conditions = false } };
     }
 
+    /// Backwards-compatible alias for andCondition().
+    pub fn and_condition(conditions: []WitnessCondition) Self {
+        return andCondition(conditions);
+    }
+
     /// Creates OR condition
     pub fn orCondition(conditions: []WitnessCondition) Self {
         return Self{ .Or = .{ .conditions = conditions, .owns_conditions = false } };
+    }
+
+    /// Backwards-compatible alias for orCondition().
+    pub fn or_condition(conditions: []WitnessCondition) Self {
+        return orCondition(conditions);
     }
 
     /// Creates script hash condition

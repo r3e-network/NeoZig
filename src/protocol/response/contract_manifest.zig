@@ -10,6 +10,9 @@ const ECKeyPair = @import("../../crypto/ec_key_pair.zig").ECKeyPair;
 const Sign = @import("../../crypto/sign.zig").Sign;
 const ScriptBuilder = @import("../../script/script_builder.zig").ScriptBuilder;
 const json_utils = @import("../../utils/json_utils.zig");
+const constants = @import("../../core/constants.zig");
+const StringUtils = @import("../../utils/string_extensions.zig").StringUtils;
+const ContractParameter = @import("../../types/contract_parameter.zig").ContractParameter;
 
 /// Contract group information
 pub const ContractGroup = struct {
@@ -28,10 +31,10 @@ pub const ContractGroup = struct {
         else
             pub_key;
 
-        const key_bytes = try @import("../../utils/string_extensions.zig").StringUtils.bytesFromHex(cleaned_key, allocator);
+        const key_bytes = try StringUtils.bytesFromHex(cleaned_key, allocator);
         defer allocator.free(key_bytes);
 
-        if (key_bytes.len != @import("../../core/constants.zig").PUBLIC_KEY_SIZE_COMPRESSED) {
+        if (key_bytes.len != constants.PUBLIC_KEY_SIZE_COMPRESSED) {
             return error.InvalidPublicKey;
         }
 
@@ -133,7 +136,6 @@ pub const ContractMethod = struct {
     return_type: []const u8,
 
     const Self = @This();
-    const ContractParameter = @import("../../types/contract_parameter.zig").ContractParameter;
 
     pub fn init(name: []const u8, parameters: []ContractParameter, return_type: []const u8) Self {
         return Self{ .name = name, .parameters = parameters, .return_type = return_type };
@@ -178,7 +180,6 @@ pub const ContractEvent = struct {
     parameters: []ContractParameter,
 
     const Self = @This();
-    const ContractParameter = @import("../../types/contract_parameter.zig").ContractParameter;
 
     pub fn init(name: []const u8, parameters: []ContractParameter) Self {
         return Self{ .name = name, .parameters = parameters };

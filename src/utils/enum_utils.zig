@@ -37,7 +37,7 @@ pub fn ByteEnum(comptime T: type) type {
             return T.fromJsonValue(json_string);
         }
 
-        /// Decodes from JSON)
+        /// Decodes from JSON
         pub fn decodeFromJson(json_value: std.json.Value) !T {
             return switch (json_value) {
                 .string => |s| {
@@ -50,7 +50,7 @@ pub fn ByteEnum(comptime T: type) type {
             };
         }
 
-        /// Encodes to JSON)
+        /// Encodes to JSON
         pub fn encodeToJson(self: T, allocator: std.mem.Allocator) !std.json.Value {
             const value = try allocator.dupe(u8, self.getJsonValue());
             return std.json.Value{ .string = value };
@@ -74,7 +74,7 @@ pub const EnumUtils = struct {
         };
     }
 
-    /// Finds enum case by predicate)
+    /// Finds enum case by predicate
     pub fn findCase(comptime T: type, predicate: *const fn (T) bool) ?T {
         const all_cases = getAllCases(T);
 

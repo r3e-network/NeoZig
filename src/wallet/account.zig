@@ -11,7 +11,12 @@ const Address = @import("../types/address.zig").Address;
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const KeyPair = @import("../crypto/keys.zig").KeyPair;
 const PrivateKey = @import("../crypto/keys.zig").PrivateKey;
+const PublicKey = @import("../crypto/keys.zig").PublicKey;
+const Sign = @import("../crypto/sign.zig").Sign;
+const SignatureData = @import("../crypto/sign.zig").SignatureData;
+const wif = @import("../crypto/wif.zig");
 const VerificationScript = @import("verification_script.zig").VerificationScript;
+const ScryptParams = @import("nep6_wallet.zig").ScryptParams;
 const secure = @import("../utils/secure.zig");
 
 /// Neo account
@@ -39,7 +44,7 @@ pub const Account = struct {
 
     const Self = @This();
 
-    /// Creates account from key pair)
+    /// Creates account from key pair
     pub fn initFromKeyPair(
         allocator: std.mem.Allocator,
         key_pair: ECKeyPair,
@@ -66,7 +71,7 @@ pub const Account = struct {
         };
     }
 
-    /// Creates account from address)
+    /// Creates account from address
     pub fn initFromAddress(
         allocator: std.mem.Allocator,
         address: Address,
@@ -109,7 +114,7 @@ pub const Account = struct {
         }
     }
 
-    /// Gets script hash)
+    /// Gets script hash
     pub fn getScriptHash(self: Self) !Hash160 {
         if (self.verification_script) |script| {
             return script.getScriptHash();
@@ -265,12 +270,12 @@ pub const Account = struct {
         return self.is_locked;
     }
 
-    /// Locks account)
+    /// Locks account
     pub fn lock(self: *Self) void {
         self.is_locked = true;
     }
 
-    /// Unlocks account)
+    /// Unlocks account
     pub fn unlock(self: *Self) void {
         self.is_locked = false;
     }
@@ -281,7 +286,7 @@ pub const Account = struct {
     }
 
     /// Gets private key
-    pub fn getPrivateKey(self: Self) !@import("../crypto/keys.zig").PrivateKey {
+    pub fn getPrivateKey(self: Self) !PrivateKey {
         if (self.is_locked) {
             return errors.WalletError.WalletLocked;
         }
@@ -298,7 +303,7 @@ pub const Account = struct {
     }
 
     /// Gets public key
-    pub fn getPublicKey(self: Self) !@import("../crypto/keys.zig").PublicKey {
+    pub fn getPublicKey(self: Self) !PublicKey {
         if (self.key_pair) |kp| {
             return kp.getPublicKey();
         }
@@ -311,13 +316,13 @@ pub const Account = struct {
     }
 
     /// Signs message
-    pub fn signMessage(self: Self, message: []const u8, allocator: std.mem.Allocator) !@import("../crypto/sign.zig").SignatureData {
+    pub fn signMessage(self: Self, message: []const u8, allocator: std.mem.Allocator) !SignatureData {
         if (self.is_locked) {
             return errors.WalletError.WalletLocked;
         }
 
         if (self.key_pair) |kp| {
-            return try @import("../crypto/sign.zig").Sign.signMessage(message, kp, allocator);
+            return try Sign.signMessage(message, kp, allocator);
         }
 
         if (self.encrypted_private_key != null) {
@@ -336,7 +341,7 @@ pub const Account = struct {
         const encrypted = try nep2.NEP2.encrypt(
             password,
             key_pair,
-            @import("nep6_wallet.zig").ScryptParams.DEFAULT,
+            ScryptParams.DEFAULT,
             self.allocator,
         );
 
@@ -369,7 +374,7 @@ pub const Account = struct {
         var decrypted_pair = try nep2.NEP2.decrypt(
             password,
             encrypted,
-            @import("nep6_wallet.zig").ScryptParams.DEFAULT,
+            ScryptParams.DEFAULT,
             self.allocator,
         );
         const key_pair = ECKeyPair.init(decrypted_pair.private_key, decrypted_pair.public_key);
@@ -418,7 +423,7 @@ pub const Account = struct {
     }
 
     /// Creates account from public key (watch-only).
-    pub fn fromPublicKey(public_key: @import("../crypto/keys.zig").PublicKey, allocator: std.mem.Allocator) !Self {
+    pub fn fromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
         const verification_script = try VerificationScript.initFromPublicKey(public_key, allocator);
         return try Self.fromVerificationScript(verification_script, allocator);
     }
@@ -431,14 +436,14 @@ pub const Account = struct {
 
     /// Creates account from WIF (wallet convenience).
     pub fn fromWif(wif_string: []const u8, allocator: std.mem.Allocator) !Self {
-        var decode_result = try @import("../crypto/wif.zig").decode(wif_string, allocator);
+        var decode_result = try wif.decode(wif_string, allocator);
         defer decode_result.deinit();
         return try Self.initWithPrivateKey(decode_result.private_key, decode_result.compressed, allocator);
     }
 
     /// Creates a multi-signature account.
     pub fn createMultiSigAccount(
-        public_keys: []const @import("../crypto/keys.zig").PublicKey,
+        public_keys: []const PublicKey,
         signing_threshold: u32,
         allocator: std.mem.Allocator,
     ) !Self {

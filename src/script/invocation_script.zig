@@ -9,8 +9,12 @@ const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
-const SignatureData = @import("../crypto/sign.zig").SignatureData;
+const sign_mod = @import("../crypto/sign.zig");
+const SignatureData = sign_mod.SignatureData;
+const Sign = sign_mod.Sign;
 const ScriptBuilder = @import("script_builder.zig").ScriptBuilder;
+const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
 const BinaryWriter = @import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 
@@ -23,7 +27,7 @@ pub const InvocationScript = struct {
 
     const Self = @This();
 
-    /// Creates empty invocation script)
+    /// Creates empty invocation script
     pub fn init() Self {
         return Self{
             .script = &[_]u8{},
@@ -31,7 +35,7 @@ pub const InvocationScript = struct {
         };
     }
 
-    /// Creates invocation script from bytes)
+    /// Creates invocation script from bytes
     pub fn initFromBytes(script_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
             .script = try allocator.dupe(u8, script_bytes),
@@ -39,7 +43,7 @@ pub const InvocationScript = struct {
         };
     }
 
-    /// Creates from signature)
+    /// Creates from signature
     pub fn fromSignature(signature: SignatureData, allocator: std.mem.Allocator) !Self {
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
@@ -55,11 +59,11 @@ pub const InvocationScript = struct {
 
     /// Creates from message and key pair
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
-        const signature_data = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
+        const signature_data = try Sign.signMessage(message, key_pair, allocator);
         return try Self.fromSignature(signature_data, allocator);
     }
 
-    /// Creates from signatures)
+    /// Creates from signatures
     pub fn fromSignatures(signatures: []const SignatureData, allocator: std.mem.Allocator) !Self {
         var builder = ScriptBuilder.init(allocator);
         defer builder.deinit();
@@ -77,7 +81,7 @@ pub const InvocationScript = struct {
 
     /// Creates from contract parameters (utility method)
     pub fn fromContractParameters(
-        parameters: []const @import("../types/contract_parameter.zig").ContractParameter,
+        parameters: []const ContractParameter,
         allocator: std.mem.Allocator,
     ) !Self {
         var builder = ScriptBuilder.init(allocator);
@@ -102,7 +106,7 @@ pub const InvocationScript = struct {
 
     /// Gets script size
     pub fn getSize(self: Self) usize {
-        return @import("../utils/bytes_extensions.zig").BytesUtils.varSize(self.script);
+        return BytesUtils.varSize(self.script);
     }
 
     /// Gets script bytes
@@ -140,7 +144,7 @@ pub const InvocationScript = struct {
 
     /// Appends another invocation script (utility method)
     pub fn append(self: Self, other: Self, allocator: std.mem.Allocator) !Self {
-        const combined_script = try @import("../utils/bytes_extensions.zig").BytesUtils.concatenate(
+        const combined_script = try BytesUtils.concatenate(
             &[_][]const u8{ self.script, other.script },
             allocator,
         );
@@ -198,7 +202,7 @@ pub const InvocationScript = struct {
 
     /// Gets hex representation (utility method)
     pub fn toHex(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        return try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(self.script, allocator);
+        return try BytesUtils.toHexString(self.script, allocator);
     }
 };
 
@@ -251,6 +255,7 @@ pub const InvocationScriptUtils = struct {
 
     /// Analyzes script structure (utility method)
     pub fn analyzeScript(script: InvocationScript, allocator: std.mem.Allocator) !ScriptAnalysis {
+        _ = allocator;
         var analysis = ScriptAnalysis{
             .total_bytes = script.script.len,
             .opcode_count = 0,
@@ -389,7 +394,7 @@ test "InvocationScript serialization operations" {
     defer original_script.deinit();
 
     // Serialize
-    var writer = CompleteBinaryWriter.init(allocator);
+    var writer = BinaryWriter.init(allocator);
     defer writer.deinit();
 
     try original_script.serialize(&writer);
@@ -398,7 +403,7 @@ test "InvocationScript serialization operations" {
     try testing.expect(serialized_data.len > 0);
 
     // Deserialize
-    var reader = CompleteBinaryReader.init(serialized_data);
+    var reader = BinaryReader.init(serialized_data);
     var deserialized_script = try InvocationScript.deserialize(&reader, allocator);
     defer deserialized_script.deinit();
 

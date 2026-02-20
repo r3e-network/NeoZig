@@ -11,6 +11,7 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+const parameter_utils = @import("../contract/parameter_utils.zig");
 
 /// Contract parameters context
 pub const ContractParametersContext = struct {
@@ -188,7 +189,7 @@ pub const ContextItem = struct {
         if (self.parameters) |params| {
             if (self.parameters_owned) {
                 for (params) |param| {
-                    @import("../contract/parameter_utils.zig").freeParameter(param, allocator);
+                    parameter_utils.freeParameter(param, allocator);
                 }
             }
             allocator.free(params);
@@ -240,7 +241,7 @@ pub const ContextItem = struct {
         if (self.parameters) |params| {
             var params_array = ArrayList(std.json.Value).init(allocator);
             for (params) |param| {
-                try params_array.append(try @import("../contract/parameter_utils.zig").parameterToJson(param, allocator));
+                try params_array.append(try parameter_utils.parameterToJson(param, allocator));
             }
             try json_utils.putOwnedKey(&item_obj, allocator, "parameters", std.json.Value{ .array = params_array });
         }
@@ -270,7 +271,7 @@ pub const ContextItem = struct {
             var params_list = ArrayList(ContractParameter).init(allocator);
             errdefer params_list.deinit();
             for (params_array.array.items) |param_json| {
-                try params_list.append(try @import("../contract/parameter_utils.zig").parameterFromJson(param_json, allocator));
+                try params_list.append(try parameter_utils.parameterFromJson(param_json, allocator));
             }
             parameters = try params_list.toOwnedSlice();
             parameters_owned = true;

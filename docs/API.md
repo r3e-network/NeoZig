@@ -593,8 +593,7 @@ std.log.info("Total accounts: {}", .{count});
 ### Logging
 
 ```zig
-// Initialize global logger
-neo.utils.initGlobalLogger(.Info);  // .Debug, .Info, .Warn, .Error
+// Use std.log directly (configure level/output in your application build options)
 
 // Log messages
 std.log.debug("Debug message: {}", .{value});
@@ -607,28 +606,25 @@ std.log.err("Error message: {}", .{value});
 
 ```zig
 // Validate Neo address
-const is_valid = neo.utils.isValidNeoAddress(address_str);
+const is_valid = neo.utils.StringUtils.isValidAddress(address_str, allocator);
 
-// Validate WIF
-const is_valid_wif = neo.utils.isValidWIF(wif_str);
-
-// Validate private key format
-const is_valid_key = neo.utils.isValidPrivateKey(key_bytes);
+// Validate hex payload
+const is_valid_hex = neo.utils.StringUtils.isValidHex(hex_str);
 ```
 
 ### String Extensions
 
 ```zig
-// Hex encoding/decoding
-const hex = neo.utils.hexEncode(bytes);
-const bytes = neo.utils.hexDecode(hex_str);
+// Hex decoding
+const bytes = try neo.utils.StringUtils.bytesFromHex(hex_str, allocator);
+defer allocator.free(bytes);
 
 // Base58 encoding/decoding
-const base58 = neo.utils.base58Encode(bytes);
-const bytes = neo.utils.base58Decode(base58);
+const base58 = try neo.utils.StringUtils.base58Encoded(bytes, allocator);
+defer allocator.free(base58);
 
-// String trimming
-const trimmed = neo.utils.trim(str);
+const maybe_decoded = try neo.utils.StringUtils.base58Decoded(base58, allocator);
+if (maybe_decoded) |decoded| allocator.free(decoded);
 ```
 
 ## Error Handling

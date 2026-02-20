@@ -9,6 +9,10 @@ const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
+const tx_builder_mod = @import("../transaction/transaction_builder.zig");
+const TransactionBuilder = tx_builder_mod.TransactionBuilder;
+const Signer = tx_builder_mod.Signer;
+const WitnessScope = tx_builder_mod.WitnessScope;
 
 /// Neo URI for NEP-9 compatible transfers
 pub const NeoURI = struct {
@@ -106,7 +110,7 @@ pub const NeoURI = struct {
     /// Sets recipient
     pub fn setRecipient(self: *Self, recipient_hash: Hash160) *Self {
         self.recipient = recipient_hash;
-        try self.buildUri();
+        self.buildUri() catch {};
         return self;
     }
 
@@ -119,7 +123,7 @@ pub const NeoURI = struct {
     /// Sets token
     pub fn setToken(self: *Self, token_hash: Hash160) *Self {
         self.token = token_hash;
-        try self.buildUri();
+        self.buildUri() catch {};
         return self;
     }
 
@@ -138,7 +142,7 @@ pub const NeoURI = struct {
     /// Sets amount
     pub fn setAmount(self: *Self, transfer_amount: f64) *Self {
         self.amount = transfer_amount;
-        try self.buildUri();
+        self.buildUri() catch {};
         return self;
     }
 
@@ -263,17 +267,17 @@ pub const NeoURI = struct {
     }
 
     /// Creates transfer transaction from URI
-    pub fn createTransferTransaction(self: Self, from_account: Hash160, allocator: std.mem.Allocator) !@import("../transaction/transaction_builder.zig").TransactionBuilder {
+    pub fn createTransferTransaction(self: Self, from_account: Hash160, allocator: std.mem.Allocator) !TransactionBuilder {
         if (self.recipient == null or self.token == null or self.amount == null) {
             return errors.throwIllegalArgument("Incomplete URI for transaction creation");
         }
 
-        var tx_builder = @import("../transaction/transaction_builder.zig").TransactionBuilder.init(allocator);
+        var tx_builder = TransactionBuilder.init(allocator);
 
         // Add signer
-        const signer = @import("../transaction/transaction_builder.zig").Signer.init(
+        const signer = Signer.init(
             from_account,
-            @import("../transaction/transaction_builder.zig").WitnessScope.CalledByEntry,
+            WitnessScope.CalledByEntry,
         );
         _ = try tx_builder.signer(signer);
 

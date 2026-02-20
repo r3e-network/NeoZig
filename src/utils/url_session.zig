@@ -175,7 +175,7 @@ pub const URLSession = struct {
         };
     }
 
-    /// Performs data request)
+    /// Performs data request
     pub fn dataFromRequest(self: Self, request: URLRequest) !HTTPResponse {
         var client = std.http.Client{ .allocator = self.allocator };
         defer client.deinit();

@@ -408,6 +408,7 @@ const Notification = @import("../rpc/responses.zig").Notification;
 
 /// Signer (imported from transaction_builder)
 const Signer = @import("transaction_builder.zig").Signer;
+const WitnessScope = @import("transaction_builder.zig").WitnessScope;
 
 /// Transaction attribute (imported from transaction_builder)
 const TransactionAttribute = @import("transaction_builder.zig").TransactionAttribute;
@@ -430,7 +431,7 @@ test "NeoTransaction creation and properties" {
 
     // Create test transaction
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 }; // Simple script
@@ -469,7 +470,7 @@ test "NeoTransaction size calculation" {
     _ = testing.allocator;
 
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
@@ -505,7 +506,7 @@ test "NeoTransaction hash calculation" {
     const allocator = testing.allocator;
 
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
@@ -541,7 +542,7 @@ test "NeoTransaction serialization" {
     const allocator = testing.allocator;
 
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
@@ -597,7 +598,7 @@ test "NeoTransaction validation" {
 
     // Test valid transaction
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };
@@ -663,7 +664,7 @@ test "NeoTransaction fee estimation" {
     _ = testing.allocator;
 
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
     const attributes = [_]TransactionAttribute{};
     const script = [_]u8{ 0x41, 0x30, 0x64, 0x76, 0x41 };

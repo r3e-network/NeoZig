@@ -49,18 +49,18 @@ The SDK includes comprehensive documentation covering all aspects of development
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Security](SECURITY.md)** - Security best practices
 
-## 🆕 v1.3.0 Release
+## 🆕 v1.3.1 Release
 
-`v1.3.0` adds full Neo N3 v3.9.0 (Faun hardfork) native contract support. Highlights:
+`v1.3.1` is a Neo N3 v3.9.1 compatibility and stability patch release. Highlights:
 
-- 🔐 **CryptoLib** – SHA-256, RIPEMD-160, Murmur32, Keccak256, ECDSA verification, secp256k1 recovery, BLS12-381 ops
-- 📜 **Notary** – Notary-assisted transaction support with deposit, withdrawal, and balance queries
-- 🏦 **Treasury** – Passive fund holder for recovered blocked-account assets
-- 🛡️ **Protocol compliance** – All method signatures verified against `neo-project/neo` C# reference
-- ✅ **358 tests passing** – `zig build` and `zig build test` pass with zero warnings
+- ✅ **Interop + constants hardening** – Neo syscall IDs and protocol constants aligned to Neo v3.9.1 values
+- 🧱 **Reliability fixes** – NEF checksum/vector handling and NNS validation edge cases fixed
+- ♻️ **Memory safety improvements** – added explicit parsed-wallet ownership cleanup helpers
+- 🔁 **Backward compatibility** – public alias exports retained so existing integrations keep compiling
+- 🧪 **Validation pass** – full build/test matrix rerun before tagging
 
 ```bash
-git clone --branch v1.3.0 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v1.3.1 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
 ```
@@ -84,9 +84,9 @@ required `.hash` is recorded in your `build.zig.zon`):
 
 ```zig
 .dependencies = .{
-    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz`
+    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz`
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz",
         .hash = "...",
     },
 };
@@ -142,7 +142,7 @@ src/
 ├── wallet/
 │   ├── neo_wallet.zig         # Core wallet management
 │   ├── nep6_wallet.zig        # NEP-6 standard
-│   ├── nep6_complete.zig      # Complete NEP-6 implementation
+│   ├── nep6_extended.zig      # Complete NEP-6 implementation
 │   └── bip39_account.zig      # BIP-39 mnemonic accounts
 ├── script/
 │   ├── script_builder.zig     # Neo VM script construction
@@ -155,8 +155,8 @@ src/
     ├── base58.zig             # Base58 encoding
     ├── string_extensions.zig  # String utilities
     ├── array_extensions.zig   # Array utilities
-    ├── logging.zig            # Production logging
-    └── validation.zig         # Input validation
+    ├── memory_utils.zig       # Ownership and deinit helpers
+    └── decode.zig             # Safe decode/string helpers
 ```
 
 ## 🚀 Quick Start
@@ -166,7 +166,7 @@ src/
 Add to your `build.zig.zon`:
 
 ```bash
-zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz
+zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz
 ```
 
 Then add to your `build.zig`:
@@ -185,7 +185,6 @@ const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    neo.utils.initGlobalLogger(.Info);
 
     // 1. Generate a key pair
     const key_pair = try neo.crypto.generateKeyPair(true);
@@ -230,9 +229,6 @@ const neo = @import("neo-zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-
-    // Initialize logging
-    neo.utils.initGlobalLogger(.Info);
 
     // Generate key pair
     const key_pair = try neo.crypto.generateKeyPair(true);
@@ -473,7 +469,7 @@ Networking notes:
 ## 🎖️ Project Status
 
 - **Status**: Core modules implemented; some helper APIs experimental
-- **Version**: 1.3.0
+- **Version**: 1.3.1
 - **Maintenance**: Actively maintained
 
 ---

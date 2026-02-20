@@ -7,6 +7,9 @@ const std = @import("std");
 
 const BinaryWriter = @import("binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("binary_reader.zig").BinaryReader;
+const VarInt = @import("varint.zig").VarInt;
+const Hash160 = @import("../types/hash160.zig").Hash160;
+const Hash256 = @import("../types/hash256.zig").Hash256;
 
 /// Serializable trait for Neo types
 pub fn NeoSerializable(comptime T: type) type {
@@ -16,12 +19,12 @@ pub fn NeoSerializable(comptime T: type) type {
             return T.size(self);
         }
 
-        /// Serializes to binary writer)
+        /// Serializes to binary writer
         pub fn serialize(self: T, writer: *BinaryWriter) !void {
             return T.serialize(self, writer);
         }
 
-        /// Deserializes from binary reader)
+        /// Deserializes from binary reader
         pub fn deserialize(reader: *BinaryReader) !T {
             return T.deserialize(reader);
         }
@@ -47,7 +50,6 @@ pub fn NeoSerializable(comptime T: type) type {
 pub const VarSizeUtils = struct {
     /// Calculates variable size for byte array
     pub fn bytesVarSize(bytes: []const u8) usize {
-        const VarInt = @import("../serialization/varint.zig").VarInt;
         return VarInt.size(bytes.len) + bytes.len;
     }
 
@@ -58,7 +60,6 @@ pub const VarSizeUtils = struct {
 
     /// Calculates variable size for array
     pub fn arrayVarSize(comptime T: type, array: []const T) usize {
-        const VarInt = @import("../serialization/varint.zig").VarInt;
         var total_size = VarInt.size(array.len);
 
         for (array) |item| {
@@ -114,7 +115,6 @@ test "NeoSerializable interface" {
     const allocator = testing.allocator;
 
     // Test with Hash160 (implements NeoSerializable)
-    const Hash160 = @import("../types/hash160.zig").Hash160;
     const hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
 
     // Test size calculation
@@ -157,7 +157,6 @@ test "Serialization utilities" {
     const allocator = testing.allocator;
 
     // Test generic serialization
-    const Hash256 = @import("../types/hash256.zig").Hash256;
     const hash = Hash256.sha256("test data");
 
     const serialized = try SerializationUtils.serialize(hash, allocator);

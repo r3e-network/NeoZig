@@ -26,12 +26,12 @@ pub const Sign = struct {
         return try signMessage(message_bytes, key_pair, allocator);
     }
 
-    /// Signs string message)
+    /// Signs string message
     pub fn signStringMessage(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         return try signMessage(message, key_pair, allocator);
     }
 
-    /// Signs message bytes)
+    /// Signs message bytes
     pub fn signMessage(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !SignatureData {
         // Hash the message
         const message_hash = Hash256.sha256(message);
@@ -39,7 +39,7 @@ pub const Sign = struct {
         const expected_public = key_pair.getPublicKey();
 
         // Get ECDSA signature
-        const ecdsa_sig = key_pair.signAndGetECDSASignature(message_hash.toSlice());
+        const ecdsa_sig = try key_pair.signAndGetECDSASignature(message_hash.toSlice());
 
         // Find recovery ID
         var rec_id: i32 = -1;

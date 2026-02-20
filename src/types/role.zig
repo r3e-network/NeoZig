@@ -24,9 +24,19 @@ pub const Role = enum(u8) {
         };
     }
 
+    /// Backwards-compatible alias for toJsonString().
+    pub fn getName(self: Role) []const u8 {
+        return self.toJsonString();
+    }
+
     /// Gets the byte value
     pub fn toByte(self: Role) u8 {
         return @intFromEnum(self);
+    }
+
+    /// Backwards-compatible alias for toByte().
+    pub fn getByte(self: Role) u8 {
+        return self.toByte();
     }
 
     /// Creates Role from byte value

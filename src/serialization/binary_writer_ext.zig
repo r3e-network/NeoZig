@@ -11,6 +11,7 @@ const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ECPoint = @import("../crypto/ec_point.zig").ECPoint;
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
 
 /// Complete binary writer
 pub const CompleteBinaryWriter = struct {
@@ -19,7 +20,7 @@ pub const CompleteBinaryWriter = struct {
 
     const Self = @This();
 
-    /// Creates binary writer)
+    /// Creates binary writer
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .array = ArrayList(u8).init(allocator),
@@ -36,7 +37,7 @@ pub const CompleteBinaryWriter = struct {
         return self.array.items.len;
     }
 
-    /// Writes byte buffer)
+    /// Writes byte buffer
     pub fn write(self: *Self, buffer: []const u8) !void {
         try self.array.appendSlice(buffer);
     }
@@ -46,24 +47,24 @@ pub const CompleteBinaryWriter = struct {
         try self.write(bytes);
     }
 
-    /// Writes boolean)
+    /// Writes boolean
     pub fn writeBoolean(self: *Self, value: bool) !void {
         try self.writeByte(if (value) 1 else 0);
     }
 
-    /// Writes single byte)
+    /// Writes single byte
     pub fn writeByte(self: *Self, value: u8) !void {
         try self.array.append(value);
     }
 
-    /// Writes double)
+    /// Writes double
     pub fn writeDouble(self: *Self, value: f64) !void {
         const bits: u64 = @bitCast(value);
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, bits));
         try self.write(&bytes);
     }
 
-    /// Writes EC point)
+    /// Writes EC point
     pub fn writeECPoint(self: *Self, point: ECPoint, allocator: std.mem.Allocator) !void {
         const encoded = try point.getEncoded(true, allocator);
         defer allocator.free(encoded);
@@ -71,7 +72,7 @@ pub const CompleteBinaryWriter = struct {
         try self.write(encoded);
     }
 
-    /// Writes fixed-length string)
+    /// Writes fixed-length string
     pub fn writeFixedString(self: *Self, string_value: ?[]const u8, length: usize, allocator: std.mem.Allocator) !void {
         const bytes = if (string_value) |str| str else &[_]u8{};
 
@@ -80,50 +81,50 @@ pub const CompleteBinaryWriter = struct {
         }
 
         // Pad with trailing zeros
-        const padded = try @import("../utils/bytes_extensions.zig").BytesUtils.toPadded(bytes, length, true, allocator);
+        const padded = try BytesUtils.toPadded(bytes, length, true, allocator);
         defer allocator.free(padded);
 
         try self.write(padded);
     }
 
-    /// Writes float)
+    /// Writes float
     pub fn writeFloat(self: *Self, value: f32) !void {
         const bits: u32 = @bitCast(value);
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, bits));
         try self.write(&bytes);
     }
 
-    /// Writes 32-bit signed integer)
+    /// Writes 32-bit signed integer
     pub fn writeInt32(self: *Self, value: i32) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(i32, value));
         try self.write(&bytes);
     }
 
-    /// Writes 64-bit signed integer)
+    /// Writes 64-bit signed integer
     pub fn writeInt64(self: *Self, value: i64) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(i64, value));
         try self.write(&bytes);
     }
 
-    /// Writes 16-bit unsigned integer)
+    /// Writes 16-bit unsigned integer
     pub fn writeUInt16(self: *Self, value: u16) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, value));
         try self.write(&bytes);
     }
 
-    /// Writes 32-bit unsigned integer)
+    /// Writes 32-bit unsigned integer
     pub fn writeUInt32(self: *Self, value: u32) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, value));
         try self.write(&bytes);
     }
 
-    /// Writes 64-bit unsigned integer)
+    /// Writes 64-bit unsigned integer
     pub fn writeUInt64(self: *Self, value: u64) !void {
         const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, value));
         try self.write(&bytes);
     }
 
-    /// Writes variable-length integer)
+    /// Writes variable-length integer
     pub fn writeVarInt(self: *Self, value: u64) !void {
         if (value < 0xFD) {
             try self.writeByte(@intCast(value));
@@ -139,13 +140,13 @@ pub const CompleteBinaryWriter = struct {
         }
     }
 
-    /// Writes variable-length string)
+    /// Writes variable-length string
     pub fn writeVarString(self: *Self, string_value: []const u8) !void {
         try self.writeVarInt(string_value.len);
         try self.write(string_value);
     }
 
-    /// Writes variable-length byte array)
+    /// Writes variable-length byte array
     pub fn writeVarBytes(self: *Self, bytes: []const u8) !void {
         try self.writeVarInt(bytes.len);
         try self.write(bytes);
@@ -163,31 +164,31 @@ pub const CompleteBinaryWriter = struct {
         try self.write(&little_endian);
     }
 
-    /// Writes big integer)
+    /// Writes big integer
     pub fn writeBigInteger(self: *Self, value: u256, byte_length: usize, allocator: std.mem.Allocator) !void {
-        const bytes = try @import("../utils/bytes_extensions.zig").BytesUtils.fromBigInt(value, allocator);
+        const bytes = try BytesUtils.fromBigInt(value, allocator);
         defer allocator.free(bytes);
 
         // Pad to specified length
-        const padded = try @import("../utils/bytes_extensions.zig").BytesUtils.toPadded(bytes, byte_length, false, allocator);
+        const padded = try BytesUtils.toPadded(bytes, byte_length, false, allocator);
         defer allocator.free(padded);
 
         try self.write(padded);
     }
 
-    /// Writes serializable object)
+    /// Writes serializable object
     pub fn writeSerializable(self: *Self, object: anytype) !void {
         try object.serialize(self);
     }
 
-    /// Writes serializable array)
+    /// Writes serializable array
     pub fn writeSerializableArray(self: *Self, objects: anytype) !void {
         for (objects) |object| {
             try object.serialize(self);
         }
     }
 
-    /// Writes variable-length serializable array)
+    /// Writes variable-length serializable array
     pub fn writeSerializableVarArray(self: *Self, objects: anytype) !void {
         try self.writeVarInt(objects.len);
         for (objects) |object| {
@@ -195,12 +196,12 @@ pub const CompleteBinaryWriter = struct {
         }
     }
 
-    /// Gets written data)
+    /// Gets written data
     pub fn toArray(self: Self) []const u8 {
         return self.array.items;
     }
 
-    /// Clears writer)
+    /// Clears writer
     pub fn clear(self: *Self) void {
         self.array.clearRetainingCapacity();
     }

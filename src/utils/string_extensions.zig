@@ -7,14 +7,18 @@ const std = @import("std");
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const bytes_mod = @import("bytes.zig");
+const base58 = @import("base58.zig");
+const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const VarInt = @import("../serialization/varint.zig").VarInt;
 
 /// String utility functions
 pub const StringUtils = struct {
     /// Converts hex string to bytes
     pub fn bytesFromHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const cleaned = cleanedHexPrefix(hex_str);
-        return try @import("bytes.zig").fromHex(cleaned, allocator);
+        return try bytes_mod.fromHex(cleaned, allocator);
     }
 
     /// Removes "0x" prefix
@@ -46,25 +50,22 @@ pub const StringUtils = struct {
 
     /// Base58 decoding
     pub fn base58Decoded(encoded: []const u8, allocator: std.mem.Allocator) !?[]u8 {
-        const base58 = @import("base58.zig");
         return base58.decode(encoded, allocator) catch null;
     }
 
     /// Base58Check decoding
     pub fn base58CheckDecoded(encoded: []const u8, allocator: std.mem.Allocator) !?[]u8 {
-        const base58 = @import("base58.zig");
         return base58.decodeCheck(encoded, allocator) catch null;
     }
 
     /// Base58 encoding
     pub fn base58Encoded(data: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const base58 = @import("base58.zig");
         return try base58.encode(data, allocator);
     }
 
     /// Variable size calculation
     pub fn varSize(str: []const u8) usize {
-        return @import("../serialization/varint.zig").VarInt.size(str.len);
+        return VarInt.size(str.len);
     }
 
     /// Address validation
@@ -102,7 +103,7 @@ pub const StringUtils = struct {
         return true;
     }
 
-    /// Converts address to script hash)
+    /// Converts address to script hash
     pub fn addressToScriptHash(address_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
         if (!isValidAddress(address_str, allocator)) {
             return errors.throwIllegalArgument("Not a valid NEO address");
@@ -121,13 +122,13 @@ pub const StringUtils = struct {
 
     /// Reverses hex string
     pub fn reversedHex(hex_str: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const bytes = try bytesFromHex(hex_str, allocator);
-        defer allocator.free(bytes);
+        const bytes_data = try bytesFromHex(hex_str, allocator);
+        defer allocator.free(bytes_data);
 
-        const reversed_bytes = try @import("bytes.zig").reversed(bytes, allocator);
+        const reversed_bytes = try bytes_mod.reversed(bytes_data, allocator);
         defer allocator.free(reversed_bytes);
 
-        return try @import("bytes.zig").toHex(reversed_bytes, allocator);
+        return try bytes_mod.toHex(reversed_bytes, allocator);
     }
 
     /// Converts string to bytes
@@ -135,7 +136,7 @@ pub const StringUtils = struct {
         return try allocator.dupe(u8, str);
     }
 
-    /// Hex string to address conversion)
+    /// Hex string to address conversion
     pub fn toAddress(script_hash_hex: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const script_hash_bytes = try bytesFromHex(script_hash_hex, allocator);
         defer allocator.free(script_hash_bytes);
@@ -147,7 +148,7 @@ pub const StringUtils = struct {
         var hash160_bytes: [20]u8 = undefined;
         @memcpy(&hash160_bytes, script_hash_bytes);
 
-        const hash160 = @import("../types/hash160.zig").Hash160.fromArray(hash160_bytes);
+        const hash160 = Hash160.fromArray(hash160_bytes);
         return try hash160.toAddress(allocator);
     }
 };

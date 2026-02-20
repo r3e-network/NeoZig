@@ -12,6 +12,8 @@ const json_utils = @import("../utils/json_utils.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
 
 /// NEF file (shared contract format).
 pub const ContractNef = @import("responses.zig").ContractNef;
@@ -77,7 +79,7 @@ pub const ContractManifest = struct {
         defer allocator.free(pub_key_hex);
 
         // Encode signature as base64
-        const signature_base64 = try @import("../utils/string_extensions.zig").StringUtils.base64Encoded(signature_data, allocator);
+        const signature_base64 = try StringUtils.base64Encoded(signature_data, allocator);
         defer allocator.free(signature_base64);
 
         return ContractGroup.init(
@@ -264,10 +266,10 @@ pub const ContractGroup = struct {
         else
             return errors.throwIllegalArgument("Missing public key in contract group");
 
-        const cleaned_pub_key = @import("../utils/string_extensions.zig").StringUtils.cleanedHexPrefix(pub_key_str);
+        const cleaned_pub_key = StringUtils.cleanedHexPrefix(pub_key_str);
 
         // Validate public key length
-        const pub_key_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(cleaned_pub_key, allocator);
+        const pub_key_bytes = try StringUtils.bytesFromHex(cleaned_pub_key, allocator);
         defer allocator.free(pub_key_bytes);
 
         if (pub_key_bytes.len != constants.PUBLIC_KEY_SIZE_COMPRESSED) {
@@ -275,7 +277,7 @@ pub const ContractGroup = struct {
         }
 
         const signature_str = obj.get("signature").?.string;
-        const signature_bytes = try @import("../utils/string_extensions.zig").StringUtils.base64Decoded(signature_str, allocator);
+        const signature_bytes = try StringUtils.base64Decoded(signature_str, allocator);
         defer allocator.free(signature_bytes);
 
         if (signature_bytes.len == 0) {
@@ -901,7 +903,7 @@ fn buildContractHashScript(
     contract_name: []const u8,
     allocator: std.mem.Allocator,
 ) ![]u8 {
-    return try @import("../script/script_builder.zig").ScriptBuilder.buildContractHashScript(
+    return try ScriptBuilder.buildContractHashScript(
         deployment_sender,
         @intCast(nef_checksum),
         contract_name,
@@ -911,7 +913,7 @@ fn buildContractHashScript(
 
 fn signMessage(message: []const u8, key_pair: anytype, allocator: std.mem.Allocator) ![]u8 {
     // Implement actual message signing using crypto module
-    const message_hash = @import("../types/hash256.zig").Hash256.sha256(message);
+    const message_hash = Hash256.sha256(message);
     const signature = try key_pair.private_key.sign(message_hash);
 
     return try allocator.dupe(u8, signature.toSlice());

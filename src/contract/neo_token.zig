@@ -56,18 +56,18 @@ pub const NeoToken = struct {
         };
     }
 
-    /// Gets token name override)
+    /// Gets token name override
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return NAME;
     }
 
-    /// Gets token symbol override)
+    /// Gets token symbol override
     pub fn getSymbol(self: Self) ![]const u8 {
         return try self.fungible_token.getSymbol();
     }
 
-    /// Gets token decimals override)
+    /// Gets token decimals override
     pub fn getDecimals(self: Self) !u8 {
         return try self.fungible_token.getDecimals();
     }

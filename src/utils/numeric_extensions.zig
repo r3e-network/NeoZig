@@ -101,7 +101,7 @@ pub const NumericUtils = struct {
         return std.mem.toBytes(std.mem.nativeToBig(T, value));
     }
 
-    /// Gets reversed bytes)
+    /// Gets reversed bytes
     pub fn getReversedBytes(comptime T: type, value: T, allocator: std.mem.Allocator) ![]u8 {
         const bytes = getBigEndianBytes(T, value);
         const result = try allocator.dupe(u8, &bytes);

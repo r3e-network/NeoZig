@@ -18,7 +18,7 @@ pub const ScriptBuilder = struct {
 
     const Self = @This();
 
-    /// Creates new script builder)
+    /// Creates new script builder
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .writer = BinaryWriter.init(allocator),
@@ -30,7 +30,7 @@ pub const ScriptBuilder = struct {
         self.writer.deinit();
     }
 
-    /// Appends OpCodes)
+    /// Appends OpCodes
     pub fn opCode(self: *Self, op_codes: []const OpCode) !*Self {
         for (op_codes) |op| {
             try self.writer.writeByte(@intFromEnum(op));
@@ -38,7 +38,7 @@ pub const ScriptBuilder = struct {
         return self;
     }
 
-    /// Appends OpCode with argument)
+    /// Appends OpCode with argument
     pub fn opCodeWithArg(self: *Self, op: OpCode, argument: []const u8) !*Self {
         try self.writer.writeByte(@intFromEnum(op));
         try self.writer.writeBytes(argument);
@@ -79,7 +79,7 @@ pub const ScriptBuilder = struct {
         return try self.sysCall(.SystemContractCall);
     }
 
-    /// System call)
+    /// System call
     pub fn sysCall(self: *Self, operation: InteropService) !*Self {
         _ = try self.opCode(&[_]OpCode{.SYSCALL});
 
@@ -302,7 +302,7 @@ pub const ScriptBuilder = struct {
         return try allocator.dupe(u8, builder.toScript());
     }
 
-    /// Gets the built script)
+    /// Gets the built script
     pub fn toScript(self: *Self) []const u8 {
         return self.writer.toSlice();
     }

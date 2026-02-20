@@ -102,9 +102,6 @@ const neo = @import("neo-zig");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    // Initialize logging
-    neo.utils.initGlobalLogger(.Info);
-
     // Generate a new key pair
     const key_pair = try neo.crypto.generateKeyPair(true);
     defer {

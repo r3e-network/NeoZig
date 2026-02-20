@@ -11,6 +11,9 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const Signer = @import("transaction_builder.zig").Signer;
 const WitnessScope = @import("transaction_builder.zig").WitnessScope;
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
+const ContractParameterType = @import("../types/contract_parameter.zig").ContractParameterType;
+const CallFlags = @import("../types/call_flags.zig").CallFlags;
 
 /// Contract signer for smart contract verification
 pub const ContractSigner = struct {
@@ -125,7 +128,7 @@ pub const ContractSigner = struct {
 
     /// Builds verification script invocation
     pub fn buildVerificationInvocation(self: Self, allocator: std.mem.Allocator) ![]u8 {
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
+        var script_builder = ScriptBuilder.init(allocator);
         defer script_builder.deinit();
 
         // Push verification parameters in reverse order
@@ -140,7 +143,7 @@ pub const ContractSigner = struct {
             self.signer.signer_hash,
             "verify",
             &[_]ContractParameter{},
-            @import("../types/call_flags.zig").CallFlags.None,
+            CallFlags.None,
         );
 
         return try allocator.dupe(u8, script_builder.toScript());
@@ -317,7 +320,7 @@ test "ContractSigner validation and verification" {
 
     const first_param = verification_context.getParameter(0);
     try testing.expect(first_param != null);
-    try testing.expectEqual(@import("../types/contract_parameter.zig").ContractParameterType.Boolean, first_param.?.getType());
+    try testing.expectEqual(ContractParameterType.Boolean, first_param.?.getType());
 }
 
 test "ContractSigner verification script building" {

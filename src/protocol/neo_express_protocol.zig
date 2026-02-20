@@ -13,6 +13,8 @@ const response_aliases = @import("../rpc/response_aliases.zig");
 const complete_responses = @import("../rpc/extended_responses.zig");
 const TransactionAttribute = @import("../transaction/transaction_builder.zig").TransactionAttribute;
 const Hash160 = @import("../types/hash160.zig").Hash160;
+const HttpService = @import("../rpc/http_service.zig").HttpService;
+const errors = @import("../core/errors.zig");
 
 /// High-level Neo Express protocol wrapper.
 pub const NeoExpressProtocol = struct {
@@ -80,7 +82,7 @@ test "NeoExpressProtocol builds express requests" {
     const allocator = testing.allocator;
 
     // Create an HTTP service with a mocked HTTP client so no network is used.
-    var http_service = @import("../rpc/http_service.zig").HttpService.init(allocator, null, false);
+    var http_service = HttpService.init(allocator, null, false);
     defer http_service.deinit();
 
     const MockContext = struct { response: []const u8 };
@@ -93,7 +95,7 @@ test "NeoExpressProtocol builds express requests" {
             endpoint: []const u8,
             payload: []const u8,
             timeout_ms: u32,
-        ) @import("../core/errors.zig").NetworkError![]u8 {
+        ) errors.NetworkError![]u8 {
             _ = endpoint;
             _ = payload;
             _ = timeout_ms;

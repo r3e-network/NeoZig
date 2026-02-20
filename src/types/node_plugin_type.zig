@@ -43,7 +43,7 @@ pub const NodePluginType = enum {
         };
     }
 
-    /// Creates from string value)
+    /// Creates from string value
     pub fn fromRawValue(raw_value: []const u8) ?Self {
         if (std.mem.eql(u8, raw_value, "ApplicationLogs")) return .ApplicationLogs;
         if (std.mem.eql(u8, raw_value, "CoreMetrics")) return .CoreMetrics;

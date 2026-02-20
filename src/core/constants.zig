@@ -198,11 +198,11 @@ pub const FeeConstants = struct {
 pub const InteropServices = struct {
     // Contract Call
     pub const SYSTEM_CONTRACT_CALL: u32 = 0x525b7d62;
-    pub const SYSTEM_CONTRACT_CREATEMULTISIGACCOUNT: u32 = 0x1b5f9793;
-    pub const SYSTEM_CONTRACT_CREATESTANDARDACCOUNT: u32 = 0x6de2c376;
-    pub const SYSTEM_CONTRACT_CALCULATENETWORKFEE: u32 = 0x8a287441;
-    pub const SYSTEM_CONTRACT_GETCALLFLAGS: u32 = 0xc007c0a4;
-    pub const SYSTEM_CONTRACT_GETVERSIONS: u32 = 0xb9ea7ba2;
+    pub const SYSTEM_CONTRACT_CREATEMULTISIGACCOUNT: u32 = 0x09e9336a;
+    pub const SYSTEM_CONTRACT_CREATESTANDARDACCOUNT: u32 = 0x028799cf;
+    pub const SYSTEM_CONTRACT_CALCULATENETWORKFEE: u32 = 0x0144cbf8;
+    pub const SYSTEM_CONTRACT_GETCALLFLAGS: u32 = 0x813ada95;
+    pub const SYSTEM_CONTRACT_GETVERSIONS: u32 = 0xe510f428;
 
     // Crypto
     pub const SYSTEM_CRYPTO_CHECK_SIG: u32 = 0x27b3e756;
@@ -211,17 +211,17 @@ pub const InteropServices = struct {
     pub const SYSTEM_CRYPTO_SHA256: u32 = 0x0e594654;
 
     // Runtime
-    pub const SYSTEM_RUNTIME_GETTIME: u32 = 0xbce7c833;
-    pub const SYSTEM_RUNTIME_GETTRIGGER: u32 = 0x7c8d8d07;
-    pub const SYSTEM_RUNTIME_LOG: u32 = 0x9c0f0a7d;
-    pub const SYSTEM_RUNTIME_NOTIFY: u32 = 0xd2c1b624;
-    pub const SYSTEM_RUNTIME_CHECKWITNESS: u32 = 0x2926d483;
-    pub const SYSTEM_RUNTIME_BURNGAS: u32 = 0x6f7b6340;
-    pub const SYSTEM_RUNTIME_GETEXECUTIONSCRIPTTRIGGER: u32 = 0xd2c95629;
-    pub const SYSTEM_RUNTIME_GETCALLINGSCRIPTHASH: u32 = 0x6a24777b;
-    pub const SYSTEM_RUNTIME_GETENTRYSCRIPTHASH: u32 = 0xf0ca4b9d;
-    pub const SYSTEM_RUNTIME_GETCURRENTSCRIPTHASH: u32 = 0xb2f944dd;
-    pub const SYSTEM_RUNTIME_GETRANDOM: u32 = 0xa7a3b73e;
+    pub const SYSTEM_RUNTIME_GETTIME: u32 = 0x0388c3b7;
+    pub const SYSTEM_RUNTIME_GETTRIGGER: u32 = 0xa0387de9;
+    pub const SYSTEM_RUNTIME_LOG: u32 = 0x9647e7cf;
+    pub const SYSTEM_RUNTIME_NOTIFY: u32 = 0x616f0195;
+    pub const SYSTEM_RUNTIME_CHECKWITNESS: u32 = 0x8cec27f8;
+    pub const SYSTEM_RUNTIME_BURNGAS: u32 = 0xbc8c5ac3;
+    pub const SYSTEM_RUNTIME_GETEXECUTIONSCRIPTTRIGGER: u32 = 0xb4b9750f;
+    pub const SYSTEM_RUNTIME_GETCALLINGSCRIPTHASH: u32 = 0x3c6e5339;
+    pub const SYSTEM_RUNTIME_GETENTRYSCRIPTHASH: u32 = 0x38e2b4f9;
+    pub const SYSTEM_RUNTIME_GETCURRENTSCRIPTHASH: u32 = 0x6d95d0e3;
+    pub const SYSTEM_RUNTIME_GETRANDOM: u32 = 0x28a9de6b;
 
     // Legacy aliases (kept for compatibility)
     pub const NEO_CRYPTO_RIPEMD160: u32 = SYSTEM_CRYPTO_RIPEMD160;
@@ -271,5 +271,17 @@ test "constants validation" {
 
     std.crypto.hash.sha2.Sha256.hash("System.Crypto.Sha256", &digest, .{});
     std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CRYPTO_SHA256, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Contract.GetCallFlags", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_CONTRACT_GETCALLFLAGS, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Runtime.GetTime", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_RUNTIME_GETTIME, .little);
+    try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
+
+    std.crypto.hash.sha2.Sha256.hash("System.Runtime.CheckWitness", &digest, .{});
+    std.mem.writeInt(u32, &syscall_bytes, InteropServices.SYSTEM_RUNTIME_CHECKWITNESS, .little);
     try testing.expectEqualSlices(u8, digest[0..4], &syscall_bytes);
 }

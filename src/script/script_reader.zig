@@ -12,6 +12,10 @@ const OpCode = @import("op_code.zig").OpCode;
 const InteropService = @import("script_builder.zig").InteropService;
 const BinaryReader = @import("../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
+const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
+const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
+const ScriptBuilder = @import("script_builder.zig").ScriptBuilder;
 
 /// Script reader for NeoVM script analysis
 pub const ScriptReader = struct {
@@ -33,15 +37,15 @@ pub const ScriptReader = struct {
         return null;
     }
 
-    /// Converts script to OpCode string)
+    /// Converts script to OpCode string
     pub fn convertToOpCodeString(script_hex: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const script_bytes = try @import("../utils/string_extensions.zig").StringUtils.bytesFromHex(script_hex, allocator);
+        const script_bytes = try StringUtils.bytesFromHex(script_hex, allocator);
         defer allocator.free(script_bytes);
 
         return try convertToOpCodeStringFromBytes(script_bytes, allocator);
     }
 
-    /// Converts script bytes to OpCode string)
+    /// Converts script bytes to OpCode string
     pub fn convertToOpCodeStringFromBytes(script: []const u8, allocator: std.mem.Allocator) ![]u8 {
         var reader = BinaryReader.init(script);
         var result = ArrayList(u8).init(allocator);
@@ -62,7 +66,7 @@ pub const ScriptReader = struct {
                     const operand_bytes = reader.readBytes(operand_info.size, allocator) catch break;
                     defer allocator.free(operand_bytes);
 
-                    const operand_hex = try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(operand_bytes, allocator);
+                    const operand_hex = try BytesUtils.toHexString(operand_bytes, allocator);
                     defer allocator.free(operand_hex);
 
                     try result.appendSlice(" ");
@@ -73,7 +77,7 @@ pub const ScriptReader = struct {
                     const operand_bytes = reader.readBytes(prefix_size, allocator) catch break;
                     defer allocator.free(operand_bytes);
 
-                    const operand_hex = try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(operand_bytes, allocator);
+                    const operand_hex = try BytesUtils.toHexString(operand_bytes, allocator);
                     defer allocator.free(operand_hex);
 
                     try result.appendSlice(" ");
@@ -339,14 +343,14 @@ test "ScriptReader public key extraction" {
     const allocator = testing.allocator;
 
     // Test public key extraction from verification script
-    const key_pair = try @import("../crypto/ec_key_pair.zig").ECKeyPair.createRandom();
+    const key_pair = try ECKeyPair.createRandom();
     defer {
         var mutable_kp = key_pair;
         mutable_kp.zeroize();
     }
 
     // Create verification script
-    var builder = @import("script_builder.zig").ScriptBuilder.init(allocator);
+    var builder = ScriptBuilder.init(allocator);
     defer builder.deinit();
 
     const public_key = key_pair.getPublicKey();

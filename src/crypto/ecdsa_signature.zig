@@ -19,12 +19,12 @@ pub const ECDSASignature = struct {
 
     const Self = @This();
 
-    /// Creates ECDSA signature from R and S components)
+    /// Creates ECDSA signature from R and S components
     pub fn init(r: u256, s: u256) Self {
         return Self{ .r = r, .s = s };
     }
 
-    /// Creates from raw signature bytes)
+    /// Creates from raw signature bytes
     pub fn fromBytes(signature_bytes: [64]u8) Self {
         const r = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature_bytes[0..32]));
         const s = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, signature_bytes[32..64]));

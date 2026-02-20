@@ -16,6 +16,12 @@ pub const RoleManagement = @import("role_management.zig").RoleManagement;
 pub const Role = @import("../types/role.zig").Role;
 pub const Token = @import("token.zig").Token;
 pub const TransferRecipient = @import("fungible_token.zig").TransferRecipient;
+pub const NefFile = @import("nef_file.zig").NefFile;
+pub const MethodToken = @import("nef_file.zig").MethodToken;
+pub const NeoURI = @import("neo_uri.zig").NeoURI;
+pub const NeoURIBuilder = @import("neo_uri.zig").NeoURIBuilder;
+pub const URIUtils = @import("neo_uri.zig").URIUtils;
+pub const NNSName = @import("nns_name.zig").NNSName;
 
 // v3.9.0 (Faun hardfork) native contracts
 pub const Treasury = @import("treasury.zig").Treasury;

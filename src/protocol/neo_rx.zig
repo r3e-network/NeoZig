@@ -6,8 +6,18 @@
 const std = @import("std");
 
 const errors = @import("../core/errors.zig");
-const JsonRpc2_0Rx = @import("json_rpc_2_0_rx.zig").JsonRpc2_0Rx;
-const BlockData = @import("json_rpc_2_0_rx.zig").BlockData;
+const Hash160 = @import("../types/hash160.zig").Hash160;
+const Hash256 = @import("../types/hash256.zig").Hash256;
+const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+
+const json_rpc = @import("json_rpc_2_0_rx.zig");
+const JsonRpc2_0Rx = json_rpc.JsonRpc2_0Rx;
+const BlockData = json_rpc.BlockData;
+const BlockSubscription = json_rpc.BlockSubscription;
+const ReplaySubscription = json_rpc.ReplaySubscription;
+const CatchUpSubscription = json_rpc.CatchUpSubscription;
+const AsyncExecutor = json_rpc.AsyncExecutor;
+const CombinedSubscription = json_rpc.CombinedSubscription;
 
 /// Neo reactive protocol
 pub const NeoRx = struct {
@@ -29,12 +39,12 @@ pub const NeoRx = struct {
         };
     }
 
-    /// Creates block publisher)
+    /// Creates block publisher
     pub fn blockPublisher(
         self: *Self,
         full_transaction_objects: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").BlockSubscription {
+    ) !BlockSubscription {
         return try self.json_rpc_rx.blockPublisher(
             full_transaction_objects,
             self.default_polling_interval_ms,
@@ -49,7 +59,7 @@ pub const NeoRx = struct {
         end_block: u32,
         full_transaction_objects: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").ReplaySubscription {
+    ) !ReplaySubscription {
         return try self.json_rpc_rx.replayBlocksPublisher(
             start_block,
             end_block,
@@ -67,7 +77,7 @@ pub const NeoRx = struct {
         full_transaction_objects: bool,
         ascending: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").ReplaySubscription {
+    ) !ReplaySubscription {
         return try self.json_rpc_rx.replayBlocksPublisher(
             start_block,
             end_block,
@@ -83,7 +93,7 @@ pub const NeoRx = struct {
         start_block: u32,
         full_transaction_objects: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").CatchUpSubscription {
+    ) !CatchUpSubscription {
         return try self.json_rpc_rx.catchUpToLatestBlockPublisher(
             start_block,
             full_transaction_objects,
@@ -97,7 +107,7 @@ pub const NeoRx = struct {
         start_block: u32,
         full_transaction_objects: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").CombinedSubscription {
+    ) !CombinedSubscription {
         return try self.json_rpc_rx.catchUpToLatestAndSubscribeToNewBlocksPublisher(
             start_block,
             full_transaction_objects,
@@ -111,7 +121,7 @@ pub const NeoRx = struct {
         self: *Self,
         full_transaction_objects: bool,
         callback: *const fn (BlockData) void,
-    ) !@import("json_rpc_2_0_rx.zig").BlockSubscription {
+    ) !BlockSubscription {
         return try self.blockPublisher(full_transaction_objects, callback);
     }
 
@@ -133,7 +143,7 @@ pub const NeoRx = struct {
     /// Creates contract event subscription (additional utility)
     pub fn createContractEventSubscription(
         self: *Self,
-        contract_hash: @import("../types/hash160.zig").Hash160,
+        contract_hash: Hash160,
         event_name: ?[]const u8,
         callback: *const fn (ContractEvent) void,
     ) !ContractEventSubscription {
@@ -166,9 +176,9 @@ pub const NeoRx = struct {
 
 /// Transaction filter for subscription
 pub const TransactionFilter = struct {
-    from_address: ?@import("../types/hash160.zig").Hash160,
-    to_address: ?@import("../types/hash160.zig").Hash160,
-    contract_hash: ?@import("../types/hash160.zig").Hash160,
+    from_address: ?Hash160,
+    to_address: ?Hash160,
+    contract_hash: ?Hash160,
     min_amount: ?i64,
 
     pub fn matches(self: TransactionFilter, tx_data: TransactionData) bool {
@@ -202,14 +212,14 @@ pub const TransactionFilter = struct {
 
 /// Transaction data for filtering
 pub const TransactionData = struct {
-    tx_hash: @import("../types/hash256.zig").Hash256,
-    from_address: ?@import("../types/hash160.zig").Hash160,
-    to_address: ?@import("../types/hash160.zig").Hash160,
-    contract_hash: ?@import("../types/hash160.zig").Hash160,
+    tx_hash: Hash256,
+    from_address: ?Hash160,
+    to_address: ?Hash160,
+    contract_hash: ?Hash160,
     amount: ?i64,
     block_index: u32,
 
-    pub fn init(tx_hash: @import("../types/hash256.zig").Hash256, block_index: u32) TransactionData {
+    pub fn init(tx_hash: Hash256, block_index: u32) TransactionData {
         return TransactionData{
             .tx_hash = tx_hash,
             .from_address = null,
@@ -223,11 +233,11 @@ pub const TransactionData = struct {
 
 /// Contract event data
 pub const ContractEvent = struct {
-    contract_hash: @import("../types/hash160.zig").Hash160,
+    contract_hash: Hash160,
     event_name: []const u8,
-    parameters: []const @import("../types/contract_parameter.zig").ContractParameter,
+    parameters: []const ContractParameter,
     block_index: u32,
-    tx_hash: @import("../types/hash256.zig").Hash256,
+    tx_hash: Hash256,
 
     pub fn init() ContractEvent {
         return std.mem.zeroes(ContractEvent);
@@ -257,7 +267,7 @@ pub const TransactionSubscription = struct {
 };
 
 pub const ContractEventSubscription = struct {
-    contract_hash: @import("../types/hash160.zig").Hash160,
+    contract_hash: Hash160,
     event_name: ?[]const u8,
     callback: *const fn (ContractEvent) void,
     is_active: bool,
@@ -349,17 +359,17 @@ pub const TransactionFilterBuilder = struct {
         };
     }
 
-    pub fn fromAddress(self: *Self, address: @import("../types/hash160.zig").Hash160) *Self {
+    pub fn fromAddress(self: *Self, address: Hash160) *Self {
         self.filter.from_address = address;
         return self;
     }
 
-    pub fn toAddress(self: *Self, address: @import("../types/hash160.zig").Hash160) *Self {
+    pub fn toAddress(self: *Self, address: Hash160) *Self {
         self.filter.to_address = address;
         return self;
     }
 
-    pub fn contractHash(self: *Self, hash: @import("../types/hash160.zig").Hash160) *Self {
+    pub fn contractHash(self: *Self, hash: Hash160) *Self {
         self.filter.contract_hash = hash;
         return self;
     }
@@ -388,7 +398,7 @@ test "NeoRx creation and basic operations" {
     const allocator = testing.allocator;
 
     // Test reactive client creation
-    const executor = @import("json_rpc_2_0_rx.zig").AsyncExecutor.init(4);
+    const executor = AsyncExecutor.init(4);
     var json_rpc_rx = JsonRpc2_0Rx.init(null, null, null, 15000, allocator);
     json_rpc_rx.executor_service = executor;
 
@@ -403,7 +413,7 @@ test "TransactionFilter operations" {
 
     // Test transaction filter creation and matching
     const filter = TransactionFilter{
-        .from_address = @import("../types/hash160.zig").Hash160.ZERO,
+        .from_address = Hash160.ZERO,
         .to_address = null,
         .contract_hash = null,
         .min_amount = 1000000, // 0.01 tokens (8 decimals)
@@ -411,8 +421,8 @@ test "TransactionFilter operations" {
 
     // Test matching transaction
     const matching_tx = TransactionData{
-        .tx_hash = @import("../types/hash256.zig").Hash256.ZERO,
-        .from_address = @import("../types/hash160.zig").Hash160.ZERO,
+        .tx_hash = Hash256.ZERO,
+        .from_address = Hash160.ZERO,
         .to_address = null,
         .contract_hash = null,
         .amount = 2000000, // Above minimum
@@ -423,8 +433,8 @@ test "TransactionFilter operations" {
 
     // Test non-matching transaction (amount too low)
     const non_matching_tx = TransactionData{
-        .tx_hash = @import("../types/hash256.zig").Hash256.ZERO,
-        .from_address = @import("../types/hash160.zig").Hash160.ZERO,
+        .tx_hash = Hash256.ZERO,
+        .from_address = Hash160.ZERO,
         .to_address = null,
         .contract_hash = null,
         .amount = 500000, // Below minimum
@@ -440,8 +450,8 @@ test "TransactionFilterBuilder operations" {
     // Test filter builder pattern
     var builder = ReactiveUtils.createTransactionFilterBuilder();
 
-    const from_hash = @import("../types/hash160.zig").Hash160.ZERO;
-    const to_hash = try @import("../types/hash160.zig").Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
+    const from_hash = Hash160.ZERO;
+    const to_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
 
     const filter = builder
         .fromAddress(from_hash)
@@ -493,7 +503,7 @@ test "ContractEventSubscription operations" {
     const testing = std.testing;
 
     // Test contract event subscription
-    const contract_hash = @import("../types/hash160.zig").Hash160.ZERO;
+    const contract_hash = Hash160.ZERO;
     const event_name = "Transfer";
 
     const test_callback = struct {
@@ -516,20 +526,20 @@ test "ContractEventSubscription operations" {
     const matching_event = ContractEvent{
         .contract_hash = contract_hash,
         .event_name = event_name,
-        .parameters = &[_]@import("../types/contract_parameter.zig").ContractParameter{},
+        .parameters = &[_]ContractParameter{},
         .block_index = 12345,
-        .tx_hash = @import("../types/hash256.zig").Hash256.ZERO,
+        .tx_hash = Hash256.ZERO,
     };
 
     try testing.expect(event_subscription.matchesEvent(matching_event));
 
     // Test non-matching event (different contract)
     const non_matching_event = ContractEvent{
-        .contract_hash = try @import("../types/hash160.zig").Hash160.initWithString("1234567890abcdef1234567890abcdef12345678"),
+        .contract_hash = try Hash160.initWithString("1234567890abcdef1234567890abcdef12345678"),
         .event_name = event_name,
-        .parameters = &[_]@import("../types/contract_parameter.zig").ContractParameter{},
+        .parameters = &[_]ContractParameter{},
         .block_index = 12345,
-        .tx_hash = @import("../types/hash256.zig").Hash256.ZERO,
+        .tx_hash = Hash256.ZERO,
     };
 
     try testing.expect(!event_subscription.matchesEvent(non_matching_event));

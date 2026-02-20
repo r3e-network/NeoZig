@@ -12,6 +12,7 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const SmartContract = @import("smart_contract.zig").SmartContract;
 const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
+const WitnessScope = @import("../transaction/transaction_builder.zig").WitnessScope;
 const Token = @import("token.zig").Token;
 
 /// Fungible token contract
@@ -32,18 +33,18 @@ pub const FungibleToken = struct {
         };
     }
 
-    /// Gets balance for account)
+    /// Gets balance for account
     pub fn getBalanceOfAccount(self: Self, account: Account) !i64 {
         return try self.getBalanceOf(try account.getScriptHash());
     }
 
-    /// Gets balance for script hash)
+    /// Gets balance for script hash
     pub fn getBalanceOf(self: Self, script_hash: Hash160) !i64 {
         const params = [_]ContractParameter{ContractParameter.hash160(script_hash)};
         return try self.token.smart_contract.callFunctionReturningInt(BALANCE_OF, &params);
     }
 
-    /// Gets balance for wallet)
+    /// Gets balance for wallet
     pub fn getBalanceOfWallet(self: Self, wallet: Wallet) !i64 {
         var sum: i64 = 0;
         const accounts = try wallet.getAccounts(self.token.smart_contract.allocator);
@@ -56,7 +57,7 @@ pub const FungibleToken = struct {
         return sum;
     }
 
-    /// Creates transfer transaction with account)
+    /// Creates transfer transaction with account
     pub fn transferFromAccount(
         self: Self,
         from: Account,
@@ -70,14 +71,14 @@ pub const FungibleToken = struct {
         // Add account signer
         const signer = @import("../transaction/transaction_builder.zig").Signer.init(
             sender_hash,
-            @import("../transaction/transaction_builder.zig").WitnessScope.CalledByEntry,
+            WitnessScope.CalledByEntry,
         );
         _ = try tx_builder.signer(signer);
 
         return tx_builder;
     }
 
-    /// Creates transfer transaction with script hash)
+    /// Creates transfer transaction with script hash
     pub fn transfer(
         self: Self,
         from: Hash160,

@@ -58,8 +58,8 @@ pub const NNSName = struct {
             if (char == '.') fragment_count += 1;
         }
 
-        // Check fragment count (2-8 fragments)
-        if (fragment_count < 2 or fragment_count > 8) return false;
+        // Check fragment count (2-7 fragments)
+        if (fragment_count < 2 or fragment_count > 7) return false;
 
         // If more than 2 fragments, check if allowed
         if (fragment_count > 2 and !allow_multiple_fragments) return false;
@@ -67,10 +67,10 @@ pub const NNSName = struct {
         // Validate each fragment
         var fragment_iterator = std.mem.splitScalar(u8, name, '.');
         var fragment_index: usize = 0;
-        var fragments_array = [_][]const u8{""} ** 8;
+        var fragments_array = [_][]const u8{""} ** 7;
 
         while (fragment_iterator.next()) |fragment| {
-            if (fragment_index >= 8) return false;
+            if (fragment_index >= 7) return false;
             fragments_array[fragment_index] = fragment;
             fragment_index += 1;
         }
@@ -192,7 +192,7 @@ pub const NNSUtils = struct {
         defer suggested.deinit();
 
         for (invalid_name) |char| {
-            if (std.ascii.isAlphaNumeric(char) or char == '.' or char == '-') {
+            if (std.ascii.isAlphanumeric(char) or char == '.' or char == '-') {
                 try suggested.append(std.ascii.toLower(char));
             }
         }
@@ -265,6 +265,7 @@ test "NNSName creation and validation" {
 test "NNSName validation rules" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     // Test valid names
     try testing.expect(NNSName.isValidNNSName("test.neo", true));

@@ -9,6 +9,8 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const FungibleToken = @import("fungible_token.zig").FungibleToken;
+const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
+const TransactionBuilder = @import("../transaction/transaction_builder.zig").TransactionBuilder;
 
 /// GAS token contract
 pub const GasToken = struct {
@@ -36,18 +38,18 @@ pub const GasToken = struct {
         };
     }
 
-    /// Gets token name override)
+    /// Gets token name override
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return NAME;
     }
 
-    /// Gets token symbol override)
+    /// Gets token symbol override
     pub fn getSymbol(self: Self) ![]const u8 {
         return try self.fungible_token.getSymbol();
     }
 
-    /// Gets token decimals override)
+    /// Gets token decimals override
     pub fn getDecimals(self: Self) !u8 {
         return try self.fungible_token.getDecimals();
     }
@@ -63,8 +65,8 @@ pub const GasToken = struct {
         from: Hash160,
         to: Hash160,
         amount: i64,
-        data: ?@import("../types/contract_parameter.zig").ContractParameter,
-    ) !@import("../transaction/transaction_builder.zig").TransactionBuilder {
+        data: ?ContractParameter,
+    ) !TransactionBuilder {
         return try self.fungible_token.transfer(from, to, amount, data);
     }
 

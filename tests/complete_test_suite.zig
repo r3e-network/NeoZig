@@ -49,7 +49,7 @@ test "complete cryptographic functionality" {
 
     // Test BIP32 HD wallets
     const bip32_seed = "bip32 test seed for HD wallet generation";
-    const master_hd_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
+    const master_hd_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed);
 
     try testing.expectEqual(@as(i32, 0), master_hd_key.depth);
     try testing.expect(master_hd_key.key_pair.isValid());
@@ -502,6 +502,7 @@ test "complete performance and integration validation" {
 test "complete security and safety validation" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     std.log.info("🛡️ Testing Security and Safety...", .{});
 
@@ -535,7 +536,7 @@ test "complete security and safety validation" {
     if (invalid_hash_result) |_| {
         try testing.expect(false); // Should not succeed
     } else |err| {
-        try testing.expect(err == errors.NeoError.IllegalArgument);
+        try testing.expect(err == neo.errors.NeoError.IllegalArgument);
     }
 
     std.log.info("✅ Completed {} secure operations", .{large_operations});

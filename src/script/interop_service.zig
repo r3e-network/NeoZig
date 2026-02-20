@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
+
 /// System call interop services for Neo VM
 pub const InteropService = enum {
     SystemCryptoCheckSig,
@@ -104,7 +106,7 @@ pub const InteropService = enum {
 
         // Take first 4 bytes and convert to hex string
         const prefix = hash_full[0..4];
-        return try @import("../utils/bytes_extensions.zig").BytesUtils.toHexString(prefix, allocator);
+        return try BytesUtils.toHexString(prefix, allocator);
     }
 
     /// Gets the gas price for the interop service

@@ -81,7 +81,7 @@ pub fn Request(comptime T: type, comptime U: type) type {
             self.method = "";
         }
 
-        /// Sends request)
+        /// Sends request
         pub fn sendUsing(self: *Self, service: anytype) !T {
             defer self.deinit();
             return try service.send(T, U, self);

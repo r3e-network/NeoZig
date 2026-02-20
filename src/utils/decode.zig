@@ -11,7 +11,7 @@ const errors = @import("../core/errors.zig");
 /// String decodable trait
 pub fn StringDecodable(comptime T: type) type {
     return struct {
-        /// Creates instance from string)
+        /// Creates instance from string
         pub fn initFromString(string: []const u8) !T {
             return T.initFromString(string);
         }
@@ -21,13 +21,13 @@ pub fn StringDecodable(comptime T: type) type {
             return T.toString(self, allocator);
         }
 
-        /// Encodes to JSON string)
+        /// Encodes to JSON string
         pub fn encodeToJson(self: T, allocator: std.mem.Allocator) !std.json.Value {
             const string_value = try self.toString(allocator);
             return std.json.Value{ .string = string_value };
         }
 
-        /// Decodes from JSON string)
+        /// Decodes from JSON string
         pub fn decodeFromJson(json_value: std.json.Value) !T {
             const string_value = switch (json_value) {
                 .string => |s| s,
@@ -50,7 +50,7 @@ pub fn SafeDecode(comptime T: type) type {
             return Self{ .value = value };
         }
 
-        /// Safe decoding from JSON)
+        /// Safe decoding from JSON
         pub fn decodeFromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
             _ = allocator;
             // Try direct decoding first
@@ -72,7 +72,7 @@ pub fn SafeDecode(comptime T: type) type {
             }
         }
 
-        /// Encodes to JSON)
+        /// Encodes to JSON
         pub fn encodeToJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
             return try self.value.encodeToJson(allocator);
         }

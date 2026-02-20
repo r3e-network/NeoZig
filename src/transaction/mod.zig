@@ -9,6 +9,7 @@ pub const TransactionBuilder = @import("transaction_builder.zig").TransactionBui
 pub const Transaction = @import("transaction_builder.zig").Transaction;
 pub const Signer = @import("transaction_builder.zig").Signer;
 pub const Witness = @import("transaction_builder.zig").Witness;
+pub const CompleteWitness = @import("witness.zig").Witness;
 pub const TransactionAttribute = @import("transaction_builder.zig").TransactionAttribute;
 pub const AttributeType = @import("transaction_builder.zig").AttributeType;
 pub const WitnessScope = @import("transaction_builder.zig").WitnessScope;

@@ -58,7 +58,7 @@ pub const ScryptParams = struct {
         return self.n == other.n and self.r == other.r and self.p == other.p;
     }
 
-    /// Hash function)
+    /// Hash function
     pub fn hash(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.n));
@@ -122,7 +122,7 @@ pub const ScryptParams = struct {
         return try json_string.toOwnedSlice();
     }
 
-    /// JSON decoding)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();

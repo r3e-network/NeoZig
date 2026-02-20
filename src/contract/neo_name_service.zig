@@ -18,6 +18,7 @@ const Iterator = @import("iterator.zig").Iterator;
 const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
+const NNSName = @import("nns_name.zig").NNSName;
 
 /// Neo Name Service contract
 pub const NeoNameService = struct {
@@ -69,19 +70,19 @@ pub const NeoNameService = struct {
         return self.non_fungible_token.isNativeContract();
     }
 
-    /// Gets contract name override)
+    /// Gets contract name override
     pub fn getName(self: Self) ![]const u8 {
         _ = self;
         return "NameService";
     }
 
-    /// Gets contract symbol override)
+    /// Gets contract symbol override
     pub fn getSymbol(self: Self) ![]const u8 {
         _ = self;
         return "NNS";
     }
 
-    /// Gets contract decimals override)
+    /// Gets contract decimals override
     pub fn getDecimals(self: Self) !u8 {
         _ = self;
         return 0; // NFTs are not divisible
@@ -464,7 +465,7 @@ pub const NNSUtils = struct {
 
     /// Validates domain name format
     pub fn validateDomainName(domain_name: []const u8) !void {
-        if (!@import("nns_name.zig").NNSName.isValidNNSName(domain_name, true)) {
+        if (!NNSName.isValidNNSName(domain_name, true)) {
             return errors.ContractError.InvalidContract;
         }
     }

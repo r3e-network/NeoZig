@@ -11,6 +11,23 @@ const Hash256 = @import("../types/hash256.zig").Hash256;
 const errors = @import("../core/errors.zig");
 const StackItem = @import("../types/stack_item.zig").StackItem;
 
+const responses = @import("responses.zig");
+const NeoBlock = responses.NeoBlock;
+const Transaction = responses.Transaction;
+const ContractState = responses.ContractState;
+const InvocationResult = responses.InvocationResult;
+const NetworkFeeResponse = responses.NetworkFeeResponse;
+
+const extended = @import("extended_responses.zig");
+const PopulatedBlocks = extended.PopulatedBlocks;
+const ContractStorageEntry = extended.ContractStorageEntry;
+const Nep17Contract = extended.Nep17Contract;
+const ExpressContractState = extended.ExpressContractState;
+const OracleRequest = extended.OracleRequest;
+const ExpressShutdown = extended.ExpressShutdown;
+const NeoAddress = extended.NeoAddress;
+const NativeContractState = extended.NativeContractState;
+
 /// Generic response wrapper (base for all response types)
 pub fn Response(comptime T: type) type {
     return struct {
@@ -37,67 +54,150 @@ pub fn Response(comptime T: type) type {
 }
 
 // ============================================================================
+// GENERIC RESPONSE HELPERS
+// ============================================================================
+
+/// Generic bool response (parses JSON bool)
+pub fn BoolResponse() type {
+    return struct {
+        result: ?bool,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?bool { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            _ = allocator;
+            return .{ .result = json_value.bool };
+        }
+    };
+}
+
+/// Generic u32 response (parses JSON integer)
+pub fn IntResponse() type {
+    return struct {
+        result: ?u32,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?u32 { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            _ = allocator;
+            return .{ .result = @intCast(json_value.integer) };
+        }
+    };
+}
+
+/// Generic owned-string response (parses JSON string, owns memory)
+pub fn StringResponse() type {
+    return struct {
+        result: ?[]const u8,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?[]const u8 { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            return .{ .result = try allocator.dupe(u8, json_value.string) };
+        }
+        pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+            if (self.result) |res| {
+                if (res.len > 0) allocator.free(@constCast(res));
+                self.result = null;
+            }
+        }
+    };
+}
+
+/// Generic Hash256 response (parses hex string to Hash256)
+pub fn Hash256Response() type {
+    return struct {
+        result: ?Hash256,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?Hash256 { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            _ = allocator;
+            return .{ .result = try Hash256.initWithString(json_value.string) };
+        }
+    };
+}
+
+/// Generic object response (parses single JSON object with T.fromJson/deinit)
+pub fn ObjectResponse(comptime T: type) type {
+    return struct {
+        result: ?T,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?T { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            return .{ .result = try T.fromJson(json_value, allocator) };
+        }
+        pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+            if (self.result) |*val| {
+                val.deinit(allocator);
+                self.result = null;
+            }
+        }
+    };
+}
+
+/// Generic array response (parses JSON array of T with fromJson/deinit)
+pub fn ArrayResponse(comptime T: type) type {
+    return struct {
+        result: ?[]const T,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?[]const T { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            if (json_value != .array) return errors.SerializationError.InvalidFormat;
+            var list = ArrayList(T).init(allocator);
+            errdefer {
+                for (list.items) |*item| item.deinit(allocator);
+                list.deinit();
+            }
+            for (json_value.array.items) |entry| {
+                var parsed = try T.fromJson(entry, allocator);
+                errdefer parsed.deinit(allocator);
+                try list.append(parsed);
+            }
+            return .{ .result = try list.toOwnedSlice() };
+        }
+        pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+            if (self.result) |items| {
+                for (@constCast(items)) |*item| {
+                    item.deinit(allocator);
+                }
+                allocator.free(@constCast(items));
+                self.result = null;
+            }
+        }
+    };
+}
+
+// ============================================================================
 // BLOCKCHAIN RESPONSE TYPES
 // ============================================================================
 
-/// Block count response
-pub const NeoBlockCount = struct {
-    result: ?u32,
-
-    pub fn init() NeoBlockCount {
-        return NeoBlockCount{ .result = null };
-    }
-
-    pub fn getBlockCount(self: NeoBlockCount) ?u32 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoBlockCount {
-        _ = allocator;
-        return NeoBlockCount{ .result = @intCast(json_value.integer) };
-    }
-};
-
-/// Block hash response
-pub const NeoBlockHash = struct {
-    result: ?Hash256,
-
-    pub fn init() NeoBlockHash {
-        return NeoBlockHash{ .result = null };
-    }
-
-    pub fn getBlockHash(self: NeoBlockHash) ?Hash256 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoBlockHash {
-        _ = allocator;
-        const hash = try Hash256.initWithString(json_value.string);
-        return NeoBlockHash{ .result = hash };
-    }
-};
+pub const NeoBlockCount = IntResponse();
+pub const NeoBlockHash = Hash256Response();
 
 /// Block response wrapper
 pub const NeoGetBlock = struct {
-    result: ?*@import("responses.zig").NeoBlock,
+    result: ?*NeoBlock,
 
     pub fn init() NeoGetBlock {
         return NeoGetBlock{ .result = null };
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetBlock {
-        const block = try allocator.create(@import("responses.zig").NeoBlock);
+        const block = try allocator.create(NeoBlock);
         errdefer allocator.destroy(block);
 
-        block.* = try @import("responses.zig").NeoBlock.fromJson(json_value, allocator);
+        block.* = try NeoBlock.fromJson(json_value, allocator);
         return NeoGetBlock{ .result = block };
     }
 
-    pub fn getResult(self: NeoGetBlock) ?*const @import("responses.zig").NeoBlock {
+    pub fn getResult(self: NeoGetBlock) ?*const NeoBlock {
         return self.result;
     }
 
-    pub fn takeBlock(self: *NeoGetBlock) ?*@import("responses.zig").NeoBlock {
+    pub fn takeBlock(self: *NeoGetBlock) ?*NeoBlock {
         const owned = self.result;
         self.result = null;
         return owned;
@@ -153,131 +253,38 @@ pub const NeoGetRawMemPool = struct {
 /// Block header count response (alias of connection count)
 pub const NeoBlockHeaderCount = NeoConnectionCount;
 
-/// Calculate network fee response
-pub const NeoCalculateNetworkFee = struct {
-    result: ?@import("responses.zig").NetworkFeeResponse,
+/// NeoCalculateNetworkFee response
+pub const NeoCalculateNetworkFee = ObjectResponse(NetworkFeeResponse);
 
-    pub fn init() NeoCalculateNetworkFee {
-        return NeoCalculateNetworkFee{ .result = null };
-    }
+pub const NeoCloseWallet = BoolResponse();
+pub const NeoConnectionCount = IntResponse();
 
-    pub fn getNetworkFee(self: NeoCalculateNetworkFee) ?@import("responses.zig").NetworkFeeResponse {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoCalculateNetworkFee {
-        const fee_response = try @import("responses.zig").NetworkFeeResponse.fromJson(json_value, allocator);
-        return NeoCalculateNetworkFee{ .result = fee_response };
-    }
-};
-
-/// Close wallet response
-pub const NeoCloseWallet = struct {
-    result: ?bool,
-
-    pub fn init() NeoCloseWallet {
-        return NeoCloseWallet{ .result = null };
-    }
-
-    pub fn getCloseWallet(self: NeoCloseWallet) ?bool {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoCloseWallet {
-        _ = allocator;
-        return NeoCloseWallet{ .result = json_value.bool };
-    }
-};
-
-/// Connection count response
-pub const NeoConnectionCount = struct {
-    result: ?u32,
-
-    pub fn init() NeoConnectionCount {
-        return NeoConnectionCount{ .result = null };
-    }
-
-    pub fn getCount(self: NeoConnectionCount) ?u32 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoConnectionCount {
-        _ = allocator;
-        return NeoConnectionCount{ .result = @intCast(json_value.integer) };
-    }
-};
-
-/// Dump private key response
-pub const NeoDumpPrivKey = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoDumpPrivKey {
-        return NeoDumpPrivKey{ .result = null };
-    }
-
-    pub fn getDumpPrivKey(self: NeoDumpPrivKey) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoDumpPrivKey {
-        const result = try allocator.dupe(u8, json_value.string);
-        return NeoDumpPrivKey{ .result = result };
-    }
-
-    pub fn deinit(self: *NeoDumpPrivKey, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoDumpPrivKey = StringResponse();
 
 /// Raw transaction response (hex string)
-pub const NeoGetRawTransaction = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoGetRawTransaction {
-        return NeoGetRawTransaction{ .result = null };
-    }
-
-    pub fn getRawTransaction(self: NeoGetRawTransaction) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetRawTransaction {
-        const tx_hex = try allocator.dupe(u8, json_value.string);
-        return NeoGetRawTransaction{ .result = tx_hex };
-    }
-
-    pub fn deinit(self: *NeoGetRawTransaction, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoGetRawTransaction = StringResponse();
 
 /// Transaction response
 pub const NeoGetTransaction = struct {
-    result: ?*@import("responses.zig").Transaction,
+    result: ?*Transaction,
 
     pub fn init() NeoGetTransaction {
         return NeoGetTransaction{ .result = null };
     }
 
     pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetTransaction {
-        const tx = try allocator.create(@import("responses.zig").Transaction);
+        const tx = try allocator.create(Transaction);
         errdefer allocator.destroy(tx);
 
-        tx.* = try @import("responses.zig").Transaction.fromJson(json_value, allocator);
+        tx.* = try Transaction.fromJson(json_value, allocator);
         return NeoGetTransaction{ .result = tx };
     }
 
-    pub fn getResult(self: NeoGetTransaction) ?*const @import("responses.zig").Transaction {
+    pub fn getResult(self: NeoGetTransaction) ?*const Transaction {
         return self.result;
     }
 
-    pub fn take(self: *NeoGetTransaction) ?*@import("responses.zig").Transaction {
+    pub fn take(self: *NeoGetTransaction) ?*Transaction {
         const owned = self.result;
         self.result = null;
         return owned;
@@ -296,524 +303,85 @@ pub const NeoGetTransaction = struct {
 // EXPRESS RESPONSE TYPES
 // ============================================================================
 
-/// Express create checkpoint response
-pub const NeoExpressCreateCheckpoint = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoExpressCreateCheckpoint {
-        return NeoExpressCreateCheckpoint{ .result = null };
-    }
-
-    pub fn getFilename(self: NeoExpressCreateCheckpoint) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressCreateCheckpoint {
-        const filename = try allocator.dupe(u8, json_value.string);
-        return NeoExpressCreateCheckpoint{ .result = filename };
-    }
-
-    pub fn deinit(self: *NeoExpressCreateCheckpoint, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoExpressCreateCheckpoint = StringResponse();
 
 /// Express create oracle response tx
-pub const NeoExpressCreateOracleResponseTx = struct {
-    result: ?[]const u8,
+pub const NeoExpressCreateOracleResponseTx = StringResponse();
 
-    pub fn init() NeoExpressCreateOracleResponseTx {
-        return NeoExpressCreateOracleResponseTx{ .result = null };
-    }
+/// NeoExpressGetPopulatedBlocks response
+pub const NeoExpressGetPopulatedBlocks = ObjectResponse(PopulatedBlocks);
 
-    pub fn getOracleResponseTx(self: NeoExpressCreateOracleResponseTx) ?[]const u8 {
-        return self.result;
-    }
+/// NeoExpressGetContractStorage response
+pub const NeoExpressGetContractStorage = ArrayResponse(ContractStorageEntry);
 
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressCreateOracleResponseTx {
-        const tx = try allocator.dupe(u8, json_value.string);
-        return NeoExpressCreateOracleResponseTx{ .result = tx };
-    }
+/// NeoExpressGetNep17Contracts response
+pub const NeoExpressGetNep17Contracts = ArrayResponse(Nep17Contract);
 
-    pub fn deinit(self: *NeoExpressCreateOracleResponseTx, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+/// NeoExpressListContracts response
+pub const NeoExpressListContracts = ArrayResponse(ExpressContractState);
 
-/// Express get populated blocks response
-pub const NeoExpressGetPopulatedBlocks = struct {
-    result: ?@import("extended_responses.zig").PopulatedBlocks,
+/// NeoExpressListOracleRequests response
+pub const NeoExpressListOracleRequests = ArrayResponse(OracleRequest);
 
-    pub fn init() NeoExpressGetPopulatedBlocks {
-        return NeoExpressGetPopulatedBlocks{ .result = null };
-    }
+/// NeoExpressShutdown response
+pub const NeoExpressShutdown = ObjectResponse(ExpressShutdown);
 
-    pub fn getPopulatedBlocks(self: NeoExpressGetPopulatedBlocks) ?@import("extended_responses.zig").PopulatedBlocks {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetPopulatedBlocks {
-        const populated = try @import("extended_responses.zig").PopulatedBlocks.fromJson(json_value, allocator);
-        return NeoExpressGetPopulatedBlocks{ .result = populated };
-    }
-
-    pub fn deinit(self: *NeoExpressGetPopulatedBlocks, allocator: std.mem.Allocator) void {
-        if (self.result) |*populated| {
-            populated.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
-
-/// Express get contract storage response
-pub const NeoExpressGetContractStorage = struct {
-    result: ?[]const @import("extended_responses.zig").ContractStorageEntry,
-
-    pub fn init() NeoExpressGetContractStorage {
-        return NeoExpressGetContractStorage{ .result = null };
-    }
-
-    pub fn getContractStorage(self: NeoExpressGetContractStorage) ?[]const @import("extended_responses.zig").ContractStorageEntry {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetContractStorage {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var storage_list = ArrayList(@import("extended_responses.zig").ContractStorageEntry).init(allocator);
-        errdefer {
-            for (storage_list.items) |*entry| entry.deinit(allocator);
-            storage_list.deinit();
-        }
-
-        for (json_value.array.items) |entry| {
-            var parsed = try @import("extended_responses.zig").ContractStorageEntry.fromJson(entry, allocator);
-            errdefer parsed.deinit(allocator);
-            try storage_list.append(parsed);
-        }
-
-        return NeoExpressGetContractStorage{ .result = try storage_list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoExpressGetContractStorage, allocator: std.mem.Allocator) void {
-        if (self.result) |entries| {
-            for (entries) |*entry| {
-                entry.deinit(allocator);
-            }
-            allocator.free(@constCast(entries));
-            self.result = null;
-        }
-    }
-};
-
-/// Express get NEP-17 contracts response
-pub const NeoExpressGetNep17Contracts = struct {
-    result: ?[]const @import("extended_responses.zig").Nep17Contract,
-
-    pub fn init() NeoExpressGetNep17Contracts {
-        return NeoExpressGetNep17Contracts{ .result = null };
-    }
-
-    pub fn getNep17Contracts(self: NeoExpressGetNep17Contracts) ?[]const @import("extended_responses.zig").Nep17Contract {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressGetNep17Contracts {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var contracts_list = ArrayList(@import("extended_responses.zig").Nep17Contract).init(allocator);
-        errdefer {
-            for (contracts_list.items) |*contract| contract.deinit(allocator);
-            contracts_list.deinit();
-        }
-
-        for (json_value.array.items) |contract| {
-            var parsed = try @import("extended_responses.zig").Nep17Contract.fromJson(contract, allocator);
-            errdefer parsed.deinit(allocator);
-            try contracts_list.append(parsed);
-        }
-
-        return NeoExpressGetNep17Contracts{ .result = try contracts_list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoExpressGetNep17Contracts, allocator: std.mem.Allocator) void {
-        if (self.result) |contracts| {
-            for (contracts) |*contract| {
-                contract.deinit(allocator);
-            }
-            allocator.free(@constCast(contracts));
-            self.result = null;
-        }
-    }
-};
-
-/// Express list contracts response
-pub const NeoExpressListContracts = struct {
-    result: ?[]const @import("extended_responses.zig").ExpressContractState,
-
-    pub fn init() NeoExpressListContracts {
-        return NeoExpressListContracts{ .result = null };
-    }
-
-    pub fn getContracts(self: NeoExpressListContracts) ?[]const @import("extended_responses.zig").ExpressContractState {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListContracts {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var list = ArrayList(@import("extended_responses.zig").ExpressContractState).init(allocator);
-        errdefer {
-            for (list.items) |*contract| contract.deinit(allocator);
-            list.deinit();
-        }
-
-        for (json_value.array.items) |contract_value| {
-            var parsed = try @import("extended_responses.zig").ExpressContractState.fromJson(contract_value, allocator);
-            errdefer parsed.deinit(allocator);
-            try list.append(parsed);
-        }
-
-        return NeoExpressListContracts{ .result = try list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoExpressListContracts, allocator: std.mem.Allocator) void {
-        if (self.result) |contracts| {
-            for (contracts) |*contract| {
-                contract.deinit(allocator);
-            }
-            allocator.free(@constCast(contracts));
-            self.result = null;
-        }
-    }
-};
-
-/// Express list oracle requests response
-pub const NeoExpressListOracleRequests = struct {
-    result: ?[]const @import("extended_responses.zig").OracleRequest,
-
-    pub fn init() NeoExpressListOracleRequests {
-        return NeoExpressListOracleRequests{ .result = null };
-    }
-
-    pub fn getOracleRequests(self: NeoExpressListOracleRequests) ?[]const @import("extended_responses.zig").OracleRequest {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressListOracleRequests {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var list = ArrayList(@import("extended_responses.zig").OracleRequest).init(allocator);
-        errdefer {
-            for (list.items) |*request| request.deinit(allocator);
-            list.deinit();
-        }
-
-        for (json_value.array.items) |request_value| {
-            var parsed = try @import("extended_responses.zig").OracleRequest.fromJson(request_value, allocator);
-            errdefer parsed.deinit(allocator);
-            try list.append(parsed);
-        }
-
-        return NeoExpressListOracleRequests{ .result = try list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoExpressListOracleRequests, allocator: std.mem.Allocator) void {
-        if (self.result) |requests| {
-            for (requests) |*request| {
-                request.deinit(allocator);
-            }
-            allocator.free(@constCast(requests));
-            self.result = null;
-        }
-    }
-};
-
-/// Express shutdown response
-pub const NeoExpressShutdown = struct {
-    result: ?@import("extended_responses.zig").ExpressShutdown,
-
-    pub fn init() NeoExpressShutdown {
-        return NeoExpressShutdown{ .result = null };
-    }
-
-    pub fn getShutdown(self: NeoExpressShutdown) ?@import("extended_responses.zig").ExpressShutdown {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressShutdown {
-        const shutdown = try @import("extended_responses.zig").ExpressShutdown.fromJson(json_value, allocator);
-        return NeoExpressShutdown{ .result = shutdown };
-    }
-
-    pub fn deinit(self: *NeoExpressShutdown, allocator: std.mem.Allocator) void {
-        if (self.result) |*shutdown| {
-            shutdown.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
-
-/// Express reset response (boolean)
-pub const NeoExpressReset = struct {
-    result: ?bool,
-
-    pub fn init() NeoExpressReset {
-        return NeoExpressReset{ .result = null };
-    }
-
-    pub fn getResult(self: NeoExpressReset) ?bool {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoExpressReset {
-        _ = allocator;
-        return NeoExpressReset{ .result = json_value.bool };
-    }
-};
+pub const NeoExpressReset = BoolResponse();
 
 // ============================================================================
 // WALLET RESPONSE TYPES
 // ============================================================================
 
-/// Get new address response
-pub const NeoGetNewAddress = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoGetNewAddress {
-        return NeoGetNewAddress{ .result = null };
-    }
-
-    pub fn getAddress(self: NeoGetNewAddress) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNewAddress {
-        const address = try allocator.dupe(u8, json_value.string);
-        return NeoGetNewAddress{ .result = address };
-    }
-
-    pub fn deinit(self: *NeoGetNewAddress, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoGetNewAddress = StringResponse();
 
 /// Open wallet response
-pub const NeoOpenWallet = struct {
-    result: ?bool,
+pub const NeoOpenWallet = BoolResponse();
 
-    pub fn init() NeoOpenWallet {
-        return NeoOpenWallet{ .result = null };
-    }
-
-    pub fn getOpenWallet(self: NeoOpenWallet) ?bool {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoOpenWallet {
-        _ = allocator;
-        return NeoOpenWallet{ .result = json_value.bool };
-    }
-};
-
-/// List address response
-pub const NeoListAddress = struct {
-    result: ?[]const @import("extended_responses.zig").NeoAddress,
-
-    pub fn init() NeoListAddress {
-        return NeoListAddress{ .result = null };
-    }
-
-    pub fn getAddresses(self: NeoListAddress) ?[]const @import("extended_responses.zig").NeoAddress {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListAddress {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var addresses_list = ArrayList(@import("extended_responses.zig").NeoAddress).init(allocator);
-        errdefer {
-            for (addresses_list.items) |*address| address.deinit(allocator);
-            addresses_list.deinit();
-        }
-
-        for (json_value.array.items) |address| {
-            var parsed = try @import("extended_responses.zig").NeoAddress.fromJson(address, allocator);
-            errdefer parsed.deinit(allocator);
-            try addresses_list.append(parsed);
-        }
-
-        return NeoListAddress{ .result = try addresses_list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoListAddress, allocator: std.mem.Allocator) void {
-        if (self.result) |addresses| {
-            for (addresses) |*address| {
-                address.deinit(allocator);
-            }
-            allocator.free(@constCast(addresses));
-            self.result = null;
-        }
-    }
-};
+/// NeoListAddress response
+pub const NeoListAddress = ArrayResponse(NeoAddress);
 
 // ============================================================================
 // TRANSACTION RESPONSE TYPES
 // ============================================================================
 
-/// Send from response
-pub const NeoSendFrom = struct {
-    result: ?@import("responses.zig").Transaction,
-
-    pub fn init() NeoSendFrom {
-        return NeoSendFrom{ .result = null };
-    }
-
-    pub fn getSendFrom(self: NeoSendFrom) ?@import("responses.zig").Transaction {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoSendFrom {
-        const transaction = try @import("responses.zig").Transaction.fromJson(json_value, allocator);
-        return NeoSendFrom{ .result = transaction };
-    }
-
-    pub fn deinit(self: *NeoSendFrom, allocator: std.mem.Allocator) void {
-        if (self.result) |*tx| {
-            tx.deinit(allocator);
-            self.result = null;
+/// Generic transaction response wrapper
+pub fn TransactionResponse() type {
+    return struct {
+        result: ?Transaction,
+        const Self = @This();
+        pub fn init() Self { return .{ .result = null }; }
+        pub fn getResult(self: Self) ?Transaction { return self.result; }
+        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
+            const transaction = try Transaction.fromJson(json_value, allocator);
+            return .{ .result = transaction };
         }
-    }
-};
+        pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+            if (self.result) |*tx| {
+                tx.deinit(allocator);
+                self.result = null;
+            }
+        }
+    };
+}
+
+/// Send from response
+pub const NeoSendFrom = TransactionResponse();
 
 /// Send many response
-pub const NeoSendMany = struct {
-    result: ?@import("responses.zig").Transaction,
-
-    pub fn init() NeoSendMany {
-        return NeoSendMany{ .result = null };
-    }
-
-    pub fn getSendMany(self: NeoSendMany) ?@import("responses.zig").Transaction {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoSendMany {
-        const transaction = try @import("responses.zig").Transaction.fromJson(json_value, allocator);
-        return NeoSendMany{ .result = transaction };
-    }
-
-    pub fn deinit(self: *NeoSendMany, allocator: std.mem.Allocator) void {
-        if (self.result) |*tx| {
-            tx.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
+pub const NeoSendMany = TransactionResponse();
 
 /// Send to address response
-pub const NeoSendToAddress = struct {
-    result: ?@import("responses.zig").Transaction,
-
-    pub fn init() NeoSendToAddress {
-        return NeoSendToAddress{ .result = null };
-    }
-
-    pub fn getSendToAddress(self: NeoSendToAddress) ?@import("responses.zig").Transaction {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoSendToAddress {
-        const transaction = try @import("responses.zig").Transaction.fromJson(json_value, allocator);
-        return NeoSendToAddress{ .result = transaction };
-    }
-
-    pub fn deinit(self: *NeoSendToAddress, allocator: std.mem.Allocator) void {
-        if (self.result) |*tx| {
-            tx.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
+pub const NeoSendToAddress = TransactionResponse();
 
 // ============================================================================
 // CONTRACT RESPONSE TYPES
 // ============================================================================
 
-/// Get contract state response
-pub const NeoGetContractState = struct {
-    result: ?@import("responses.zig").ContractState,
+/// NeoGetContractState response
+pub const NeoGetContractState = ObjectResponse(ContractState);
 
-    pub fn init() NeoGetContractState {
-        return NeoGetContractState{ .result = null };
-    }
-
-    pub fn getContractState(self: NeoGetContractState) ?@import("responses.zig").ContractState {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetContractState {
-        const state = try @import("responses.zig").ContractState.fromJson(json_value, allocator);
-        return NeoGetContractState{ .result = state };
-    }
-
-    pub fn deinit(self: *NeoGetContractState, allocator: std.mem.Allocator) void {
-        if (self.result) |*state| {
-            state.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
-
-/// Get native contracts response
-pub const NeoGetNativeContracts = struct {
-    result: ?[]const @import("extended_responses.zig").NativeContractState,
-
-    pub fn init() NeoGetNativeContracts {
-        return NeoGetNativeContracts{ .result = null };
-    }
-
-    pub fn getNativeContracts(self: NeoGetNativeContracts) ?[]const @import("extended_responses.zig").NativeContractState {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNativeContracts {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-
-        var contracts_list = ArrayList(@import("extended_responses.zig").NativeContractState).init(allocator);
-        errdefer {
-            for (contracts_list.items) |*contract| contract.deinit(allocator);
-            contracts_list.deinit();
-        }
-
-        for (json_value.array.items) |contract| {
-            var parsed = try @import("extended_responses.zig").NativeContractState.fromJson(contract, allocator);
-            errdefer parsed.deinit(allocator);
-            try contracts_list.append(parsed);
-        }
-
-        return NeoGetNativeContracts{ .result = try contracts_list.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoGetNativeContracts, allocator: std.mem.Allocator) void {
-        if (self.result) |contracts| {
-            for (contracts) |*contract| {
-                @constCast(contract).deinit(allocator);
-            }
-            allocator.free(@constCast(contracts));
-            self.result = null;
-        }
-    }
-};
+/// NeoGetNativeContracts response
+pub const NeoGetNativeContracts = ArrayResponse(NativeContractState);
 
 /// Get NEP-11 properties response
 pub const NeoGetNep11Properties = struct {
@@ -859,30 +427,8 @@ pub const NeoGetNep11Properties = struct {
 // INVOCATION RESPONSE TYPES (aliases)
 // ============================================================================
 
-/// Neo invoke response
-pub const NeoInvoke = struct {
-    result: ?@import("responses.zig").InvocationResult,
-
-    pub fn init() NeoInvoke {
-        return NeoInvoke{ .result = null };
-    }
-
-    pub fn getInvocationResult(self: NeoInvoke) ?@import("responses.zig").InvocationResult {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoInvoke {
-        const invocation = try @import("responses.zig").InvocationResult.fromJson(json_value, allocator);
-        return NeoInvoke{ .result = invocation };
-    }
-
-    pub fn deinit(self: *NeoInvoke, allocator: std.mem.Allocator) void {
-        if (self.result) |*invocation| {
-            invocation.deinit(allocator);
-            self.result = null;
-        }
-    }
-};
+/// NeoInvoke response
+pub const NeoInvoke = ObjectResponse(InvocationResult);
 
 /// Type aliases for invocation methods
 pub const NeoInvokeContractVerify = NeoInvoke;
@@ -927,120 +473,22 @@ pub const NeoTraverseIterator = struct {
     }
 };
 
-/// Terminate session response
-pub const NeoTerminateSession = struct {
-    result: ?bool,
-
-    pub fn init() NeoTerminateSession {
-        return NeoTerminateSession{ .result = null };
-    }
-
-    pub fn getTerminateSession(self: NeoTerminateSession) ?bool {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoTerminateSession {
-        _ = allocator;
-        return NeoTerminateSession{ .result = json_value.bool };
-    }
-};
+pub const NeoTerminateSession = BoolResponse();
 
 // ============================================================================
 // STORAGE AND STATE RESPONSE TYPES
 // ============================================================================
 
-/// Get storage response
-pub const NeoGetStorage = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoGetStorage {
-        return NeoGetStorage{ .result = null };
-    }
-
-    pub fn getStorage(self: NeoGetStorage) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetStorage {
-        const storage = try allocator.dupe(u8, json_value.string);
-        return NeoGetStorage{ .result = storage };
-    }
-
-    pub fn deinit(self: *NeoGetStorage, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoGetStorage = StringResponse();
 
 /// Get state response
-pub const NeoGetState = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoGetState {
-        return NeoGetState{ .result = null };
-    }
-
-    pub fn getState(self: NeoGetState) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetState {
-        const state = try allocator.dupe(u8, json_value.string);
-        return NeoGetState{ .result = state };
-    }
-
-    pub fn deinit(self: *NeoGetState, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoGetState = StringResponse();
 
 /// Verify proof response
-pub const NeoVerifyProof = struct {
-    result: ?[]const u8,
-
-    pub fn init() NeoVerifyProof {
-        return NeoVerifyProof{ .result = null };
-    }
-
-    pub fn getVerifyProof(self: NeoVerifyProof) ?[]const u8 {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoVerifyProof {
-        const proof = try allocator.dupe(u8, json_value.string);
-        return NeoVerifyProof{ .result = proof };
-    }
-
-    pub fn deinit(self: *NeoVerifyProof, allocator: std.mem.Allocator) void {
-        if (self.result) |res| {
-            if (res.len > 0) allocator.free(@constCast(res));
-            self.result = null;
-        }
-    }
-};
+pub const NeoVerifyProof = StringResponse();
 
 /// Submit block response
-pub const NeoSubmitBlock = struct {
-    result: ?bool,
-
-    pub fn init() NeoSubmitBlock {
-        return NeoSubmitBlock{ .result = null };
-    }
-
-    pub fn getSubmitBlock(self: NeoSubmitBlock) ?bool {
-        return self.result;
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoSubmitBlock {
-        _ = allocator;
-        return NeoSubmitBlock{ .result = json_value.bool };
-    }
-};
+pub const NeoSubmitBlock = BoolResponse();
 
 /// String context for HashMap
 pub const StringContext = struct {
@@ -1061,21 +509,21 @@ test "Basic response types" {
 
     // Test block count response
     const block_count = NeoBlockCount.init();
-    try testing.expect(block_count.getBlockCount() == null);
+    try testing.expect(block_count.getResult() == null);
 
     const block_count_with_result = NeoBlockCount{ .result = 12345 };
-    try testing.expectEqual(@as(u32, 12345), block_count_with_result.getBlockCount().?);
+    try testing.expectEqual(@as(u32, 12345), block_count_with_result.getResult().?);
 
     // Test connection count response
     const connection_count = NeoConnectionCount.init();
-    try testing.expect(connection_count.getCount() == null);
+    try testing.expect(connection_count.getResult() == null);
 
     // Test boolean responses
     const close_wallet = NeoCloseWallet.init();
-    try testing.expect(close_wallet.getCloseWallet() == null);
+    try testing.expect(close_wallet.getResult() == null);
 
     const open_wallet = NeoOpenWallet{ .result = true };
-    try testing.expect(open_wallet.getOpenWallet().?);
+    try testing.expect(open_wallet.getResult().?);
 }
 
 test "Express response types" {
@@ -1084,16 +532,16 @@ test "Express response types" {
 
     // Test express checkpoint response
     const checkpoint = NeoExpressCreateCheckpoint.init();
-    try testing.expect(checkpoint.getFilename() == null);
+    try testing.expect(checkpoint.getResult() == null);
 
     const checkpoint_with_file = NeoExpressCreateCheckpoint{ .result = try allocator.dupe(u8, "checkpoint_001.acc") };
     defer if (checkpoint_with_file.result) |filename| allocator.free(filename);
 
-    try testing.expectEqualStrings("checkpoint_001.acc", checkpoint_with_file.getFilename().?);
+    try testing.expectEqualStrings("checkpoint_001.acc", checkpoint_with_file.getResult().?);
 
     // Test oracle response tx
     const oracle_tx = NeoExpressCreateOracleResponseTx.init();
-    try testing.expect(oracle_tx.getOracleResponseTx() == null);
+    try testing.expect(oracle_tx.getResult() == null);
 }
 
 test "Storage and state response types" {
@@ -1102,20 +550,20 @@ test "Storage and state response types" {
 
     // Test storage response
     const storage = NeoGetStorage.init();
-    try testing.expect(storage.getStorage() == null);
+    try testing.expect(storage.getResult() == null);
 
     const storage_with_data = NeoGetStorage{ .result = try allocator.dupe(u8, "storage_data_hex") };
     defer if (storage_with_data.result) |data| allocator.free(data);
 
-    try testing.expectEqualStrings("storage_data_hex", storage_with_data.getStorage().?);
+    try testing.expectEqualStrings("storage_data_hex", storage_with_data.getResult().?);
 
     // Test state response
     const state = NeoGetState.init();
-    try testing.expect(state.getState() == null);
+    try testing.expect(state.getResult() == null);
 
     // Test proof response
     const proof = NeoVerifyProof.init();
-    try testing.expect(proof.getVerifyProof() == null);
+    try testing.expect(proof.getResult() == null);
 }
 
 test "Transaction response types" {
@@ -1123,20 +571,20 @@ test "Transaction response types" {
 
     // Test send transaction responses
     const send_from = NeoSendFrom.init();
-    try testing.expect(send_from.getSendFrom() == null);
+    try testing.expect(send_from.getResult() == null);
 
     const send_many = NeoSendMany.init();
-    try testing.expect(send_many.getSendMany() == null);
+    try testing.expect(send_many.getResult() == null);
 
     const send_to_address = NeoSendToAddress.init();
-    try testing.expect(send_to_address.getSendToAddress() == null);
+    try testing.expect(send_to_address.getResult() == null);
 
     // Test session operations
     const terminate_session = NeoTerminateSession.init();
-    try testing.expect(terminate_session.getTerminateSession() == null);
+    try testing.expect(terminate_session.getResult() == null);
 
     const terminate_with_result = NeoTerminateSession{ .result = true };
-    try testing.expect(terminate_with_result.getTerminateSession().?);
+    try testing.expect(terminate_with_result.getResult().?);
 }
 
 test "Response alias fromJson smoke tests" {

@@ -9,6 +9,10 @@ const ArrayList = std.ArrayList;
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const base58 = @import("base58.zig");
+const bytes_mod = @import("bytes.zig");
+const StringUtils = @import("string_extensions.zig").StringUtils;
+const IntUtils = @import("numeric_extensions.zig").IntUtils;
 
 /// Bytes utility functions
 pub const BytesUtils = struct {
@@ -66,29 +70,27 @@ pub const BytesUtils = struct {
 
     /// Base58 encoding
     pub fn base58Encoded(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const base58 = @import("base58.zig");
         return try base58.encode(bytes, allocator);
     }
 
     /// Base58Check encoding
     pub fn base58CheckEncoded(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const base58 = @import("base58.zig");
         return try base58.encodeCheck(bytes, allocator);
     }
 
     /// Hex string without prefix
     pub fn noPrefixHex(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
-        const hex_string = try @import("bytes.zig").toHex(bytes, allocator);
+        const hex_string = try bytes_mod.toHex(bytes, allocator);
         defer allocator.free(hex_string);
 
-        const cleaned = @import("string_extensions.zig").StringUtils.cleanedHexPrefix(hex_string);
+        const cleaned = StringUtils.cleanedHexPrefix(hex_string);
         return try allocator.dupe(u8, cleaned);
     }
 
     /// Variable size calculation
     pub fn varSize(bytes: []const u8) usize {
         const count = bytes.len;
-        return @import("numeric_extensions.zig").IntUtils.varSize(@intCast(count)) + count;
+        return IntUtils.varSize(@intCast(count)) + count;
     }
 
     /// Script hash to address conversion
@@ -176,14 +178,14 @@ pub const BytesUtils = struct {
         return try allocator.dupe(u8, bytes[start..]);
     }
 
-    /// Reverses bytes)
+    /// Reverses bytes
     pub fn reversed(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const result = try allocator.dupe(u8, bytes);
         std.mem.reverse(u8, result);
         return result;
     }
 
-    /// Converts bytes to hex string)
+    /// Converts bytes to hex string
     pub fn toHexString(bytes: []const u8, allocator: std.mem.Allocator) ![]u8 {
         const hex_len = bytes.len * 2;
         const result = try allocator.alloc(u8, hex_len);

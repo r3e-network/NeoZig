@@ -38,6 +38,20 @@ pub const NEP6Wallet = struct {
         };
     }
 
+    /// Releases allocator-owned fields produced by `fromJson`/`loadFromFile`.
+    pub fn deinitOwned(self: *Self, allocator: std.mem.Allocator) void {
+        if (self.name.len > 0) allocator.free(@constCast(self.name));
+        if (self.version.len > 0) allocator.free(@constCast(self.version));
+        for (self.accounts, 0..) |_, i| {
+            const account = @constCast(&self.accounts[i]);
+            deinitOwnedAccount(account, allocator);
+        }
+        if (self.accounts.len > 0) allocator.free(@constCast(self.accounts));
+        if (self.extra) |extra| json_utils.freeValue(extra, allocator);
+
+        self.* = Self.init("", "", self.scrypt, &[_]NEP6Account{}, null);
+    }
+
     /// Equality comparison
     pub fn eql(self: Self, other: Self) bool {
         return std.mem.eql(u8, self.name, other.name) and

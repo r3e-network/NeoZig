@@ -9,6 +9,10 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const BinaryWriter = @import("../serialization/binary_writer.zig").BinaryWriter;
 const BinaryReader = @import("../serialization/binary_reader.zig").BinaryReader;
+const ripemd160_impl = @import("../crypto/ripemd160.zig");
+const base58 = @import("../utils/base58.zig");
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
+const OpCode = @import("../script/op_code.zig").OpCode;
 
 /// Hash160 represents a 160-bit (20-byte) hash
 pub const Hash160 = struct {
@@ -25,12 +29,12 @@ pub const Hash160 = struct {
         return ZERO;
     }
 
-    /// Creates a new Hash160 with zero bytes)
+    /// Creates a new Hash160 with zero bytes
     pub fn init() Self {
         return ZERO;
     }
 
-    /// Creates Hash160 from byte array)
+    /// Creates Hash160 from byte array
     pub fn initWithBytes(hash_bytes: []const u8) !Self {
         if (hash_bytes.len != constants.HASH160_SIZE) {
             return errors.throwIllegalArgument("Hash must be 20 bytes long");
@@ -41,7 +45,7 @@ pub const Hash160 = struct {
         return Self{ .bytes = bytes };
     }
 
-    /// Creates Hash160 from hex string)
+    /// Creates Hash160 from hex string
     pub fn initWithString(hash_str: []const u8) !Self {
         // Remove "0x" prefix if present
         const clean_hex = if (std.mem.startsWith(u8, hash_str, "0x"))
@@ -84,12 +88,12 @@ pub const Hash160 = struct {
         return self.string(allocator);
     }
 
-    /// Returns hash as byte array in big-endian order)
+    /// Returns hash as byte array in big-endian order
     pub fn toArray(self: Self) [constants.HASH160_SIZE]u8 {
         return self.bytes;
     }
 
-    /// Returns hash as byte array in little-endian order)
+    /// Returns hash as byte array in little-endian order
     pub fn toLittleEndianArray(self: Self) [constants.HASH160_SIZE]u8 {
         var reversed = self.bytes;
         std.mem.reverse(u8, &reversed);
@@ -106,19 +110,19 @@ pub const Hash160 = struct {
         return std.mem.eql(u8, &self.bytes, &ZERO.bytes);
     }
 
-    /// Converts to Neo address)
+    /// Converts to Neo address
     pub fn toAddress(self: Self, allocator: std.mem.Allocator) ![]u8 {
         return try scripthashToAddress(self.bytes, allocator);
     }
 
-    /// Creates Hash160 from address)
+    /// Creates Hash160 from address
     pub fn fromAddress(address: []const u8, allocator: std.mem.Allocator) !Self {
         const script_hash = try addressToScriptHash(address, allocator);
         defer allocator.free(script_hash);
         return try initWithBytes(script_hash);
     }
 
-    /// Creates Hash160 from script bytes)
+    /// Creates Hash160 from script bytes
     pub fn fromScript(script: []const u8) !Self {
         const hash_result = try sha256ThenRipemd160(script);
         var reversed_hash = hash_result;
@@ -126,7 +130,7 @@ pub const Hash160 = struct {
         return Self{ .bytes = reversed_hash };
     }
 
-    /// Creates Hash160 from script hex string)
+    /// Creates Hash160 from script hex string
     pub fn fromScriptHex(script_hex: []const u8, allocator: std.mem.Allocator) !Self {
         const script_bytes = try hexToBytes(script_hex, allocator);
         defer allocator.free(script_bytes);
@@ -153,13 +157,13 @@ pub const Hash160 = struct {
         return constants.HASH160_SIZE;
     }
 
-    /// Serializes to binary writer)
+    /// Serializes to binary writer
     pub fn serialize(self: Self, writer: *BinaryWriter) !void {
         const little_endian = self.toLittleEndianArray();
         try writer.writeBytes(&little_endian);
     }
 
-    /// Deserializes from binary reader)
+    /// Deserializes from binary reader
     pub fn deserialize(reader: *BinaryReader) !Self {
         var bytes: [constants.HASH160_SIZE]u8 = undefined;
         try reader.readBytes(&bytes);
@@ -202,7 +206,7 @@ pub const Hash160 = struct {
         return try initWithString(hex_str);
     }
 
-    /// Basic validation hook (ensures non-zero hash when required by callers)
+    /// Backwards-compatible validation hook.
     pub fn validate(self: Self) !void {
         _ = self;
     }
@@ -229,7 +233,7 @@ pub const Hash160 = struct {
 };
 
 /// Utility functions
-/// SHA256 then RIPEMD160 hash)
+/// SHA256 then RIPEMD160 hash
 fn sha256ThenRipemd160(data: []const u8) ![constants.HASH160_SIZE]u8 {
     // First apply SHA256
     var sha_hasher = std.crypto.hash.sha2.Sha256.init(.{});
@@ -238,7 +242,6 @@ fn sha256ThenRipemd160(data: []const u8) ![constants.HASH160_SIZE]u8 {
     sha_hasher.final(&sha_result);
 
     // Then apply RIPEMD160 (using our production implementation)
-    const ripemd160_impl = @import("../crypto/ripemd160.zig");
     return ripemd160_impl.ripemd160(&sha_result);
 }
 
@@ -252,13 +255,11 @@ fn scripthashToAddress(script_hash: [constants.HASH160_SIZE]u8, allocator: std.m
     @memcpy(payload[1..21], &script_hash_le);
 
     // Encode with Base58Check
-    const base58 = @import("../utils/base58.zig");
     return try base58.encodeCheck(&payload, allocator);
 }
 
-/// Convert address to script hash)
+/// Convert address to script hash
 fn addressToScriptHash(address: []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const base58 = @import("../utils/base58.zig");
     const decoded = try base58.decodeCheck(address, allocator);
     defer allocator.free(decoded);
 
@@ -317,7 +318,7 @@ fn buildVerificationScript(encoded_public_key: []const u8, allocator: std.mem.Al
 fn buildMultiSigVerificationScript(pub_keys: []const []const u8, signing_threshold: u32, allocator: std.mem.Allocator) ![]u8 {
     // Delegate to ScriptBuilder for correct integer encoding (supports >16 keys/threshold),
     // lexicographic public key sorting, and syscall formatting.
-    return try @import("../script/script_builder.zig").ScriptBuilder.buildMultiSigVerificationScript(
+    return try ScriptBuilder.buildMultiSigVerificationScript(
         pub_keys,
         signing_threshold,
         allocator,
@@ -381,8 +382,6 @@ test "Hash160 script hash creation" {
 test "Hash160 multi-sig verification script supports >16 keys" {
     const testing = std.testing;
     const allocator = testing.allocator;
-    const OpCode = @import("../script/op_code.zig").OpCode;
-
     const key_count: usize = 17;
     var keys: [key_count][33]u8 = undefined;
     for (&keys, 0..) |*key, i| {

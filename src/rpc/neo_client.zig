@@ -18,6 +18,7 @@ const ContractParameter = @import("../types/contract_parameter.zig").ContractPar
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
 const Request = @import("request.zig").Request;
 const json_utils = @import("../utils/json_utils.zig");
+const ServiceFactory = @import("neo_service.zig").ServiceFactory;
 
 /// Neo RPC client
 pub const NeoClient = struct {
@@ -344,7 +345,7 @@ pub fn RpcRequest(comptime T: type) type {
             };
         }
 
-        /// Sends the request)
+        /// Sends the request
         pub fn send(self: Self) !T {
             const allocator = self.client.allocator;
 
@@ -441,7 +442,7 @@ test "NeoClient client creation and configuration" {
     const allocator = testing.allocator;
 
     const config = NeoConfig.init();
-    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try ServiceFactory.localhost(allocator, null);
     var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
@@ -463,7 +464,7 @@ test "NeoClient RPC method creation" {
     const allocator = testing.allocator;
 
     const config = NeoConfig.init();
-    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try ServiceFactory.localhost(allocator, null);
     var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 
@@ -483,7 +484,7 @@ test "NeoClient contract invocation" {
     const allocator = testing.allocator;
 
     const config = NeoConfig.init();
-    var service = try @import("neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try ServiceFactory.localhost(allocator, null);
     var client = NeoClient.build(allocator, &service, config);
     defer client.deinit();
 

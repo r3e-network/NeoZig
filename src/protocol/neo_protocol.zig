@@ -12,10 +12,23 @@ const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 const Signer = @import("../transaction/transaction_builder.zig").Signer;
+const WitnessScope = @import("../transaction/transaction_builder.zig").WitnessScope;
 const Request = @import("../rpc/request.zig").Request;
 const parameter_utils = @import("../contract/parameter_utils.zig");
 const StringUtils = @import("../utils/string_extensions.zig").StringUtils;
-const TransactionSendToken = @import("../rpc/extended_responses.zig").TransactionSendToken;
+
+const neo_service = @import("../rpc/neo_service.zig");
+const NeoService = neo_service.NeoService;
+const ServiceFactory = neo_service.ServiceFactory;
+
+const aliases = @import("../rpc/response_aliases.zig");
+const ext = @import("../rpc/extended_responses.zig");
+const remaining = @import("../rpc/remaining_responses.zig");
+const responses = @import("../rpc/responses.zig");
+const token_responses = @import("../rpc/token_responses.zig");
+const protocol_responses = @import("../rpc/protocol_responses.zig");
+
+const TransactionSendToken = ext.TransactionSendToken;
 
 const JsonArrayHolder = struct {
     value: std.json.Value,
@@ -122,12 +135,12 @@ fn encodeTransactionSendTokens(tokens: []const TransactionSendToken, allocator: 
 /// Neo protocol interface
 pub const NeoProtocol = struct {
     /// Service implementation
-    service: *@import("../rpc/neo_service.zig").NeoService,
+    service: *neo_service.NeoService,
 
     const Self = @This();
 
     /// Creates Neo protocol implementation
-    pub fn init(service: *@import("../rpc/neo_service.zig").NeoService) Self {
+    pub fn init(service: *neo_service.NeoService) Self {
         return Self{ .service = service };
     }
 
@@ -139,30 +152,30 @@ pub const NeoProtocol = struct {
     // BLOCKCHAIN METHODS
     // ============================================================================
 
-    /// Gets best block hash)
-    pub fn getBestBlockHash(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256).withNoParams(
+    /// Gets best block hash
+    pub fn getBestBlockHash(self: Self) !Request(aliases.NeoBlockHash, Hash256) {
+        return try Request(aliases.NeoBlockHash, Hash256).withNoParams(
             self.getAllocator(),
             "getbestblockhash",
         );
     }
 
-    /// Gets block hash by index)
-    pub fn getBlockHash(self: Self, block_index: u32) !Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256) {
+    /// Gets block hash by index
+    pub fn getBlockHash(self: Self, block_index: u32) !Request(aliases.NeoBlockHash, Hash256) {
         const int_params = [_]i64{@as(i64, @intCast(block_index))};
-        return try Request(@import("../rpc/response_aliases.zig").NeoBlockHash, Hash256).withIntegerParams(
+        return try Request(aliases.NeoBlockHash, Hash256).withIntegerParams(
             self.getAllocator(),
             "getblockhash",
             &int_params,
         );
     }
 
-    /// Gets block by hash)
+    /// Gets block by hash
     pub fn getBlock(
         self: Self,
         block_hash: Hash256,
         return_full_transaction_objects: bool,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock) {
+    ) !Request(aliases.NeoGetBlock, responses.NeoBlock) {
         const hash_hex = try block_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -172,34 +185,34 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = verbose },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock).init(
+        return try Request(aliases.NeoGetBlock, responses.NeoBlock).init(
             self.getAllocator(),
             "getblock",
             &params,
         );
     }
 
-    /// Gets block by index)
+    /// Gets block by index
     pub fn getBlockByIndex(
         self: Self,
         block_index: u32,
         return_full_transaction_objects: bool,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock) {
+    ) !Request(aliases.NeoGetBlock, responses.NeoBlock) {
         const verbose = if (return_full_transaction_objects) @as(i64, 1) else @as(i64, 0);
         const params = [_]std.json.Value{
             std.json.Value{ .integer = @as(i64, @intCast(block_index)) },
             std.json.Value{ .integer = verbose },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock).init(
+        return try Request(aliases.NeoGetBlock, responses.NeoBlock).init(
             self.getAllocator(),
             "getblock",
             &params,
         );
     }
 
-    /// Gets raw block by hash)
-    pub fn getRawBlock(self: Self, block_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8) {
+    /// Gets raw block by hash
+    pub fn getRawBlock(self: Self, block_hash: Hash256) !Request(aliases.NeoGetRawTransaction, []const u8) {
         const hash_hex = try block_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -208,23 +221,23 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = 0 }, // Raw format
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8).init(
+        return try Request(aliases.NeoGetRawTransaction, []const u8).init(
             self.getAllocator(),
             "getblock",
             &params,
         );
     }
 
-    /// Gets block count)
-    pub fn getBlockCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockCount, u32) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoBlockCount, u32).withNoParams(
+    /// Gets block count
+    pub fn getBlockCount(self: Self) !Request(aliases.NeoBlockCount, u32) {
+        return try Request(aliases.NeoBlockCount, u32).withNoParams(
             self.getAllocator(),
             "getblockcount",
         );
     }
 
     /// Gets block header by hash
-    pub fn getBlockHeaderByHash(self: Self, block_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock) {
+    pub fn getBlockHeaderByHash(self: Self, block_hash: Hash256) !Request(aliases.NeoGetBlock, responses.NeoBlock) {
         const hash_hex = try block_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -233,7 +246,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = 1 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock).init(
+        return try Request(aliases.NeoGetBlock, responses.NeoBlock).init(
             self.getAllocator(),
             "getblockheader",
             &params,
@@ -241,13 +254,13 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets block header by index
-    pub fn getBlockHeaderByIndex(self: Self, block_index: u32) !Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock) {
+    pub fn getBlockHeaderByIndex(self: Self, block_index: u32) !Request(aliases.NeoGetBlock, responses.NeoBlock) {
         const params = [_]std.json.Value{
             std.json.Value{ .integer = @as(i64, @intCast(block_index)) },
             std.json.Value{ .integer = 1 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetBlock, @import("../rpc/responses.zig").NeoBlock).init(
+        return try Request(aliases.NeoGetBlock, responses.NeoBlock).init(
             self.getAllocator(),
             "getblockheader",
             &params,
@@ -255,7 +268,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets raw block header by hash
-    pub fn getRawBlockHeaderByHash(self: Self, block_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8) {
+    pub fn getRawBlockHeaderByHash(self: Self, block_hash: Hash256) !Request(aliases.NeoGetRawTransaction, []const u8) {
         const hash_hex = try block_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -264,7 +277,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = 0 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8).init(
+        return try Request(aliases.NeoGetRawTransaction, []const u8).init(
             self.getAllocator(),
             "getblockheader",
             &params,
@@ -272,42 +285,42 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets raw block header by index
-    pub fn getRawBlockHeaderByIndex(self: Self, block_index: u32) !Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8) {
+    pub fn getRawBlockHeaderByIndex(self: Self, block_index: u32) !Request(aliases.NeoGetRawTransaction, []const u8) {
         const params = [_]std.json.Value{
             std.json.Value{ .integer = @as(i64, @intCast(block_index)) },
             std.json.Value{ .integer = 0 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8).init(
+        return try Request(aliases.NeoGetRawTransaction, []const u8).init(
             self.getAllocator(),
             "getblockheader",
             &params,
         );
     }
 
-    /// Gets block header count)
-    pub fn getBlockHeaderCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoBlockHeaderCount, u32) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoBlockHeaderCount, u32).withNoParams(
+    /// Gets block header count
+    pub fn getBlockHeaderCount(self: Self) !Request(aliases.NeoBlockHeaderCount, u32) {
+        return try Request(aliases.NeoBlockHeaderCount, u32).withNoParams(
             self.getAllocator(),
             "getblockheadercount",
         );
     }
 
-    /// Gets native contracts)
-    pub fn getNativeContracts(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/extended_responses.zig").NativeContractState) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetNativeContracts, []const @import("../rpc/extended_responses.zig").NativeContractState).withNoParams(
+    /// Gets native contracts
+    pub fn getNativeContracts(self: Self) !Request(aliases.NeoGetNativeContracts, []const ext.NativeContractState) {
+        return try Request(aliases.NeoGetNativeContracts, []const ext.NativeContractState).withNoParams(
             self.getAllocator(),
             "getnativecontracts",
         );
     }
 
-    /// Gets contract state)
-    pub fn getContractState(self: Self, contract_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoGetContractState, @import("../rpc/responses.zig").ContractState) {
+    /// Gets contract state
+    pub fn getContractState(self: Self, contract_hash: Hash160) !Request(aliases.NeoGetContractState, responses.ContractState) {
         const hash_hex = try contract_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
         const string_params = [_][]const u8{hash_hex};
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetContractState, @import("../rpc/responses.zig").ContractState).withStringParams(
+        return try Request(aliases.NeoGetContractState, responses.ContractState).withStringParams(
             self.getAllocator(),
             "getcontractstate",
             &string_params,
@@ -315,19 +328,19 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets native contract state by name
-    pub fn getNativeContractState(self: Self, contract_name: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetContractState, @import("../rpc/responses.zig").ContractState) {
+    pub fn getNativeContractState(self: Self, contract_name: []const u8) !Request(aliases.NeoGetContractState, responses.ContractState) {
         const string_params = [_][]const u8{contract_name};
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetContractState, @import("../rpc/responses.zig").ContractState).withStringParams(
+        return try Request(aliases.NeoGetContractState, responses.ContractState).withStringParams(
             self.getAllocator(),
             "getcontractstate",
             &string_params,
         );
     }
 
-    /// Gets memory pool)
-    pub fn getMemPool(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetMemPool, @import("../rpc/extended_responses.zig").NeoGetMemPool) {
+    /// Gets memory pool
+    pub fn getMemPool(self: Self) !Request(ext.NeoGetMemPool, ext.NeoGetMemPool) {
         const verbose_params = [_]i64{1};
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetMemPool, @import("../rpc/extended_responses.zig").NeoGetMemPool).withIntegerParams(
+        return try Request(ext.NeoGetMemPool, ext.NeoGetMemPool).withIntegerParams(
             self.getAllocator(),
             "getrawmempool",
             &verbose_params,
@@ -335,15 +348,15 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets raw memory pool transactions
-    pub fn getRawMemPool(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetRawMemPool, []Hash256) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetRawMemPool, []Hash256).withNoParams(
+    pub fn getRawMemPool(self: Self) !Request(aliases.NeoGetRawMemPool, []Hash256) {
+        return try Request(aliases.NeoGetRawMemPool, []Hash256).withNoParams(
             self.getAllocator(),
             "getrawmempool",
         );
     }
 
-    /// Gets transaction)
-    pub fn getTransaction(self: Self, tx_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetTransaction, @import("../rpc/responses.zig").Transaction) {
+    /// Gets transaction
+    pub fn getTransaction(self: Self, tx_hash: Hash256) !Request(aliases.NeoGetTransaction, responses.Transaction) {
         const hash_hex = try tx_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -352,7 +365,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = 1 }, // Verbose
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetTransaction, @import("../rpc/responses.zig").Transaction).init(
+        return try Request(aliases.NeoGetTransaction, responses.Transaction).init(
             self.getAllocator(),
             "getrawtransaction",
             &params,
@@ -360,7 +373,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets raw transaction hex
-    pub fn getRawTransaction(self: Self, tx_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8) {
+    pub fn getRawTransaction(self: Self, tx_hash: Hash256) !Request(aliases.NeoGetRawTransaction, []const u8) {
         const hash_hex = try tx_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
@@ -369,7 +382,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = 0 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetRawTransaction, []const u8).init(
+        return try Request(aliases.NeoGetRawTransaction, []const u8).init(
             self.getAllocator(),
             "getrawtransaction",
             &params,
@@ -380,34 +393,34 @@ pub const NeoProtocol = struct {
     // NODE METHODS
     // ============================================================================
 
-    /// Gets connection count)
-    pub fn getConnectionCount(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoConnectionCount, u32) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoConnectionCount, u32).withNoParams(
+    /// Gets connection count
+    pub fn getConnectionCount(self: Self) !Request(aliases.NeoConnectionCount, u32) {
+        return try Request(aliases.NeoConnectionCount, u32).withNoParams(
             self.getAllocator(),
             "getconnectioncount",
         );
     }
 
-    /// Gets peers)
-    pub fn getPeers(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetPeers, @import("../rpc/extended_responses.zig").NeoGetPeers) {
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetPeers, @import("../rpc/extended_responses.zig").NeoGetPeers).withNoParams(
+    /// Gets peers
+    pub fn getPeers(self: Self) !Request(ext.NeoGetPeers, ext.NeoGetPeers) {
+        return try Request(ext.NeoGetPeers, ext.NeoGetPeers).withNoParams(
             self.getAllocator(),
             "getpeers",
         );
     }
 
-    /// Gets version)
-    pub fn getVersion(self: Self) !Request(@import("../rpc/remaining_responses.zig").NeoGetVersion, @import("../rpc/remaining_responses.zig").NeoGetVersion) {
-        return try Request(@import("../rpc/remaining_responses.zig").NeoGetVersion, @import("../rpc/remaining_responses.zig").NeoGetVersion).withNoParams(
+    /// Gets version
+    pub fn getVersion(self: Self) !Request(remaining.NeoGetVersion, remaining.NeoGetVersion) {
+        return try Request(remaining.NeoGetVersion, remaining.NeoGetVersion).withNoParams(
             self.getAllocator(),
             "getversion",
         );
     }
 
-    /// Sends raw transaction)
-    pub fn sendRawTransaction(self: Self, raw_transaction_hex: []const u8) !Request(@import("../rpc/remaining_responses.zig").NeoSendRawTransaction, @import("../rpc/remaining_responses.zig").NeoSendRawTransaction) {
+    /// Sends raw transaction
+    pub fn sendRawTransaction(self: Self, raw_transaction_hex: []const u8) !Request(remaining.NeoSendRawTransaction, remaining.NeoSendRawTransaction) {
         const string_params = [_][]const u8{raw_transaction_hex};
-        return try Request(@import("../rpc/remaining_responses.zig").NeoSendRawTransaction, @import("../rpc/remaining_responses.zig").NeoSendRawTransaction).withStringParams(
+        return try Request(remaining.NeoSendRawTransaction, remaining.NeoSendRawTransaction).withStringParams(
             self.getAllocator(),
             "sendrawtransaction",
             &string_params,
@@ -415,9 +428,9 @@ pub const NeoProtocol = struct {
     }
 
     /// Submits serialized block bytes
-    pub fn submitBlock(self: Self, serialized_block_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoSubmitBlock, bool) {
+    pub fn submitBlock(self: Self, serialized_block_hex: []const u8) !Request(aliases.NeoSubmitBlock, bool) {
         const string_params = [_][]const u8{serialized_block_hex};
-        return try Request(@import("../rpc/response_aliases.zig").NeoSubmitBlock, bool).withStringParams(
+        return try Request(aliases.NeoSubmitBlock, bool).withStringParams(
             self.getAllocator(),
             "submitblock",
             &string_params,
@@ -435,7 +448,7 @@ pub const NeoProtocol = struct {
         function_name: []const u8,
         params: []const ContractParameter,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeFunction, responses.InvocationResult) {
         const allocator = self.getAllocator();
         const hash_hex = try contract_hash.string(allocator);
         defer allocator.free(hash_hex);
@@ -452,7 +465,7 @@ pub const NeoProtocol = struct {
             signers_json.value,
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult).init(
+        return try Request(aliases.NeoInvokeFunction, responses.InvocationResult).init(
             allocator,
             "invokefunction",
             &rpc_params,
@@ -465,7 +478,7 @@ pub const NeoProtocol = struct {
         contract_hash: Hash160,
         function_name: []const u8,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeFunction, responses.InvocationResult) {
         return self.invokeFunction(contract_hash, function_name, &[_]ContractParameter{}, signers);
     }
 
@@ -476,7 +489,7 @@ pub const NeoProtocol = struct {
         function_name: []const u8,
         params: []const ContractParameter,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeFunction, responses.InvocationResult) {
         const allocator = self.getAllocator();
         const hash_hex = try contract_hash.string(allocator);
         defer allocator.free(hash_hex);
@@ -494,7 +507,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .bool = true },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult).init(
+        return try Request(aliases.NeoInvokeFunction, responses.InvocationResult).init(
             allocator,
             "invokefunction",
             &rpc_params,
@@ -507,7 +520,7 @@ pub const NeoProtocol = struct {
         contract_hash: Hash160,
         function_name: []const u8,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeFunction, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeFunction, responses.InvocationResult) {
         return self.invokeFunctionDiagnostics(contract_hash, function_name, &[_]ContractParameter{}, signers);
     }
 
@@ -517,7 +530,7 @@ pub const NeoProtocol = struct {
         contract_hash: Hash160,
         method_parameters: []const ContractParameter,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeContractVerify, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeContractVerify, responses.InvocationResult) {
         const allocator = self.getAllocator();
         const hash_hex = try contract_hash.string(allocator);
         defer allocator.free(hash_hex);
@@ -533,7 +546,7 @@ pub const NeoProtocol = struct {
             signers_json.value,
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoInvokeContractVerify, @import("../rpc/responses.zig").InvocationResult).init(
+        return try Request(aliases.NeoInvokeContractVerify, responses.InvocationResult).init(
             allocator,
             "invokecontractverify",
             &rpc_params,
@@ -545,7 +558,7 @@ pub const NeoProtocol = struct {
         self: Self,
         script_hex: []const u8,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeScript, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeScript, responses.InvocationResult) {
         const allocator = self.getAllocator();
 
         const script_base64 = try encodeScriptBase64(script_hex, allocator);
@@ -559,7 +572,7 @@ pub const NeoProtocol = struct {
             signers_json.value,
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoInvokeScript, @import("../rpc/responses.zig").InvocationResult).init(
+        return try Request(aliases.NeoInvokeScript, responses.InvocationResult).init(
             allocator,
             "invokescript",
             &params,
@@ -571,7 +584,7 @@ pub const NeoProtocol = struct {
         self: Self,
         script_hex: []const u8,
         signers: []const Signer,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoInvokeScript, @import("../rpc/responses.zig").InvocationResult) {
+    ) !Request(aliases.NeoInvokeScript, responses.InvocationResult) {
         const allocator = self.getAllocator();
 
         const script_base64 = try encodeScriptBase64(script_hex, allocator);
@@ -586,7 +599,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .bool = true },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoInvokeScript, @import("../rpc/responses.zig").InvocationResult).init(
+        return try Request(aliases.NeoInvokeScript, responses.InvocationResult).init(
             allocator,
             "invokescript",
             &params,
@@ -599,14 +612,14 @@ pub const NeoProtocol = struct {
         session_id: []const u8,
         iterator_id: []const u8,
         count: u32,
-    ) !Request(@import("../rpc/response_aliases.zig").NeoTraverseIterator, []const @import("../rpc/responses.zig").StackItem) {
+    ) !Request(aliases.NeoTraverseIterator, []const responses.StackItem) {
         const params = [_]std.json.Value{
             std.json.Value{ .string = session_id },
             std.json.Value{ .string = iterator_id },
             std.json.Value{ .integer = @as(i64, @intCast(count)) },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoTraverseIterator, []const @import("../rpc/responses.zig").StackItem).init(
+        return try Request(aliases.NeoTraverseIterator, []const responses.StackItem).init(
             self.getAllocator(),
             "traverseiterator",
             &params,
@@ -614,9 +627,9 @@ pub const NeoProtocol = struct {
     }
 
     /// Terminates session
-    pub fn terminateSession(self: Self, session_id: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoTerminateSession, bool) {
+    pub fn terminateSession(self: Self, session_id: []const u8) !Request(aliases.NeoTerminateSession, bool) {
         const string_params = [_][]const u8{session_id};
-        return try Request(@import("../rpc/response_aliases.zig").NeoTerminateSession, bool).withStringParams(
+        return try Request(aliases.NeoTerminateSession, bool).withStringParams(
             self.getAllocator(),
             "terminatesession",
             &string_params,
@@ -624,12 +637,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets unclaimed GAS
-    pub fn getUnclaimedGas(self: Self, script_hash: Hash160) !Request(@import("../rpc/extended_responses.zig").NeoGetUnclaimedGas, @import("../rpc/extended_responses.zig").NeoGetUnclaimedGas) {
+    pub fn getUnclaimedGas(self: Self, script_hash: Hash160) !Request(ext.NeoGetUnclaimedGas, ext.NeoGetUnclaimedGas) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const string_params = [_][]const u8{address};
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetUnclaimedGas, @import("../rpc/extended_responses.zig").NeoGetUnclaimedGas).withStringParams(
+        return try Request(ext.NeoGetUnclaimedGas, ext.NeoGetUnclaimedGas).withStringParams(
             self.getAllocator(),
             "getunclaimedgas",
             &string_params,
@@ -640,18 +653,18 @@ pub const NeoProtocol = struct {
     // UTILITY METHODS
     // ============================================================================
 
-    /// Lists plugins)
-    pub fn listPlugins(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoListPlugins, @import("../rpc/extended_responses.zig").NeoListPlugins) {
-        return try Request(@import("../rpc/extended_responses.zig").NeoListPlugins, @import("../rpc/extended_responses.zig").NeoListPlugins).withNoParams(
+    /// Lists plugins
+    pub fn listPlugins(self: Self) !Request(ext.NeoListPlugins, ext.NeoListPlugins) {
+        return try Request(ext.NeoListPlugins, ext.NeoListPlugins).withNoParams(
             self.getAllocator(),
             "listplugins",
         );
     }
 
     /// Validates address
-    pub fn validateAddress(self: Self, address: []const u8) !Request(@import("../rpc/extended_responses.zig").NeoValidateAddress, @import("../rpc/extended_responses.zig").NeoValidateAddress) {
+    pub fn validateAddress(self: Self, address: []const u8) !Request(ext.NeoValidateAddress, ext.NeoValidateAddress) {
         const string_params = [_][]const u8{address};
-        return try Request(@import("../rpc/extended_responses.zig").NeoValidateAddress, @import("../rpc/extended_responses.zig").NeoValidateAddress).withStringParams(
+        return try Request(ext.NeoValidateAddress, ext.NeoValidateAddress).withStringParams(
             self.getAllocator(),
             "validateaddress",
             &string_params,
@@ -662,21 +675,21 @@ pub const NeoProtocol = struct {
     // WALLET METHODS
     // ============================================================================
 
-    /// Closes wallet)
-    pub fn closeWallet(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoCloseWallet, bool) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoCloseWallet, bool).withNoParams(
+    /// Closes wallet
+    pub fn closeWallet(self: Self) !Request(aliases.NeoCloseWallet, bool) {
+        return try Request(aliases.NeoCloseWallet, bool).withNoParams(
             self.getAllocator(),
             "closewallet",
         );
     }
 
     /// Dumps private key for account
-    pub fn dumpPrivKey(self: Self, script_hash: Hash160) !Request(@import("../rpc/response_aliases.zig").NeoDumpPrivKey, []const u8) {
+    pub fn dumpPrivKey(self: Self, script_hash: Hash160) !Request(aliases.NeoDumpPrivKey, []const u8) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const string_params = [_][]const u8{address};
-        return try Request(@import("../rpc/response_aliases.zig").NeoDumpPrivKey, []const u8).withStringParams(
+        return try Request(aliases.NeoDumpPrivKey, []const u8).withStringParams(
             self.getAllocator(),
             "dumpprivkey",
             &string_params,
@@ -684,9 +697,9 @@ pub const NeoProtocol = struct {
     }
 
     /// Opens wallet
-    pub fn openWallet(self: Self, wallet_path: []const u8, password: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoOpenWallet, bool) {
+    pub fn openWallet(self: Self, wallet_path: []const u8, password: []const u8) !Request(aliases.NeoOpenWallet, bool) {
         const string_params = [_][]const u8{ wallet_path, password };
-        return try Request(@import("../rpc/response_aliases.zig").NeoOpenWallet, bool).withStringParams(
+        return try Request(aliases.NeoOpenWallet, bool).withStringParams(
             self.getAllocator(),
             "openwallet",
             &string_params,
@@ -694,12 +707,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets wallet balance for token
-    pub fn getWalletBalance(self: Self, token_hash: Hash160) !Request(@import("../rpc/protocol_responses.zig").NeoGetWalletBalance, @import("../rpc/protocol_responses.zig").NeoGetWalletBalance) {
+    pub fn getWalletBalance(self: Self, token_hash: Hash160) !Request(protocol_responses.NeoGetWalletBalance, protocol_responses.NeoGetWalletBalance) {
         const token_hex = try token_hash.string(self.getAllocator());
         defer self.getAllocator().free(token_hex);
 
         const string_params = [_][]const u8{token_hex};
-        return try Request(@import("../rpc/protocol_responses.zig").NeoGetWalletBalance, @import("../rpc/protocol_responses.zig").NeoGetWalletBalance).withStringParams(
+        return try Request(protocol_responses.NeoGetWalletBalance, protocol_responses.NeoGetWalletBalance).withStringParams(
             self.getAllocator(),
             "getwalletbalance",
             &string_params,
@@ -707,25 +720,25 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets new address
-    pub fn getNewAddress(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetNewAddress, []const u8) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetNewAddress, []const u8).withNoParams(
+    pub fn getNewAddress(self: Self) !Request(aliases.NeoGetNewAddress, []const u8) {
+        return try Request(aliases.NeoGetNewAddress, []const u8).withNoParams(
             self.getAllocator(),
             "getnewaddress",
         );
     }
 
     /// Gets unclaimed GAS for wallet
-    pub fn getWalletUnclaimedGas(self: Self) !Request(@import("../rpc/remaining_responses.zig").NeoGetWalletUnclaimedGas, []const u8) {
-        return try Request(@import("../rpc/remaining_responses.zig").NeoGetWalletUnclaimedGas, []const u8).withNoParams(
+    pub fn getWalletUnclaimedGas(self: Self) !Request(remaining.NeoGetWalletUnclaimedGas, []const u8) {
+        return try Request(remaining.NeoGetWalletUnclaimedGas, []const u8).withNoParams(
             self.getAllocator(),
             "getwalletunclaimedgas",
         );
     }
 
     /// Imports private key
-    pub fn importPrivKey(self: Self, private_key_wif: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/extended_responses.zig").NeoAddress) {
+    pub fn importPrivKey(self: Self, private_key_wif: []const u8) !Request(aliases.NeoImportPrivKey, ext.NeoAddress) {
         const string_params = [_][]const u8{private_key_wif};
-        return try Request(@import("../rpc/response_aliases.zig").NeoImportPrivKey, @import("../rpc/extended_responses.zig").NeoAddress).withStringParams(
+        return try Request(aliases.NeoImportPrivKey, ext.NeoAddress).withStringParams(
             self.getAllocator(),
             "importprivkey",
             &string_params,
@@ -733,15 +746,15 @@ pub const NeoProtocol = struct {
     }
 
     /// Lists addresses
-    pub fn listAddresses(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/extended_responses.zig").NeoAddress) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoListAddress, []const @import("../rpc/extended_responses.zig").NeoAddress).withNoParams(
+    pub fn listAddresses(self: Self) !Request(aliases.NeoListAddress, []const ext.NeoAddress) {
+        return try Request(aliases.NeoListAddress, []const ext.NeoAddress).withNoParams(
             self.getAllocator(),
             "listaddress",
         );
     }
 
     /// Sends token from specific account
-    pub fn sendFrom(self: Self, token_hash: Hash160, from: Hash160, to: Hash160, amount: i64) !Request(@import("../rpc/response_aliases.zig").NeoSendFrom, @import("../rpc/responses.zig").Transaction) {
+    pub fn sendFrom(self: Self, token_hash: Hash160, from: Hash160, to: Hash160, amount: i64) !Request(aliases.NeoSendFrom, responses.Transaction) {
         const allocator = self.getAllocator();
 
         const token_hex = try token_hash.string(allocator);
@@ -760,22 +773,22 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = amount },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoSendFrom, @import("../rpc/responses.zig").Transaction).init(
+        return try Request(aliases.NeoSendFrom, responses.Transaction).init(
             allocator,
             "sendfrom",
             &params,
         );
     }
 
-    /// Convenience overload using TransactionSendToken)
-    pub fn sendFromToken(self: Self, from: Hash160, token: TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendFrom, @import("../rpc/responses.zig").Transaction) {
+    /// Convenience overload using TransactionSendToken
+    pub fn sendFromToken(self: Self, from: Hash160, token: TransactionSendToken) !Request(aliases.NeoSendFrom, responses.Transaction) {
         const allocator = self.getAllocator();
         const to_hash = try Hash160.fromAddress(token.address, allocator);
         return self.sendFrom(token.asset, from, to_hash, token.value);
     }
 
     /// Sends multiple transfers from wallet
-    pub fn sendMany(self: Self, tokens: []const TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction) {
+    pub fn sendMany(self: Self, tokens: []const TransactionSendToken) !Request(aliases.NeoSendMany, responses.Transaction) {
         const allocator = self.getAllocator();
         var tokens_json = try encodeTransactionSendTokens(tokens, allocator);
         defer tokens_json.deinit();
@@ -784,15 +797,15 @@ pub const NeoProtocol = struct {
             tokens_json.value,
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction).init(
+        return try Request(aliases.NeoSendMany, responses.Transaction).init(
             allocator,
             "sendmany",
             &params,
         );
     }
 
-    /// Sends multiple transfers from specific account)
-    pub fn sendManyFrom(self: Self, from: Hash160, tokens: []const TransactionSendToken) !Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction) {
+    /// Sends multiple transfers from specific account
+    pub fn sendManyFrom(self: Self, from: Hash160, tokens: []const TransactionSendToken) !Request(aliases.NeoSendMany, responses.Transaction) {
         const allocator = self.getAllocator();
         var tokens_json = try encodeTransactionSendTokens(tokens, allocator);
         defer tokens_json.deinit();
@@ -805,7 +818,7 @@ pub const NeoProtocol = struct {
             tokens_json.value,
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoSendMany, @import("../rpc/responses.zig").Transaction).init(
+        return try Request(aliases.NeoSendMany, responses.Transaction).init(
             allocator,
             "sendmany",
             &params,
@@ -813,7 +826,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Sends token from wallet to address
-    pub fn sendToAddress(self: Self, token_hash: Hash160, to: Hash160, amount: i64) !Request(@import("../rpc/response_aliases.zig").NeoSendToAddress, @import("../rpc/responses.zig").Transaction) {
+    pub fn sendToAddress(self: Self, token_hash: Hash160, to: Hash160, amount: i64) !Request(aliases.NeoSendToAddress, responses.Transaction) {
         const allocator = self.getAllocator();
 
         const token_hex = try token_hash.string(allocator);
@@ -828,7 +841,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = amount },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoSendToAddress, @import("../rpc/responses.zig").Transaction).init(
+        return try Request(aliases.NeoSendToAddress, responses.Transaction).init(
             allocator,
             "sendtoaddress",
             &params,
@@ -840,12 +853,12 @@ pub const NeoProtocol = struct {
     // ============================================================================
 
     /// Gets storage
-    pub fn getStorage(self: Self, contract_hash: Hash160, key_hex_string: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetStorage, []const u8) {
+    pub fn getStorage(self: Self, contract_hash: Hash160, key_hex_string: []const u8) !Request(aliases.NeoGetStorage, []const u8) {
         const hash_hex = try contract_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
         const string_params = [_][]const u8{ hash_hex, key_hex_string };
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetStorage, []const u8).withStringParams(
+        return try Request(aliases.NeoGetStorage, []const u8).withStringParams(
             self.getAllocator(),
             "getstorage",
             &string_params,
@@ -853,12 +866,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-17 balances
-    pub fn getNep17Balances(self: Self, script_hash: Hash160) !Request(@import("../rpc/token_responses.zig").NeoGetNep17Balances, @import("../rpc/token_responses.zig").NeoGetNep17Balances) {
+    pub fn getNep17Balances(self: Self, script_hash: Hash160) !Request(token_responses.NeoGetNep17Balances, token_responses.NeoGetNep17Balances) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const params = [_]std.json.Value{std.json.Value{ .string = address }};
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep17Balances, @import("../rpc/token_responses.zig").NeoGetNep17Balances).init(
+        return try Request(token_responses.NeoGetNep17Balances, token_responses.NeoGetNep17Balances).init(
             self.getAllocator(),
             "getnep17balances",
             &params,
@@ -866,12 +879,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-17 transfers (all)
-    pub fn getNep17Transfers(self: Self, script_hash: Hash160) !Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers) {
+    pub fn getNep17Transfers(self: Self, script_hash: Hash160) !Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const params = [_]std.json.Value{std.json.Value{ .string = address }};
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers).init(
+        return try Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers).init(
             self.getAllocator(),
             "getnep17transfers",
             &params,
@@ -879,7 +892,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-17 transfers since timestamp (milliseconds)
-    pub fn getNep17TransfersFrom(self: Self, script_hash: Hash160, from_timestamp_ms: i64) !Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers) {
+    pub fn getNep17TransfersFrom(self: Self, script_hash: Hash160, from_timestamp_ms: i64) !Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
@@ -888,7 +901,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = from_timestamp_ms },
         };
 
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers).init(
+        return try Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers).init(
             self.getAllocator(),
             "getnep17transfers",
             &params,
@@ -896,7 +909,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-17 transfers in time range (milliseconds)
-    pub fn getNep17TransfersRange(self: Self, script_hash: Hash160, from_timestamp_ms: i64, to_timestamp_ms: i64) !Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers) {
+    pub fn getNep17TransfersRange(self: Self, script_hash: Hash160, from_timestamp_ms: i64, to_timestamp_ms: i64) !Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
@@ -906,7 +919,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = to_timestamp_ms },
         };
 
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep17Transfers, @import("../rpc/token_responses.zig").NeoGetNep17Transfers).init(
+        return try Request(token_responses.NeoGetNep17Transfers, token_responses.NeoGetNep17Transfers).init(
             self.getAllocator(),
             "getnep17transfers",
             &params,
@@ -914,12 +927,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-11 balances
-    pub fn getNep11Balances(self: Self, script_hash: Hash160) !Request(@import("../rpc/token_responses.zig").NeoGetNep11Balances, @import("../rpc/token_responses.zig").NeoGetNep11Balances) {
+    pub fn getNep11Balances(self: Self, script_hash: Hash160) !Request(token_responses.NeoGetNep11Balances, token_responses.NeoGetNep11Balances) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const params = [_]std.json.Value{std.json.Value{ .string = address }};
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep11Balances, @import("../rpc/token_responses.zig").NeoGetNep11Balances).init(
+        return try Request(token_responses.NeoGetNep11Balances, token_responses.NeoGetNep11Balances).init(
             self.getAllocator(),
             "getnep11balances",
             &params,
@@ -927,12 +940,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-11 transfers (all)
-    pub fn getNep11Transfers(self: Self, script_hash: Hash160) !Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers) {
+    pub fn getNep11Transfers(self: Self, script_hash: Hash160) !Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
         const params = [_]std.json.Value{std.json.Value{ .string = address }};
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers).init(
+        return try Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers).init(
             self.getAllocator(),
             "getnep11transfers",
             &params,
@@ -940,7 +953,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-11 transfers since timestamp (milliseconds)
-    pub fn getNep11TransfersFrom(self: Self, script_hash: Hash160, from_timestamp_ms: i64) !Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers) {
+    pub fn getNep11TransfersFrom(self: Self, script_hash: Hash160, from_timestamp_ms: i64) !Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
@@ -949,7 +962,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = from_timestamp_ms },
         };
 
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers).init(
+        return try Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers).init(
             self.getAllocator(),
             "getnep11transfers",
             &params,
@@ -957,7 +970,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-11 transfers in range (milliseconds)
-    pub fn getNep11TransfersRange(self: Self, script_hash: Hash160, from_timestamp_ms: i64, to_timestamp_ms: i64) !Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers) {
+    pub fn getNep11TransfersRange(self: Self, script_hash: Hash160, from_timestamp_ms: i64, to_timestamp_ms: i64) !Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
@@ -967,7 +980,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .integer = to_timestamp_ms },
         };
 
-        return try Request(@import("../rpc/token_responses.zig").NeoGetNep11Transfers, @import("../rpc/token_responses.zig").NeoGetNep11Transfers).init(
+        return try Request(token_responses.NeoGetNep11Transfers, token_responses.NeoGetNep11Transfers).init(
             self.getAllocator(),
             "getnep11transfers",
             &params,
@@ -975,7 +988,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets NEP-11 token properties
-    pub fn getNep11Properties(self: Self, script_hash: Hash160, token_id: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetNep11Properties, @import("../rpc/response_aliases.zig").NeoGetNep11Properties) {
+    pub fn getNep11Properties(self: Self, script_hash: Hash160, token_id: []const u8) !Request(aliases.NeoGetNep11Properties, aliases.NeoGetNep11Properties) {
         const address = try script_hash.toAddress(self.getAllocator());
         defer self.getAllocator().free(address);
 
@@ -984,7 +997,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .string = token_id },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetNep11Properties, @import("../rpc/response_aliases.zig").NeoGetNep11Properties).init(
+        return try Request(aliases.NeoGetNep11Properties, aliases.NeoGetNep11Properties).init(
             self.getAllocator(),
             "getnep11properties",
             &params,
@@ -992,12 +1005,12 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets transaction height
-    pub fn getTransactionHeight(self: Self, tx_hash: Hash256) !Request(@import("../rpc/response_aliases.zig").NeoGetTransactionHeight, u32) {
+    pub fn getTransactionHeight(self: Self, tx_hash: Hash256) !Request(aliases.NeoGetTransactionHeight, u32) {
         const hash_hex = try tx_hash.string(self.getAllocator());
         defer self.getAllocator().free(hash_hex);
 
         const string_params = [_][]const u8{hash_hex};
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetTransactionHeight, u32).withStringParams(
+        return try Request(aliases.NeoGetTransactionHeight, u32).withStringParams(
             self.getAllocator(),
             "gettransactionheight",
             &string_params,
@@ -1005,29 +1018,29 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets next block validators
-    pub fn getNextBlockValidators(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetNextBlockValidators, @import("../rpc/extended_responses.zig").NeoGetNextBlockValidators) {
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetNextBlockValidators, @import("../rpc/extended_responses.zig").NeoGetNextBlockValidators).withNoParams(
+    pub fn getNextBlockValidators(self: Self) !Request(ext.NeoGetNextBlockValidators, ext.NeoGetNextBlockValidators) {
+        return try Request(ext.NeoGetNextBlockValidators, ext.NeoGetNextBlockValidators).withNoParams(
             self.getAllocator(),
             "getnextblockvalidators",
         );
     }
 
     /// Gets committee
-    pub fn getCommittee(self: Self) !Request(@import("../rpc/response_aliases.zig").NeoGetCommittee, []const []const u8) {
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetCommittee, []const []const u8).withNoParams(
+    pub fn getCommittee(self: Self) !Request(aliases.NeoGetCommittee, []const []const u8) {
+        return try Request(aliases.NeoGetCommittee, []const []const u8).withNoParams(
             self.getAllocator(),
             "getcommittee",
         );
     }
 
     /// Calculates network fee (utility method)
-    pub fn calculateNetworkFee(self: Self, raw_transaction_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoCalculateNetworkFee, @import("../rpc/responses.zig").NetworkFeeResponse) {
+    pub fn calculateNetworkFee(self: Self, raw_transaction_hex: []const u8) !Request(aliases.NeoCalculateNetworkFee, responses.NetworkFeeResponse) {
         const allocator = self.getAllocator();
         const tx_base64 = try hexToBase64(raw_transaction_hex, allocator);
         defer allocator.free(tx_base64);
 
         const params = [_]std.json.Value{std.json.Value{ .string = tx_base64 }};
-        return try Request(@import("../rpc/response_aliases.zig").NeoCalculateNetworkFee, @import("../rpc/responses.zig").NetworkFeeResponse).init(
+        return try Request(aliases.NeoCalculateNetworkFee, responses.NetworkFeeResponse).init(
             allocator,
             "calculatenetworkfee",
             &params,
@@ -1035,9 +1048,9 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets state root
-    pub fn getStateRoot(self: Self, block_index: u32) !Request(@import("../rpc/extended_responses.zig").NeoGetStateRoot, @import("../rpc/extended_responses.zig").NeoGetStateRoot) {
+    pub fn getStateRoot(self: Self, block_index: u32) !Request(ext.NeoGetStateRoot, ext.NeoGetStateRoot) {
         const int_params = [_]i64{@as(i64, @intCast(block_index))};
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetStateRoot, @import("../rpc/extended_responses.zig").NeoGetStateRoot).withIntegerParams(
+        return try Request(ext.NeoGetStateRoot, ext.NeoGetStateRoot).withIntegerParams(
             self.getAllocator(),
             "getstateroot",
             &int_params,
@@ -1045,7 +1058,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets proof for state
-    pub fn getProof(self: Self, root_hash: Hash256, contract_hash: Hash160, storage_key_hex: []const u8) !Request(@import("../rpc/remaining_responses.zig").ResponseAliases.NeoGetProof, []const u8) {
+    pub fn getProof(self: Self, root_hash: Hash256, contract_hash: Hash160, storage_key_hex: []const u8) !Request(remaining.ResponseAliases.NeoGetProof, []const u8) {
         const allocator = self.getAllocator();
 
         const root_hex = try root_hash.string(allocator);
@@ -1063,7 +1076,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .string = key_base64 },
         };
 
-        return try Request(@import("../rpc/remaining_responses.zig").ResponseAliases.NeoGetProof, []const u8).init(
+        return try Request(remaining.ResponseAliases.NeoGetProof, []const u8).init(
             allocator,
             "getproof",
             &params,
@@ -1071,7 +1084,7 @@ pub const NeoProtocol = struct {
     }
 
     /// Verifies proof
-    pub fn verifyProof(self: Self, root_hash: Hash256, proof_data_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoVerifyProof, []const u8) {
+    pub fn verifyProof(self: Self, root_hash: Hash256, proof_data_hex: []const u8) !Request(aliases.NeoVerifyProof, []const u8) {
         const allocator = self.getAllocator();
 
         const root_hex = try root_hash.string(allocator);
@@ -1085,7 +1098,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .string = proof_base64 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoVerifyProof, []const u8).init(
+        return try Request(aliases.NeoVerifyProof, []const u8).init(
             allocator,
             "verifyproof",
             &params,
@@ -1093,15 +1106,15 @@ pub const NeoProtocol = struct {
     }
 
     /// Gets state height
-    pub fn getStateHeight(self: Self) !Request(@import("../rpc/extended_responses.zig").NeoGetStateHeight, @import("../rpc/extended_responses.zig").NeoGetStateHeight) {
-        return try Request(@import("../rpc/extended_responses.zig").NeoGetStateHeight, @import("../rpc/extended_responses.zig").NeoGetStateHeight).withNoParams(
+    pub fn getStateHeight(self: Self) !Request(ext.NeoGetStateHeight, ext.NeoGetStateHeight) {
+        return try Request(ext.NeoGetStateHeight, ext.NeoGetStateHeight).withNoParams(
             self.getAllocator(),
             "getstateheight",
         );
     }
 
     /// Gets state entry
-    pub fn getState(self: Self, root_hash: Hash256, contract_hash: Hash160, key_hex: []const u8) !Request(@import("../rpc/response_aliases.zig").NeoGetState, []const u8) {
+    pub fn getState(self: Self, root_hash: Hash256, contract_hash: Hash160, key_hex: []const u8) !Request(aliases.NeoGetState, []const u8) {
         const allocator = self.getAllocator();
 
         const root_hex = try root_hash.string(allocator);
@@ -1119,7 +1132,7 @@ pub const NeoProtocol = struct {
             std.json.Value{ .string = key_base64 },
         };
 
-        return try Request(@import("../rpc/response_aliases.zig").NeoGetState, []const u8).init(
+        return try Request(aliases.NeoGetState, []const u8).init(
             allocator,
             "getstate",
             &params,
@@ -1134,7 +1147,7 @@ pub const NeoProtocol = struct {
         key_prefix_hex: []const u8,
         start_key_hex: ?[]const u8,
         count_find_result_items: ?u32,
-    ) !Request(@import("../rpc/remaining_responses.zig").NeoFindStates, @import("../rpc/remaining_responses.zig").NeoFindStates) {
+    ) !Request(remaining.NeoFindStates, remaining.NeoFindStates) {
         const allocator = self.getAllocator();
 
         const root_hex = try root_hash.string(allocator);
@@ -1168,7 +1181,7 @@ pub const NeoProtocol = struct {
         const params_slice = try params_list.toOwnedSlice();
         defer allocator.free(params_slice);
 
-        return try Request(@import("../rpc/remaining_responses.zig").NeoFindStates, @import("../rpc/remaining_responses.zig").NeoFindStates).init(
+        return try Request(remaining.NeoFindStates, remaining.NeoFindStates).init(
             allocator,
             "findstates",
             params_slice,
@@ -1182,7 +1195,7 @@ pub const NeoProtocol = struct {
         contract_hash: Hash160,
         key_prefix_hex: []const u8,
         start_key_hex: []const u8,
-    ) !Request(@import("../rpc/remaining_responses.zig").NeoFindStates, @import("../rpc/remaining_responses.zig").NeoFindStates) {
+    ) !Request(remaining.NeoFindStates, remaining.NeoFindStates) {
         return self.findStates(root_hash, contract_hash, key_prefix_hex, start_key_hex, null);
     }
 
@@ -1193,7 +1206,7 @@ pub const NeoProtocol = struct {
         contract_hash: Hash160,
         key_prefix_hex: []const u8,
         count_find_result_items: u32,
-    ) !Request(@import("../rpc/remaining_responses.zig").NeoFindStates, @import("../rpc/remaining_responses.zig").NeoFindStates) {
+    ) !Request(remaining.NeoFindStates, remaining.NeoFindStates) {
         return self.findStates(root_hash, contract_hash, key_prefix_hex, null, count_find_result_items);
     }
 
@@ -1203,7 +1216,7 @@ pub const NeoProtocol = struct {
         root_hash: Hash256,
         contract_hash: Hash160,
         key_prefix_hex: []const u8,
-    ) !Request(@import("../rpc/remaining_responses.zig").NeoFindStates, @import("../rpc/remaining_responses.zig").NeoFindStates) {
+    ) !Request(remaining.NeoFindStates, remaining.NeoFindStates) {
         return self.findStates(root_hash, contract_hash, key_prefix_hex, null, null);
     }
 };
@@ -1212,19 +1225,19 @@ pub const NeoProtocol = struct {
 pub const NeoProtocolFactory = struct {
     /// Creates protocol for MainNet
     pub fn mainnet(allocator: std.mem.Allocator) !NeoProtocol {
-        var service = try @import("../rpc/neo_service.zig").ServiceFactory.mainnet(allocator);
+        var service = try neo_service.ServiceFactory.mainnet(allocator);
         return NeoProtocol.init(&service);
     }
 
     /// Creates protocol for TestNet
     pub fn testnet(allocator: std.mem.Allocator) !NeoProtocol {
-        var service = try @import("../rpc/neo_service.zig").ServiceFactory.testnet(allocator);
+        var service = try neo_service.ServiceFactory.testnet(allocator);
         return NeoProtocol.init(&service);
     }
 
     /// Creates protocol for local node
     pub fn localhost(allocator: std.mem.Allocator, port: ?u16) !NeoProtocol {
-        var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, port);
+        var service = try neo_service.ServiceFactory.localhost(allocator, port);
         return NeoProtocol.init(&service);
     }
 
@@ -1235,7 +1248,7 @@ pub const NeoProtocolFactory = struct {
         timeout_ms: u32,
         max_retries: u32,
     ) !NeoProtocol {
-        var service = try @import("../rpc/neo_service.zig").ServiceFactory.custom(
+        var service = try neo_service.ServiceFactory.custom(
             allocator,
             endpoint,
             timeout_ms,
@@ -1251,7 +1264,7 @@ test "NeoProtocol creation and basic operations" {
     const allocator = testing.allocator;
 
     // Test protocol creation
-    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try neo_service.ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1273,7 +1286,7 @@ test "NeoProtocol parameterized requests" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try neo_service.ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1434,7 +1447,7 @@ test "NeoProtocol smart contract methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try neo_service.ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 
@@ -1445,7 +1458,7 @@ test "NeoProtocol smart contract methods" {
         ContractParameter.integer(42),
     };
     const signers = [_]Signer{
-        Signer.init(Hash160.ZERO, @import("../transaction/transaction_builder.zig").WitnessScope.CalledByEntry),
+        Signer.init(Hash160.ZERO, WitnessScope.CalledByEntry),
     };
 
     var invoke_request = try protocol.invokeFunction(contract_hash, "testMethod", &params, &signers);
@@ -1483,7 +1496,7 @@ test "NeoProtocol utility methods" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    var service = try @import("../rpc/neo_service.zig").ServiceFactory.localhost(allocator, null);
+    var service = try neo_service.ServiceFactory.localhost(allocator, null);
     defer service.deinit();
     const protocol = NeoProtocol.init(&service);
 

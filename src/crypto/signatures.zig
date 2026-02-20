@@ -5,6 +5,8 @@ const std = @import("std");
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const secp256r1 = @import("secp256r1.zig");
+const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
 
 /// ECDSA signature using secp256r1 curve
 pub const Signature = struct {
@@ -33,9 +35,6 @@ pub const Signature = struct {
     }
 
     pub fn create(hash: Hash256, private_key: anytype) !Self {
-        const secp256r1 = @import("secp256r1.zig");
-        const ECDSASignature = @import("ecdsa_signature.zig").ECDSASignature;
-
         var hash_bytes: [32]u8 = undefined;
         @memcpy(&hash_bytes, hash.toSlice());
 
@@ -50,8 +49,6 @@ pub const Signature = struct {
     }
 
     pub fn verify(self: Self, hash: Hash256, public_key: anytype) !bool {
-        const secp256r1 = @import("secp256r1.zig");
-
         var hash_bytes: [32]u8 = undefined;
         @memcpy(&hash_bytes, hash.toSlice());
 

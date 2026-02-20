@@ -24,7 +24,7 @@ This guide covers common issues, error messages, and their solutions when using 
 ```zig
 .dependencies = .{
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.0.1.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz",
         .hash = "...",
     },
 };
@@ -245,7 +245,7 @@ std.log.info("Node version: {}", .{version});
 3. Enable debug logging:
 
 ```zig
-neo.utils.initGlobalLogger(.Debug);
+std.log.debug("Enable additional RPC diagnostics in your application", .{});
 ```
 
 ### "HTTP response too large"

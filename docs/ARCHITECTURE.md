@@ -62,7 +62,7 @@ src/
 ├── wallet/
 │   ├── neo_wallet.zig         # Core wallet management
 │   ├── nep6_wallet.zig        # NEP-6 standard
-│   ├── nep6_complete.zig      # Complete NEP-6 implementation
+│   ├── nep6_extended.zig      # Complete NEP-6 implementation
 │   └── bip39_account.zig      # BIP-39 mnemonic accounts
 ├── script/
 │   ├── script_builder.zig     # Neo VM script construction
@@ -75,8 +75,8 @@ src/
     ├── base58.zig             # Base58 encoding
     ├── string_extensions.zig  # String utilities
     ├── array_extensions.zig   # Array utilities
-    ├── logging.zig            # Production logging
-    └── validation.zig         # Input validation
+    ├── memory_utils.zig       # Ownership and deinit helpers
+    └── decode.zig             # Safe decode/string helpers
 ```
 
 ## Ownership Model

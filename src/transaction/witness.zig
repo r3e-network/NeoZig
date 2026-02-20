@@ -7,7 +7,13 @@ const std = @import("std");
 
 const ECKeyPair = @import("../crypto/ec_key_pair.zig").ECKeyPair;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
+const Sign = @import("../crypto/sign.zig").Sign;
 const SignatureData = @import("../crypto/sign.zig").SignatureData;
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
+const OpCode = @import("../script/op_code.zig").OpCode;
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
+const CompleteBinaryWriter = @import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter;
+const CompleteBinaryReader = @import("../serialization/binary_reader_ext.zig").CompleteBinaryReader;
 
 /// Invocation script wrapper
 pub const InvocationScript = struct {
@@ -33,10 +39,10 @@ pub const InvocationScript = struct {
 
     /// Creates invocation script from message and key pair
     pub fn fromMessageAndKeyPair(message: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
-        const signature = try @import("../crypto/sign.zig").Sign.signMessage(message, key_pair, allocator);
+        const signature = try Sign.signMessage(message, key_pair, allocator);
 
         // Create invocation script with signature
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
+        var script_builder = ScriptBuilder.init(allocator);
         defer script_builder.deinit();
 
         const signature_bytes = signature.getSignatureBytes();
@@ -48,7 +54,7 @@ pub const InvocationScript = struct {
 
     /// Creates multi-sig invocation script from signatures
     pub fn fromSignatures(signatures: []const SignatureData, allocator: std.mem.Allocator) !Self {
-        var script_builder = @import("../script/script_builder.zig").ScriptBuilder.init(allocator);
+        var script_builder = ScriptBuilder.init(allocator);
         defer script_builder.deinit();
 
         // Push signatures in order
@@ -102,16 +108,21 @@ pub const VerificationScript = struct {
         return Self{ .script = try allocator.dupe(u8, bytes), .owns_script = true };
     }
 
-    /// Creates verification script from public key)
+    /// Creates verification script from public key
     pub fn fromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
-        const script = try @import("../script/script_builder.zig").ScriptBuilder.buildVerificationScript(
+        const script = try ScriptBuilder.buildVerificationScript(
             public_key.toSlice(),
             allocator,
         );
         return Self{ .script = script, .owns_script = true };
     }
 
-    /// Creates multi-sig verification script)
+    /// Backwards-compatible alias for fromPublicKey().
+    pub fn initFromPublicKey(public_key: PublicKey, allocator: std.mem.Allocator) !Self {
+        return fromPublicKey(public_key, allocator);
+    }
+
+    /// Creates multi-sig verification script
     pub fn fromMultiSig(public_keys: []const PublicKey, signing_threshold: u32, allocator: std.mem.Allocator) !Self {
         var key_slices = try allocator.alloc([]const u8, public_keys.len);
         defer allocator.free(key_slices);
@@ -120,7 +131,7 @@ pub const VerificationScript = struct {
             key_slices[i] = pub_key.toSlice();
         }
 
-        const script = try @import("../script/script_builder.zig").ScriptBuilder.buildMultiSigVerificationScript(
+        const script = try ScriptBuilder.buildMultiSigVerificationScript(
             key_slices,
             signing_threshold,
             allocator,
@@ -154,7 +165,7 @@ pub const Witness = struct {
 
     const Self = @This();
 
-    /// Creates empty witness)
+    /// Creates empty witness
     pub fn init() Self {
         return Self{
             .invocation_script = InvocationScript.init(),
@@ -162,7 +173,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from bytes)
+    /// Creates witness from bytes
     pub fn initWithBytes(invocation_bytes: []const u8, verification_bytes: []const u8, allocator: std.mem.Allocator) !Self {
         return Self{
             .invocation_script = try InvocationScript.initFromBytes(invocation_bytes, allocator),
@@ -170,7 +181,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from scripts)
+    /// Creates witness from scripts
     pub fn initWithScripts(invocation_script: InvocationScript, verification_script: VerificationScript) Self {
         return Self{
             .invocation_script = invocation_script,
@@ -178,7 +189,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates witness from message and key pair)
+    /// Creates witness from message and key pair
     pub fn create(message_to_sign: []const u8, key_pair: ECKeyPair, allocator: std.mem.Allocator) !Self {
         const invocation_script = try InvocationScript.fromMessageAndKeyPair(message_to_sign, key_pair, allocator);
         const verification_script = try VerificationScript.fromPublicKey(key_pair.getPublicKey(), allocator);
@@ -205,7 +216,7 @@ pub const Witness = struct {
         };
     }
 
-    /// Creates multi-sig witness with verification script)
+    /// Creates multi-sig witness with verification script
     pub fn createMultiSigWitnessWithScript(
         signatures: []const SignatureData,
         verification_script: VerificationScript,
@@ -236,7 +247,6 @@ pub const Witness = struct {
 
     /// Gets witness size in bytes
     pub fn getSize(self: Self) usize {
-        const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
         return BytesUtils.varSize(self.invocation_script.script) + BytesUtils.varSize(self.verification_script.script);
     }
 
@@ -270,7 +280,7 @@ pub const Witness = struct {
     }
 
     /// Serializes witness to bytes
-    pub fn serialize(self: Self, writer: *@import("../serialization/binary_writer_ext.zig").CompleteBinaryWriter) !void {
+    pub fn serialize(self: Self, writer: *CompleteBinaryWriter) !void {
         // Write invocation script
         try writer.writeVarBytes(self.invocation_script.script);
 
@@ -279,7 +289,7 @@ pub const Witness = struct {
     }
 
     /// Deserializes witness from bytes
-    pub fn deserialize(reader: *@import("../serialization/binary_reader_ext.zig").CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
+    pub fn deserialize(reader: *CompleteBinaryReader, allocator: std.mem.Allocator) !Self {
         // Read invocation script
         const invocation_bytes = try reader.readVarBytes(allocator);
         const invocation_script = InvocationScript{ .script = invocation_bytes, .owns_script = true };
@@ -439,9 +449,6 @@ test "Witness size uses varint prefixes at boundaries" {
 test "Multi-sig scripts match NeoClient expectations" {
     const testing = std.testing;
     const allocator = testing.allocator;
-
-    const OpCode = @import("../script/op_code.zig").OpCode;
-    const Sign = @import("../crypto/sign.zig").Sign;
 
     const message = [_]u8{10} ** 10;
 

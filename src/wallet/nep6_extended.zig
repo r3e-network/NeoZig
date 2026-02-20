@@ -15,6 +15,8 @@ const KeyPair = @import("../crypto/keys.zig").KeyPair;
 const NEP2 = @import("../crypto/nep2.zig").NEP2;
 const json_utils = @import("../utils/json_utils.zig");
 const secure = @import("../utils/secure.zig");
+const wif_mod = @import("../crypto/wif.zig");
+const bytes_mod = @import("../utils/bytes.zig");
 pub const ScryptParams = @import("nep6_wallet.zig").ScryptParams;
 
 /// Complete NEP-6 wallet implementation
@@ -96,7 +98,7 @@ pub const CompleteNEP6Wallet = struct {
         password: []const u8,
         label: ?[]const u8,
     ) !*CompleteNEP6Account {
-        const wif_result = try @import("../crypto/wif.zig").decode(wif, self.allocator);
+        const wif_result = try wif_mod.decode(wif, self.allocator);
         return try self.importAccount(wif_result.private_key, password, label);
     }
 
@@ -464,7 +466,7 @@ pub const NEP6Contract = struct {
         var contract_obj = std.json.ObjectMap.init(allocator);
         errdefer json_utils.freeValue(std.json.Value{ .object = contract_obj }, allocator);
 
-        const script_hex = try @import("../utils/bytes.zig").toHex(self.script, allocator);
+        const script_hex = try bytes_mod.toHex(self.script, allocator);
         json_utils.putOwnedKey(&contract_obj, allocator, "script", std.json.Value{ .string = script_hex }) catch |e| {
             allocator.free(script_hex);
             return e;
@@ -492,7 +494,7 @@ pub const NEP6Contract = struct {
 
         const script_value = obj.get("script") orelse return errors.SerializationError.InvalidFormat;
         if (script_value != .string) return errors.SerializationError.InvalidFormat;
-        const script = try @import("../utils/bytes.zig").fromHex(script_value.string, allocator);
+        const script = try bytes_mod.fromHex(script_value.string, allocator);
         errdefer allocator.free(script);
 
         const deployed_value = obj.get("deployed") orelse return errors.SerializationError.InvalidFormat;
@@ -606,7 +608,7 @@ test "CompleteNEP6Wallet creation and operations" {
     try testing.expectEqualStrings("Test Account", account.label.?);
 
     // Test account import from private key
-    const private_key = @import("../crypto/keys.zig").PrivateKey.generate();
+    const private_key = PrivateKey.generate();
     const imported_account = try wallet.importAccount(private_key, "import_password", "Imported Account");
     try testing.expect(imported_account.encrypted_private_key != null);
 

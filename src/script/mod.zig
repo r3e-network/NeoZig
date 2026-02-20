@@ -9,6 +9,8 @@ pub const ScriptBuilder = @import("script_builder.zig").ScriptBuilder;
 pub const OpCode = @import("op_code.zig").OpCode;
 pub const InteropService = @import("script_builder.zig").InteropService;
 pub const ScriptReader = @import("script_reader.zig").ScriptReader;
+pub const InvocationScript = @import("invocation_script.zig").InvocationScript;
+pub const CompleteVerificationScript = @import("../transaction/witness.zig").VerificationScript;
 
 test "script module" {
     std.testing.refAllDecls(@This());

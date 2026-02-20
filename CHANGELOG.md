@@ -4,6 +4,27 @@
 
 - (none)
 
+## 1.3.1 - 2026-02-20
+
+### Neo N3 v3.9.1 Compatibility + Stability Patch
+
+- Hardened Neo v3.9.1 interop syscall constants to match SHA256-prefix values, with explicit validation tests.
+- Verified native contract hash constants and version metadata handling against real Neo N3 node expectations.
+
+### Reliability Fixes
+
+- Fixed NEF checksum/round-trip vector handling in `src/contract/nef_file.zig`.
+- Fixed NNS validation edge cases in `src/contract/nns_name.zig` (fragment-count bounds + parser typo correction).
+- Added `NEP6Wallet.deinitOwned` for parsed-object ownership cleanup and used it in wallet tests to avoid leaks.
+
+### Backward Compatibility
+
+- Expanded legacy alias/export compatibility in public modules so prior call sites continue compiling.
+
+### Validation
+
+- Re-ran full verification before release (`zig build`, `zig build test`, targeted suite steps, and ReleaseSafe test run).
+
 ## 1.3.0 - 2026-02-11
 
 ### Neo N3 v3.9.0 Native Contract Implementations

@@ -27,6 +27,9 @@ fn deterministicScalar(h: [Hash.digest_length]u8, secret_key: Curve.scalar.Compr
     var k = [_]u8{0x00} ** h.len;
     var m = [_]u8{0x00} ** (h.len + 1 + noise_length + secret_key.len + h.len);
     var t = [_]u8{0x00} ** Curve.scalar.encoded_length;
+    defer std.crypto.secureZero(u8, &k);
+    defer std.crypto.secureZero(u8, &m);
+    defer std.crypto.secureZero(u8, &t);
     const m_v = m[0..h.len];
     const m_i = &m[m_v.len];
     const m_z = m[m_v.len + 1 ..][0..noise_length];
@@ -148,10 +151,12 @@ pub fn derivePublicKey(private_key: [32]u8, compressed: bool, allocator: std.mem
 }
 
 pub fn sign(hash: [32]u8, private_key: [32]u8) ![64]u8 {
-    const key_pair = try loadKeyPair(private_key);
+    var key_pair = try loadKeyPair(private_key);
+    defer std.crypto.secureZero(u8, &key_pair.secret_key.bytes);
     const z = reduceToScalar(Curve.scalar.encoded_length, hash);
 
-    const k = deterministicScalar(hash, key_pair.secret_key.bytes, null);
+    var k = deterministicScalar(hash, key_pair.secret_key.bytes, null);
+    defer k = Curve.scalar.Scalar.zero;
     const p = Curve.basePoint.mul(k.toBytes(.big), .big) catch return errors.CryptoError.ECDSAOperationFailed;
     const xs = p.affineCoordinates().x.toBytes(.big);
     const r = reduceToScalar(Curve.Fe.encoded_length, xs);
@@ -241,6 +246,10 @@ pub fn pointFromCompressed(compressed: []const u8) !Point {
 
     const y_squared = modAdd(modAdd(modMul(modMul(x, x, Secp256r1.P), x, Secp256r1.P), modMul(Secp256r1.A, x, Secp256r1.P), Secp256r1.P), Secp256r1.B, Secp256r1.P);
     const y = modSqrt(y_squared, Secp256r1.P);
+
+    // Verify the square root is correct (y² mod p == y_squared)
+    if (modMul(y, y, Secp256r1.P) != y_squared) return errors.CryptoError.InvalidKey;
+
     const final_y = if (((y & 1) == 0) == y_is_even) y else modSub(Secp256r1.P, y, Secp256r1.P);
 
     return Point.init(x, final_y);
@@ -252,7 +261,16 @@ pub fn pointFromUncompressed(uncompressed: []const u8) !Point {
     const x = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, uncompressed[1..33]));
     const y = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, uncompressed[33..65]));
 
+    if (!isPointOnCurve(x, y)) return errors.CryptoError.InvalidKey;
     return Point.init(x, y);
+}
+
+/// Validates that point (x, y) lies on the secp256r1 curve: y² ≡ x³ + ax + b (mod p)
+fn isPointOnCurve(x: u256, y: u256) bool {
+    const p = Secp256r1.P;
+    const lhs = modMul(y, y, p);
+    const rhs = modAdd(modAdd(modMul(modMul(x, x, p), x, p), modMul(Secp256r1.A, x, p), p), Secp256r1.B, p);
+    return lhs == rhs;
 }
 
 fn modAdd(a: u256, b: u256, modulus: u256) u256 {

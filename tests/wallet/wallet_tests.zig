@@ -7,7 +7,7 @@ const std = @import("std");
 
 const testing = std.testing;
 const Wallet = @import("../../src/wallet/neo_wallet.zig").Wallet;
-const CompleteNEP6Wallet = @import("../../src/wallet/nep6_complete.zig").CompleteNEP6Wallet;
+const CompleteNEP6Wallet = @import("../../src/wallet/nep6_extended.zig").CompleteNEP6Wallet;
 const Hash160 = @import("../../src/types/hash160.zig").Hash160;
 const errors = @import("../../src/core/errors.zig");
 const json_utils = @import("../../src/utils/json_utils.zig");

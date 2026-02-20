@@ -14,6 +14,9 @@ const PrivateKey = @import("../crypto/keys.zig").PrivateKey;
 const PublicKey = @import("../crypto/keys.zig").PublicKey;
 const KeyPair = @import("../crypto/keys.zig").KeyPair;
 const Account = @import("account.zig").Account;
+const Bip32ECKeyPair = @import("../crypto/bip32.zig").Bip32ECKeyPair;
+const hashing = @import("../crypto/hashing.zig");
+const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
 const secure = @import("../utils/secure.zig");
 
 /// BIP-39 compatible Neo account
@@ -23,14 +26,14 @@ pub const Bip39Account = struct {
     /// Base account
     account: Account,
     /// BIP-32 node derived from the BIP-39 seed (used for deterministic child keys)
-    bip32_node: @import("../crypto/bip32.zig").Bip32ECKeyPair,
+    bip32_node: Bip32ECKeyPair,
     /// Allocator for memory management
     allocator: std.mem.Allocator,
 
     const Self = @This();
 
     /// Creates BIP-39 account
-    fn initPrivate(allocator: std.mem.Allocator, key_pair: KeyPair, mnemonic: []const u8, bip32_node: @import("../crypto/bip32.zig").Bip32ECKeyPair) !Self {
+    fn initPrivate(allocator: std.mem.Allocator, key_pair: KeyPair, mnemonic: []const u8, bip32_node: Bip32ECKeyPair) !Self {
         const account = try Account.fromKeyPair(key_pair, allocator);
 
         return Self{
@@ -50,7 +53,7 @@ pub const Bip39Account = struct {
         self.allocator.free(@constCast(self.mnemonic));
     }
 
-    /// Generates new BIP-39 account)
+    /// Generates new BIP-39 account
     pub fn create(allocator: std.mem.Allocator, password: []const u8) !Self {
         // Generate BIP-39 mnemonic
         const mnemonic_words = try generateMnemonic(allocator);
@@ -60,7 +63,7 @@ pub const Bip39Account = struct {
         const seed = try mnemonicToSeed(mnemonic_words, password, allocator);
         defer secure.secureZeroFree(allocator, seed);
 
-        var bip32_node = try @import("../crypto/bip32.zig").Bip32ECKeyPair.generateKeyPair(seed);
+        var bip32_node = try Bip32ECKeyPair.generateKeyPair(seed);
         errdefer bip32_node.deinit();
 
         // Generate private key from seed (Key = SHA-256(BIP_39_SEED))
@@ -98,7 +101,7 @@ pub const Bip39Account = struct {
         const seed = try mnemonicToSeed(mnemonic, password, allocator);
         defer secure.secureZeroFree(allocator, seed);
 
-        var bip32_node = try @import("../crypto/bip32.zig").Bip32ECKeyPair.generateKeyPair(seed);
+        var bip32_node = try Bip32ECKeyPair.generateKeyPair(seed);
         errdefer bip32_node.deinit();
 
         // Generate private key from seed
@@ -326,7 +329,6 @@ const BIP39Utils = struct {
         try salt.appendSlice("mnemonic");
         try salt.appendSlice(normalized_passphrase);
 
-        const hashing = @import("../crypto/hashing.zig");
         return try hashing.pbkdf2HmacSha512(normalized_mnemonic_rejoined.items, salt.items, 2048, 64, allocator);
     }
 
@@ -820,7 +822,6 @@ test "Bip39Account deterministic NeoClient vector" {
     try testing.expectEqualSlices(u8, &expected_public_key_bytes, public_key.toSlice());
 
     // Verify verification script bytes (single-sig).
-    const ScriptBuilder = @import("../script/script_builder.zig").ScriptBuilder;
     const verification_script = try ScriptBuilder.buildVerificationScript(public_key.toSlice(), allocator);
     defer allocator.free(verification_script);
 

@@ -187,7 +187,7 @@ pub const NeoZig = struct {
         var request = try neo.getBlockCount();
         const response = try request.sendUsing(self.getService());
 
-        const count = response.getBlockCount() orelse return errors.NeoError.InvalidConfiguration;
+        const count = response.getResult() orelse return errors.NeoError.InvalidConfiguration;
         return count;
     }
 

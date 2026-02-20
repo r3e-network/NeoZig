@@ -37,13 +37,15 @@ test "ContractParameter type tags and equality" {
 
 test "ContractParameter public key validation" {
     const valid_pubkey = [_]u8{0x02} ++ [_]u8{0xAB} ** 32;
-    try ContractParameter.publicKey(&valid_pubkey).validate();
+    const valid_param = try ContractParameter.publicKey(&valid_pubkey);
+    try valid_param.validate();
 
     var invalid_pubkey = valid_pubkey;
     invalid_pubkey[0] = 0x04;
+    const invalid_param = try ContractParameter.publicKey(&invalid_pubkey);
     try testing.expectError(
         neo.ValidationError.InvalidParameter,
-        ContractParameter.publicKey(&invalid_pubkey).validate(),
+        invalid_param.validate(),
     );
 }
 

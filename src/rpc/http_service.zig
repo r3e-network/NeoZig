@@ -8,6 +8,7 @@ const ArrayList = std.ArrayList;
 
 const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
+const HttpClient = @import("http_client.zig").HttpClient;
 
 /// HTTP service for Neo RPC communication
 pub const HttpService = struct {
@@ -26,7 +27,7 @@ pub const HttpService = struct {
     /// HTTP headers
     headers: std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage),
     /// HTTP client for requests
-    http_client: @import("http_client.zig").HttpClient,
+    http_client: HttpClient,
 
     allocator: std.mem.Allocator,
 
@@ -48,7 +49,7 @@ pub const HttpService = struct {
             .owns_url = owns_url,
             .include_raw_responses = include_raw_responses,
             .headers = std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage).init(allocator),
-            .http_client = @import("http_client.zig").HttpClient.initBorrowed(allocator, url_slice),
+            .http_client = HttpClient.initBorrowed(allocator, url_slice),
             .allocator = allocator,
         };
     }
@@ -64,7 +65,7 @@ pub const HttpService = struct {
             .owns_url = true,
             .include_raw_responses = include_raw_responses,
             .headers = std.HashMap([]const u8, []const u8, StringContext, std.hash_map.default_max_load_percentage).init(allocator),
-            .http_client = @import("http_client.zig").HttpClient.initBorrowed(allocator, url),
+            .http_client = HttpClient.initBorrowed(allocator, url),
             .allocator = allocator,
         };
     }

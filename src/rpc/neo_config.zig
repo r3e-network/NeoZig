@@ -171,8 +171,6 @@ pub const NeoConfig = struct {
         if (self.max_valid_until_block_increment == 0) {
             return error.InvalidMaxValidUntilBlockIncrement;
         }
-
-        try self.nns_resolver.validate();
     }
 
     /// Checks if network magic is set

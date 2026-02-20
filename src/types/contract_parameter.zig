@@ -46,12 +46,19 @@ pub const ContractParameterType = enum(u8) {
     }
 
     pub fn fromString(type_str: []const u8) !ContractParameterType {
+        if (std.mem.eql(u8, type_str, "Any")) return .Any;
         if (std.mem.eql(u8, type_str, "Boolean")) return .Boolean;
         if (std.mem.eql(u8, type_str, "Integer")) return .Integer;
-        if (std.mem.eql(u8, type_str, "String")) return .String;
         if (std.mem.eql(u8, type_str, "ByteArray")) return .ByteArray;
+        if (std.mem.eql(u8, type_str, "String")) return .String;
         if (std.mem.eql(u8, type_str, "Hash160")) return .Hash160;
         if (std.mem.eql(u8, type_str, "Hash256")) return .Hash256;
+        if (std.mem.eql(u8, type_str, "PublicKey")) return .PublicKey;
+        if (std.mem.eql(u8, type_str, "Signature")) return .Signature;
+        if (std.mem.eql(u8, type_str, "Array")) return .Array;
+        if (std.mem.eql(u8, type_str, "Map")) return .Map;
+        if (std.mem.eql(u8, type_str, "InteropInterface")) return .InteropInterface;
+        if (std.mem.eql(u8, type_str, "Void")) return .Void;
         return errors.ValidationError.InvalidParameter;
     }
 };

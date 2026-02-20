@@ -35,7 +35,16 @@ pub const Execution = @import("responses.zig").Execution;
 pub const Notification = @import("responses.zig").Notification;
 pub const ContractState = @import("responses.zig").ContractState;
 pub const NeoAccountState = @import("extended_responses.zig").NeoAccountState;
+pub const NeoGetNextBlockValidators = @import("extended_responses.zig").NeoGetNextBlockValidators;
+pub const NeoGetStateHeight = @import("extended_responses.zig").NeoGetStateHeight;
+pub const NeoGetStateRoot = @import("extended_responses.zig").NeoGetStateRoot;
+pub const NeoListPlugins = @import("extended_responses.zig").NeoListPlugins;
+pub const OracleRequest = @import("extended_responses.zig").OracleRequest;
 pub const OracleResponseCode = @import("extended_responses.zig").OracleResponseCode;
+pub const NeoGetNep17Balances = @import("token_responses.zig").NeoGetNep17Balances;
+pub const NeoGetNep17Transfers = @import("token_responses.zig").NeoGetNep17Transfers;
+pub const NeoGetNep11Balances = @import("token_responses.zig").NeoGetNep11Balances;
+pub const NeoGetPeers = @import("protocol_responses.zig").NeoGetPeers;
 pub const NetworkFeeResponse = @import("responses.zig").NetworkFeeResponse;
 pub const SendRawTransactionResponse = @import("responses.zig").SendRawTransactionResponse;
 

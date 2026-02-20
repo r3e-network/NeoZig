@@ -34,7 +34,7 @@ pub const Wallet = struct {
 
     const Self = @This();
 
-    /// Creates new wallet)
+    /// Creates new wallet
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
@@ -64,7 +64,7 @@ pub const Wallet = struct {
         return self.name_field;
     }
 
-    /// Sets wallet name)
+    /// Sets wallet name
     pub fn name(self: *Self, wallet_name: []const u8) *Self {
         if (self.owns_name) {
             self.allocator.free(self.name_field);
@@ -84,7 +84,7 @@ pub const Wallet = struct {
         return self.version_field;
     }
 
-    /// Sets wallet version)
+    /// Sets wallet version
     pub fn version(self: *Self, wallet_version: []const u8) *Self {
         if (self.owns_version) {
             self.allocator.free(self.version_field);
@@ -111,7 +111,7 @@ pub const Wallet = struct {
         }
     }
 
-    /// Sets scrypt parameters)
+    /// Sets scrypt parameters
     pub fn scryptParams(self: *Self, params: ScryptParams) *Self {
         self.scrypt_params_field = params;
         return self;
@@ -141,12 +141,12 @@ pub const Wallet = struct {
         return null;
     }
 
-    /// Sets default account by account)
+    /// Sets default account by account
     pub fn defaultAccount(self: *Self, account: Account) !*Self {
         return try self.defaultAccountByHash(account.getScriptHash());
     }
 
-    /// Sets default account by script hash)
+    /// Sets default account by script hash
     pub fn defaultAccountByHash(self: *Self, account_hash: Hash160) !*Self {
         if (!self.accounts_map.contains(account_hash)) {
             return errors.throwIllegalArgument("Wallet does not contain account with specified script hash");
@@ -156,18 +156,18 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Checks if account is default)
+    /// Checks if account is default
     pub fn isDefault(self: Self, account: Account) bool {
         return self.isDefaultByHash(account.getScriptHash());
     }
 
-    /// Checks if account hash is default)
+    /// Checks if account hash is default
     pub fn isDefaultByHash(self: Self, account_hash: ?Hash160) bool {
         if (self.default_account_hash == null or account_hash == null) return false;
         return self.default_account_hash.?.eql(account_hash.?);
     }
 
-    /// Adds accounts to wallet)
+    /// Adds accounts to wallet
     pub fn addAccounts(self: *Self, accounts: []const Account) !*Self {
         for (accounts) |account| {
             _ = try self.addAccount(account);
@@ -175,7 +175,7 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Adds single account)
+    /// Adds single account
     pub fn addAccount(self: *Self, account: Account) !*Self {
         const script_hash = account.getScriptHash();
 
@@ -194,12 +194,12 @@ pub const Wallet = struct {
         return self;
     }
 
-    /// Removes account)
+    /// Removes account
     pub fn removeAccount(self: *Self, account: Account) !*Self {
         return try self.removeAccountByHash(account.getScriptHash());
     }
 
-    /// Removes account by hash)
+    /// Removes account by hash
     pub fn removeAccountByHash(self: *Self, account_hash: Hash160) !*Self {
         if (!self.accounts_map.contains(account_hash)) {
             return errors.WalletError.AccountNotFound;
@@ -364,17 +364,17 @@ pub const Account = struct {
         }
     }
 
-    /// Gets script hash)
+    /// Gets script hash
     pub fn getScriptHash(self: Self) Hash160 {
         return self.address.toHash160();
     }
 
-    /// Gets address)
+    /// Gets address
     pub fn getAddress(self: Self) Address {
         return self.address;
     }
 
-    /// Gets label)
+    /// Gets label
     pub fn getLabel(self: Self) ?[]const u8 {
         return self.label;
     }

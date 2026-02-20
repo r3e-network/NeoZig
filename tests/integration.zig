@@ -231,7 +231,7 @@ test "error handling integration" {
     for (invalid_key[1..]) |*byte| {
         byte.* = 0xFF;
     }
-    const invalid_param = neo.ContractParameter.publicKey(&invalid_key);
+    const invalid_param = try neo.ContractParameter.publicKey(&invalid_key);
     try testing.expectError(neo.errors.ValidationError.InvalidParameter, invalid_param.validate());
 }
 

@@ -201,8 +201,11 @@ test "all wallet functionality tests" {
     defer test_account.deinit();
     try testing.expect((try test_account.getScriptHash()).eql(neo.Hash160.ZERO));
 
-    // Test private key operations
-    const private_key = try test_account.getPrivateKey();
+    // Watch-only accounts do not expose private keys.
+    try testing.expectError(neo.errors.WalletError.AccountNotFound, test_account.getPrivateKey());
+
+    // Test private key operations with a full account.
+    const private_key = try bip39_account.getPrivateKey();
     try testing.expect(private_key.isValid());
 
     const public_key = try private_key.getPublicKey(true);
@@ -226,7 +229,8 @@ test "all wallet functionality tests" {
     const json_value = try nep6_wallet.toJson(allocator);
     defer json_utils.freeValue(json_value, allocator);
 
-    const parsed_wallet = try neo.wallet.NEP6Wallet.fromJson(json_value, allocator);
+    var parsed_wallet = try neo.wallet.NEP6Wallet.fromJson(json_value, allocator);
+    defer parsed_wallet.deinitOwned(allocator);
     try testing.expect(nep6_wallet.eql(parsed_wallet));
 
     std.log.info("✅ ALL wallet functionality tests passed", .{});
@@ -307,7 +311,7 @@ test "all crypto functionality tests" {
 
     // Test Bip32ECKeyPair
     const bip32_seed = "comprehensive test seed for BIP32 operations";
-    const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed, allocator);
+    const master_key = try neo.crypto.bip32.Bip32ECKeyPair.generateKeyPair(bip32_seed);
 
     try testing.expectEqual(@as(i32, 0), master_key.depth);
     try testing.expectEqual(@as(i32, 0), master_key.child_number);
@@ -477,6 +481,7 @@ test "all RPC functionality tests" {
 test "all protocol functionality tests" {
     const testing = std.testing;
     const allocator = testing.allocator;
+    _ = allocator;
 
     std.log.info("📡 Testing ALL Protocol Functionality...", .{});
 
@@ -576,7 +581,7 @@ test "all utility functionality tests" {
     // Test filtering
     const is_even = struct {
         fn predicate(x: i32) bool {
-            return x % 2 == 0;
+            return @mod(x, 2) == 0;
         }
     }.predicate;
 
@@ -593,7 +598,7 @@ test "all utility functionality tests" {
         }
     }.mapper;
 
-    const doubled = try neo.utils.ArrayUtils.map(i32, i32, &test_array[0..3], double, allocator);
+    const doubled = try neo.utils.ArrayUtils.map(i32, i32, test_array[0..3], double, allocator);
     defer allocator.free(doubled);
 
     const expected_doubled = [_]i32{ 2, 4, 6 };
@@ -606,7 +611,7 @@ test "all utility functionality tests" {
         }
     }.reducer;
 
-    const total = neo.utils.ArrayUtils.reduce(i32, i32, &test_array[0..4], 0, sum);
+    const total = neo.utils.ArrayUtils.reduce(i32, i32, test_array[0..4], 0, sum);
     try testing.expectEqual(@as(i32, 10), total); // 1+2+3+4 = 10
 
     // Test sorting
@@ -659,6 +664,7 @@ test "final absolute comprehensive validation" {
         &nep6_accounts,
         null,
     );
+    _ = nep6_wallet;
 
     // 3. Create NEF file for contract deployment
     const method_tokens = [_]neo.contract.MethodToken{

@@ -56,6 +56,11 @@ pub const CallFlags = enum(u8) {
         return @enumFromInt(value);
     }
 
+    /// Combines two flags via bitwise OR.
+    pub fn combine(self: Self, other: Self) Self {
+        return fromValue(@intFromEnum(self) | @intFromEnum(other));
+    }
+
     /// Gets flag description
     pub fn getDescription(self: Self) []const u8 {
         return switch (self) {

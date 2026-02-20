@@ -10,6 +10,8 @@ const errors = @import("../core/errors.zig");
 const StackItem = @import("../types/stack_item.zig").StackItem;
 const NeoClient = @import("../rpc/neo_client.zig").NeoClient;
 const NeoProtocol = @import("../protocol/neo_protocol.zig").NeoProtocol;
+const Hash160 = @import("../types/hash160.zig").Hash160;
+const ContractParameter = @import("../types/contract_parameter.zig").ContractParameter;
 
 /// Generic iterator for stack items
 pub fn Iterator(comptime T: type, comptime Context: type) type {
@@ -73,7 +75,7 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
         }
 
         fn traverseRpc(self: *Self, count: u32) ![]T {
-            const client: *NeoClient = @ptrCast(@alignCast(@constCast(&self.context)));
+            const client: *NeoClient = @ptrCast(@alignCast(self.context));
             var protocol = NeoProtocol.init(client.getService());
             const service_allocator = protocol.service.getAllocator();
 
@@ -99,7 +101,7 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
             return mapped_items;
         }
 
-        /// Traverses iterator)
+        /// Traverses iterator
         pub fn traverse(self: *Self, count: u32) ![]T {
             if (count == 0) {
                 return try self.allocator.alloc(T, 0);
@@ -149,13 +151,13 @@ pub fn Iterator(comptime T: type, comptime Context: type) type {
             return fetched;
         }
 
-        /// Terminates session)
+        /// Terminates session
         pub fn terminateSession(self: Self) !void {
-            const client: *NeoClient = @ptrCast(@alignCast(@constCast(&self.context)));
+            const client: *NeoClient = @ptrCast(@alignCast(self.context));
             var protocol = NeoProtocol.init(client.getService());
             var request = try protocol.terminateSession(self.session_id);
             const response = try request.sendUsing(protocol.service);
-            if (!(response.getTerminateSession() orelse false)) {
+            if (!(response.getResult() orelse false)) {
                 return errors.ContractError.ContractCallFailed;
             }
         }
@@ -263,10 +265,10 @@ pub const CommonIterators = struct {
     pub const IntegerIterator = Iterator(i64, *NeoClient);
 
     /// Hash160 iterator
-    pub const Hash160Iterator = Iterator(@import("../types/hash160.zig").Hash160, *NeoClient);
+    pub const Hash160Iterator = Iterator(Hash160, *NeoClient);
 
     /// Contract parameter iterator
-    pub const ContractParameterIterator = Iterator(@import("../types/contract_parameter.zig").ContractParameter, *NeoClient);
+    pub const ContractParameterIterator = Iterator(ContractParameter, *NeoClient);
 
     /// Stack item iterator (raw)
     pub const StackItemIterator = Iterator(StackItem, *NeoClient);
@@ -327,7 +329,7 @@ pub const IteratorFactory = struct {
         iterator_id: []const u8,
     ) !CommonIterators.Hash160Iterator {
         const hash160_mapper = struct {
-            fn map(stack_item: StackItem, alloc: std.mem.Allocator) !@import("../types/hash160.zig").Hash160 {
+            fn map(stack_item: StackItem, alloc: std.mem.Allocator) !Hash160 {
                 const bytes = try stack_item.getByteArray(alloc);
                 defer alloc.free(bytes);
 
@@ -337,7 +339,7 @@ pub const IteratorFactory = struct {
 
                 var hash_bytes: [20]u8 = undefined;
                 @memcpy(&hash_bytes, bytes);
-                return @import("../types/hash160.zig").Hash160.fromArray(hash_bytes);
+                return Hash160.fromArray(hash_bytes);
             }
         }.map;
 

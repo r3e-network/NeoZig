@@ -13,6 +13,7 @@ const response_aliases = @import("../rpc/response_aliases.zig");
 const responses = @import("../rpc/responses.zig");
 const BlockIndexPolling = @import("block_index_polling.zig").BlockIndexPolling;
 const PollingSource = @import("block_index_polling.zig").PollingSource;
+const PollingControl = @import("block_index_polling.zig").PollingControl;
 
 const log = std.log.scoped(.neo_protocol);
 
@@ -466,7 +467,7 @@ fn fetchBlockInternalStatic(ctx: *BlockPublisherContext, index: u32) !BlockFetch
 pub const BlockIndexSubscription = struct {
     polling: *BlockIndexPolling,
     allocator: std.mem.Allocator,
-    control: @import("block_index_polling.zig").PollingControl,
+    control: PollingControl,
     is_active: bool,
 
     pub fn stop(self: *BlockIndexSubscription) void {
@@ -664,7 +665,7 @@ test "Subscription management" {
         .index_subscription = BlockIndexSubscription{
             .polling = polling_ptr,
             .allocator = allocator,
-            .control = @import("block_index_polling.zig").PollingControl.init(15000, allocator),
+            .control = PollingControl.init(15000, allocator),
             .is_active = true,
         },
         .full_transactions = false,

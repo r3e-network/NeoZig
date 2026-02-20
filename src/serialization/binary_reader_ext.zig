@@ -10,6 +10,7 @@ const constants = @import("../core/constants.zig");
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
+const BytesUtils = @import("../utils/bytes_extensions.zig").BytesUtils;
 
 /// Complete binary reader
 pub const CompleteBinaryReader = struct {
@@ -22,7 +23,7 @@ pub const CompleteBinaryReader = struct {
 
     const Self = @This();
 
-    /// Creates binary reader)
+    /// Creates binary reader
     pub fn init(input: []const u8) Self {
         return Self{
             .position = 0,
@@ -36,12 +37,12 @@ pub const CompleteBinaryReader = struct {
         return self.array.len - self.position;
     }
 
-    /// Sets position marker)
+    /// Sets position marker
     pub fn mark(self: *Self) void {
         self.marker = @intCast(self.position);
     }
 
-    /// Resets to marker)
+    /// Resets to marker
     pub fn reset(self: *Self) !void {
         if (self.marker < 0) {
             return errors.SerializationError.InvalidFormat;
@@ -61,7 +62,12 @@ pub const CompleteBinaryReader = struct {
         return value;
     }
 
-    /// Reads single byte)
+    /// Backwards-compatible alias for readBool().
+    pub fn readBoolean(self: *Self) !bool {
+        return self.readBool();
+    }
+
+    /// Reads single byte
     pub fn readByte(self: *Self) !u8 {
         if (self.position >= self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -72,13 +78,13 @@ pub const CompleteBinaryReader = struct {
         return byte;
     }
 
-    /// Reads unsigned byte as integer)
+    /// Reads unsigned byte as integer
     pub fn readUnsignedByte(self: *Self) !u32 {
         const byte = try self.readByte();
         return @intCast(byte);
     }
 
-    /// Reads bytes of specified length)
+    /// Reads bytes of specified length
     pub fn readBytes(self: *Self, length: usize, allocator: std.mem.Allocator) ![]u8 {
         if (self.position + length > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -100,7 +106,7 @@ pub const CompleteBinaryReader = struct {
         self.position += buffer.len;
     }
 
-    /// Reads 16-bit unsigned integer)
+    /// Reads 16-bit unsigned integer
     pub fn readUInt16(self: *Self) !u16 {
         if (self.position + 2 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -112,7 +118,7 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u16, std.mem.bytesToValue(u16, bytes[0..2]));
     }
 
-    /// Reads 32-bit unsigned integer)
+    /// Reads 32-bit unsigned integer
     pub fn readUInt32(self: *Self) !u32 {
         if (self.position + 4 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -124,7 +130,7 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u32, std.mem.bytesToValue(u32, bytes[0..4]));
     }
 
-    /// Reads 64-bit unsigned integer)
+    /// Reads 64-bit unsigned integer
     pub fn readUInt64(self: *Self) !u64 {
         if (self.position + 8 > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -136,25 +142,25 @@ pub const CompleteBinaryReader = struct {
         return std.mem.littleToNative(u64, std.mem.bytesToValue(u64, bytes[0..8]));
     }
 
-    /// Reads signed 16-bit integer)
+    /// Reads signed 16-bit integer
     pub fn readInt16(self: *Self) !i16 {
         const unsigned = try self.readUInt16();
         return @bitCast(unsigned);
     }
 
-    /// Reads signed 32-bit integer)
+    /// Reads signed 32-bit integer
     pub fn readInt32(self: *Self) !i32 {
         const unsigned = try self.readUInt32();
         return @bitCast(unsigned);
     }
 
-    /// Reads signed 64-bit integer)
+    /// Reads signed 64-bit integer
     pub fn readInt64(self: *Self) !i64 {
         const unsigned = try self.readUInt64();
         return @bitCast(unsigned);
     }
 
-    /// Reads variable-length integer)
+    /// Reads variable-length integer
     pub fn readVarInt(self: *Self) !u64 {
         const first_byte = try self.readByte();
 
@@ -166,7 +172,7 @@ pub const CompleteBinaryReader = struct {
         };
     }
 
-    /// Reads variable-length string)
+    /// Reads variable-length string
     pub fn readVarString(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         const length = try self.readVarInt();
 
@@ -177,7 +183,7 @@ pub const CompleteBinaryReader = struct {
         return try self.readBytes(@intCast(length), allocator);
     }
 
-    /// Reads variable-length byte array)
+    /// Reads variable-length byte array
     pub fn readVarBytes(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         const length = try self.readVarInt();
 
@@ -204,20 +210,20 @@ pub const CompleteBinaryReader = struct {
         return try Hash256.initWithBytes(&hash_bytes);
     }
 
-    /// Reads big integer)
+    /// Reads big integer
     pub fn readBigInteger(self: *Self, byte_length: usize, allocator: std.mem.Allocator) !u256 {
         const bytes = try self.readBytes(byte_length, allocator);
         defer allocator.free(bytes);
 
-        return @import("../utils/bytes_extensions.zig").BytesUtils.toBigInt(bytes);
+        return BytesUtils.toBigInt(bytes);
     }
 
-    /// Reads serializable object)
+    /// Reads serializable object
     pub fn readSerializable(self: *Self, comptime T: type, allocator: std.mem.Allocator) !T {
         return try T.deserialize(self, allocator);
     }
 
-    /// Skips bytes)
+    /// Skips bytes
     pub fn skip(self: *Self, byte_count: usize) !void {
         if (self.position + byte_count > self.array.len) {
             return errors.SerializationError.UnexpectedEndOfData;
@@ -226,7 +232,7 @@ pub const CompleteBinaryReader = struct {
         self.position += byte_count;
     }
 
-    /// Seeks to position)
+    /// Seeks to position
     pub fn seek(self: *Self, new_position: usize) !void {
         if (new_position > self.array.len) {
             return errors.SerializationError.InvalidLength;

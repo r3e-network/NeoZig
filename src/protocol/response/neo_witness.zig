@@ -17,7 +17,7 @@ pub const NeoWitness = struct {
     const Self = @This();
     const Witness = @import("../../transaction/witness.zig").Witness;
 
-    /// Creates new NeoWitness)
+    /// Creates new NeoWitness
     pub fn init(invocation: []const u8, verification: []const u8) Self {
         return Self{
             .invocation = invocation,
@@ -25,7 +25,7 @@ pub const NeoWitness = struct {
         };
     }
 
-    /// Creates NeoWitness from Witness)
+    /// Creates NeoWitness from Witness
     pub fn initFromWitness(witness: Witness, allocator: std.mem.Allocator) !Self {
         const invocation_script = witness.getInvocationScript();
         const verification_script = witness.getVerificationScript();

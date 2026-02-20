@@ -286,7 +286,7 @@ pub const TransactionAttribute = union(enum) {
         }
     }
 
-    /// JSON decoding)
+    /// JSON decoding
     pub fn decodeFromJson(json_str: []const u8, allocator: std.mem.Allocator) !Self {
         const parsed = try std.json.parseFromSlice(std.json.Value, allocator, json_str, .{});
         defer parsed.deinit();

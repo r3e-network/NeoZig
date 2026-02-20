@@ -8,6 +8,9 @@ const std = @import("std");
 const Hash160 = @import("../../types/hash160.zig").Hash160;
 const ContractNef = @import("contract_nef.zig").ContractNef;
 const ContractManifest = @import("contract_manifest.zig").ContractManifest;
+const ContractMethodToken = @import("contract_nef.zig").ContractMethodToken;
+const ContractGroup = @import("contract_manifest.zig").ContractGroup;
+const ContractPermission = @import("contract_manifest.zig").ContractPermission;
 
 /// Contract state structure
 pub const ContractState = struct {
@@ -100,7 +103,7 @@ pub const ContractState = struct {
             self.manifest.eql(other.manifest);
     }
 
-    /// Hash function)
+    /// Hash function
     pub fn hashValue(self: Self) u64 {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(std.mem.asBytes(&self.id));
@@ -193,16 +196,16 @@ test "ContractState creation and properties" {
 
     const compiler = try allocator.dupe(u8, "neon");
     const script = try allocator.dupe(u8, "VgEMDEhlbGxvIFdvcmxkIQ==");
-    var nef = ContractNef.init(ContractNef.NEF_MAGIC, compiler, null, &[_]@import("contract_nef.zig").ContractMethodToken{}, script, 0x12345678);
+    var nef = ContractNef.init(ContractNef.NEF_MAGIC, compiler, null, &[_]ContractMethodToken{}, script, 0x12345678);
     defer nef.deinit(allocator);
 
     var manifest = try ContractManifest.init(
         "TestContract",
-        &[_]@import("contract_manifest.zig").ContractGroup{},
+        &[_]ContractGroup{},
         null,
         &[_][]const u8{"NEP-17"},
         null,
-        &[_]@import("contract_manifest.zig").ContractPermission{},
+        &[_]ContractPermission{},
         &[_][]const u8{},
         null,
         allocator,

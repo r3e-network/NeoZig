@@ -31,12 +31,12 @@ pub const AccountSigner = struct {
         };
     }
 
-    /// Creates signer with none scope)
+    /// Creates signer with none scope
     pub fn none(account: Account) !Self {
         return try initPrivate(account, .None);
     }
 
-    /// Creates signer with none scope from hash)
+    /// Creates signer with none scope from hash
     pub fn noneFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);
@@ -48,12 +48,12 @@ pub const AccountSigner = struct {
         return try initPrivate(account, .None);
     }
 
-    /// Creates signer with calledByEntry scope)
+    /// Creates signer with calledByEntry scope
     pub fn calledByEntry(account: Account) !Self {
         return try initPrivate(account, .CalledByEntry);
     }
 
-    /// Creates signer with calledByEntry scope from hash)
+    /// Creates signer with calledByEntry scope from hash
     pub fn calledByEntryFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);
@@ -65,12 +65,12 @@ pub const AccountSigner = struct {
         return try initPrivate(account, .CalledByEntry);
     }
 
-    /// Creates signer with global scope)
+    /// Creates signer with global scope
     pub fn global(account: Account) !Self {
         return try initPrivate(account, .Global);
     }
 
-    /// Creates signer with global scope from hash)
+    /// Creates signer with global scope from hash
     pub fn globalFromHash(account_hash: Hash160, allocator: std.mem.Allocator) !Self {
         const address = try account_hash.toAddress(allocator);
         defer allocator.free(address);

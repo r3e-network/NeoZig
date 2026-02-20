@@ -32,7 +32,7 @@ pub const ECPoint = struct {
         return Self.init(secp256r1.Secp256r1.GX, secp256r1.Secp256r1.GY);
     }
 
-    /// Point multiplication)
+    /// Point multiplication
     pub fn multiply(self: Self, k: u256) Self {
         if (k == 0 or self.infinity) return Self.infinityPoint();
         if (k == 1) return self;
@@ -92,7 +92,7 @@ pub const ECPoint = struct {
         return Self.init(x3, y3);
     }
 
-    /// Gets encoded point)
+    /// Gets encoded point
     pub fn getEncoded(self: Self, compressed: bool, allocator: std.mem.Allocator) ![]u8 {
         if (self.infinity) return errors.CryptoError.InvalidCurvePoint;
 

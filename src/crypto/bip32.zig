@@ -15,6 +15,9 @@ const PublicKey = @import("keys.zig").PublicKey;
 const KeyPair = @import("keys.zig").KeyPair;
 const hashing = @import("hashing.zig");
 const secure = @import("../utils/secure.zig");
+const secp256r1 = @import("secp256r1.zig");
+const base58 = @import("../utils/base58.zig");
+const ripemd160_impl = @import("ripemd160.zig");
 
 /// BIP32 HD key pair
 pub const Bip32ECKeyPair = struct {
@@ -84,19 +87,19 @@ pub const Bip32ECKeyPair = struct {
         };
     }
 
-    /// Creates from private key and chain code)
+    /// Creates from private key and chain code
     pub fn createFromPrivateKey(private_key: PrivateKey, chain_code: [32]u8) !Self {
         const public_key = try private_key.getPublicKey(true);
         return try Self.init(private_key, public_key, 0, chain_code, null);
     }
 
-    /// Creates from bytes)
+    /// Creates from bytes
     pub fn createFromBytes(private_key_bytes: [32]u8, chain_code: [32]u8) !Self {
         const private_key = try PrivateKey.init(private_key_bytes);
         return try Self.createFromPrivateKey(private_key, chain_code);
     }
 
-    /// Generates key pair from seed)
+    /// Generates key pair from seed
     pub fn generateKeyPair(seed: []const u8) !Self {
         const hmac_key = "Bitcoin seed";
 
@@ -154,8 +157,14 @@ pub const Bip32ECKeyPair = struct {
         const left_scalar = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, left_32));
         const parent_scalar = std.mem.bigToNative(u256, std.mem.bytesToValue(u256, self.key_pair.private_key.toSlice()));
 
-        const secp256r1 = @import("secp256r1.zig");
-        const new_scalar = (left_scalar +% parent_scalar) % secp256r1.Secp256r1.N;
+
+        // BIP32: if left_scalar >= N, the key is invalid — try next index
+        if (left_scalar >= secp256r1.Secp256r1.N) {
+            return errors.CryptoError.KeyDerivationFailed;
+        }
+
+        // Use u512 intermediate to avoid wrapping overflow
+        const new_scalar: u256 = @intCast((@as(u512, left_scalar) + @as(u512, parent_scalar)) % @as(u512, secp256r1.Secp256r1.N));
 
         if (new_scalar == 0) {
             return errors.CryptoError.KeyDerivationFailed; // Invalid key, try next index
@@ -220,7 +229,6 @@ pub const Bip32ECKeyPair = struct {
         try extended_key.appendSlice(self.key_pair.private_key.toSlice());
 
         // Encode with Base58Check
-        const base58 = @import("../utils/base58.zig");
         return try base58.encodeCheck(extended_key.items, allocator);
     }
 
@@ -253,7 +261,6 @@ pub const Bip32ECKeyPair = struct {
         try extended_key.appendSlice(&self.public_key_point);
 
         // Encode with Base58Check
-        const base58 = @import("../utils/base58.zig");
         return try base58.encodeCheck(extended_key.items, allocator);
     }
 
@@ -272,7 +279,6 @@ pub const Bip32ECKeyPair = struct {
 /// Calculates identifier from public key
 fn calculateIdentifier(compressed_public_key: []const u8) ![20]u8 {
     // Hash160 of compressed public key
-    const ripemd160_impl = @import("ripemd160.zig");
     const sha_hash = Hash256.sha256(compressed_public_key);
     return ripemd160_impl.ripemd160(sha_hash.toSlice());
 }

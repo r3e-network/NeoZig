@@ -117,7 +117,7 @@ pub const StackItem = union(enum) {
             BUFFER_BYTE => Self{ .Buffer = "" },
             ARRAY_BYTE => Self{ .Array = &[_]StackItem{} },
             STRUCT_BYTE => Self{ .Struct = &[_]StackItem{} },
-            MAP_BYTE => Self{ .Map = undefined }, // Would need proper initialization
+            MAP_BYTE => null, // Map requires allocator for proper initialization
             INTEROP_INTERFACE_BYTE => Self{ .InteropInterface = .{ .iterator_id = "", .interface_name = "" } },
             else => null,
         };
