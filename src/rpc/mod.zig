@@ -4,50 +4,101 @@
 
 const std = @import("std");
 
-// Export RPC components
-pub const NeoClient = @import("neo_client.zig").NeoClient;
-pub const NeoConfig = @import("neo_client.zig").NeoConfig;
-pub const NeoService = @import("neo_client.zig").NeoService;
-pub const RpcRequest = @import("neo_client.zig").RpcRequest;
-pub const RpcParam = @import("neo_client.zig").RpcParam;
-pub const ServiceFactory = @import("neo_service.zig").ServiceFactory;
-pub const ServiceImplementation = @import("neo_service.zig").ServiceImplementation;
-pub const HttpService = @import("http_service.zig").HttpService;
-pub const HttpServiceFactory = @import("http_service.zig").HttpServiceFactory;
-pub const HttpClient = @import("http_client.zig").HttpClient;
-pub const HttpClientFactory = @import("http_client.zig").HttpClientFactory;
-pub const Request = @import("request.zig").Request;
-pub const RequestUtils = @import("request.zig").RequestUtils;
-pub const Response = @import("response.zig").Response;
-pub const ResponseError = @import("response.zig").ResponseError;
+pub const client = @import("client_namespace.zig");
+pub const config = @import("config_namespace.zig");
+pub const service = @import("service_namespace.zig");
+pub const transport = @import("transport_namespace.zig");
+pub const operation = @import("operation_namespace.zig");
+pub const types = @import("types.zig");
 
-// Export complete response types
-pub const NeoBlock = @import("responses.zig").NeoBlock;
-pub const NeoVersion = @import("responses.zig").NeoVersion;
-pub const InvocationResult = @import("responses.zig").InvocationResult;
-pub const StackItem = @import("../types/stack_item.zig").StackItem;
-pub const Nep17Balances = @import("responses.zig").Nep17Balances;
-pub const Nep17Transfers = @import("responses.zig").Nep17Transfers;
-pub const TokenBalance = @import("responses.zig").TokenBalance;
-pub const TokenTransfer = @import("responses.zig").TokenTransfer;
-pub const NeoApplicationLog = @import("responses.zig").NeoApplicationLog;
-pub const Execution = @import("responses.zig").Execution;
-pub const Notification = @import("responses.zig").Notification;
-pub const ContractState = @import("responses.zig").ContractState;
-pub const NeoAccountState = @import("extended_responses.zig").NeoAccountState;
-pub const NeoGetNextBlockValidators = @import("extended_responses.zig").NeoGetNextBlockValidators;
-pub const NeoGetStateHeight = @import("extended_responses.zig").NeoGetStateHeight;
-pub const NeoGetStateRoot = @import("extended_responses.zig").NeoGetStateRoot;
-pub const NeoListPlugins = @import("extended_responses.zig").NeoListPlugins;
-pub const OracleRequest = @import("extended_responses.zig").OracleRequest;
-pub const OracleResponseCode = @import("extended_responses.zig").OracleResponseCode;
-pub const NeoGetNep17Balances = @import("token_responses.zig").NeoGetNep17Balances;
-pub const NeoGetNep17Transfers = @import("token_responses.zig").NeoGetNep17Transfers;
-pub const NeoGetNep11Balances = @import("token_responses.zig").NeoGetNep11Balances;
-pub const NeoGetPeers = @import("protocol_responses.zig").NeoGetPeers;
-pub const NetworkFeeResponse = @import("responses.zig").NetworkFeeResponse;
-pub const SendRawTransactionResponse = @import("responses.zig").SendRawTransactionResponse;
+// Backward-compatible flat exports
+pub const NeoClient = client.Client;
+pub const NeoConfig = config.Config;
+pub const NeoService = service.Service;
+pub const Client = NeoClient;
+pub const Config = NeoConfig;
+pub const Service = NeoService;
+pub const NeoClientBuilder = client.Builder;
+pub const NeoConfigBuilder = config.Builder;
+pub const RpcRequest = operation.Request;
+pub const RpcParam = operation.Param;
+pub const ServiceFactory = service.Factory;
+pub const ServiceImplementation = service.Implementation;
+pub const HttpService = transport.Service;
+pub const HttpServiceFactory = transport.ServiceFactory;
+pub const HttpClient = transport.Client;
+pub const HttpClientFactory = transport.ClientFactory;
+pub const Request = operation.JsonRequest;
+pub const RequestUtils = operation.RequestUtils;
+pub const Response = operation.Response;
+pub const ResponseError = operation.ResponseError;
+
+pub const NeoBlock = types.NeoBlock;
+pub const NeoVersion = types.NeoVersion;
+pub const InvocationResult = types.InvocationResult;
+pub const StackItem = types.StackItem;
+pub const Nep17Balances = types.Nep17Balances;
+pub const Nep17Transfers = types.Nep17Transfers;
+pub const TokenBalance = types.TokenBalance;
+pub const TokenTransfer = types.TokenTransfer;
+pub const NeoApplicationLog = types.NeoApplicationLog;
+pub const Execution = types.Execution;
+pub const Notification = types.Notification;
+pub const ContractState = types.ContractState;
+pub const NeoAccountState = types.NeoAccountState;
+pub const NeoGetNextBlockValidators = types.NeoGetNextBlockValidators;
+pub const NeoGetStateHeight = types.NeoGetStateHeight;
+pub const NeoGetStateRoot = types.NeoGetStateRoot;
+pub const NeoListPlugins = types.NeoListPlugins;
+pub const OracleRequest = types.OracleRequest;
+pub const OracleResponseCode = types.OracleResponseCode;
+pub const NeoGetNep17Balances = types.NeoGetNep17Balances;
+pub const NeoGetNep17Transfers = types.NeoGetNep17Transfers;
+pub const NeoGetNep11Balances = types.NeoGetNep11Balances;
+pub const NeoGetPeers = types.NeoGetPeers;
+pub const NetworkFeeResponse = types.NetworkFeeResponse;
+pub const SendRawTransactionResponse = types.SendRawTransactionResponse;
+pub const NeoAddress = types.NeoAddress;
+pub const ContractMethodToken = types.ContractMethodToken;
+pub const NameState = types.NameState;
+pub const TransactionSendToken = types.TransactionSendToken;
+pub const NeoGetUnclaimedGas = types.NeoGetUnclaimedGas;
+pub const Nep17Contract = types.Nep17Contract;
+pub const NeoNetworkFee = types.NeoNetworkFee;
+pub const NeoValidateAddress = types.NeoValidateAddress;
+pub const PopulatedBlocks = types.PopulatedBlocks;
+pub const RecordState = types.RecordState;
+pub const NativeContractState = types.NativeContractState;
+pub const ExpressContractState = types.ExpressContractState;
+pub const ExpressShutdown = types.ExpressShutdown;
+pub const Diagnostics = types.Diagnostics;
+pub const ContractStorageEntry = types.ContractStorageEntry;
+pub const NeoGetMemPool = types.NeoGetMemPool;
+pub const Peer = types.Peer;
+pub const NeoGetWalletBalance = types.NeoGetWalletBalance;
+pub const NeoGetClaimable = types.NeoGetClaimable;
+pub const ClaimableTransaction = types.ClaimableTransaction;
+pub const NeoGetTokenTransfers = types.NeoGetTokenTransfers;
+pub const NeoGetWalletUnclaimedGas = types.NeoGetWalletUnclaimedGas;
+pub const NeoGetProof = types.NeoGetProof;
+pub const NeoGetVersion = types.NeoGetVersion;
+pub const NeoSendRawTransaction = types.NeoSendRawTransaction;
+pub const NeoFindStates = types.NeoFindStates;
+pub const NeoGetUnspents = types.NeoGetUnspents;
+pub const TransactionAttributeResponse = types.TransactionAttributeResponse;
+pub const NotificationResponse = types.NotificationResponse;
+pub const ResponseAliases = types.ResponseAliases;
+pub const ExpressShutdownResponse = types.ExpressShutdownResponse;
+pub const DiagnosticsResponse = types.DiagnosticsResponse;
 
 test "rpc module" {
     std.testing.refAllDecls(@This());
+}
+
+test "rpc module mirrors unique catalog aliases" {
+    const testing = std.testing;
+
+    try testing.expect(NeoGetClaimable == types.NeoGetClaimable);
+    try testing.expect(NeoFindStates == types.NeoFindStates);
+    try testing.expect(DiagnosticsResponse == types.DiagnosticsResponse);
 }

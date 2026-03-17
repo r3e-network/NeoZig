@@ -4,41 +4,49 @@
 
 const std = @import("std");
 
-// Export contract components
-pub const SmartContract = @import("smart_contract.zig").SmartContract;
-pub const ContractManagement = @import("contract_management.zig").ContractManagement;
-pub const FungibleToken = @import("fungible_token.zig").FungibleToken;
-pub const NonFungibleToken = @import("non_fungible_token.zig").NonFungibleToken;
-pub const GasToken = @import("gas_token.zig").GasToken;
-pub const NeoToken = @import("neo_token.zig").NeoToken;
-pub const PolicyContract = @import("policy_contract.zig").PolicyContract;
-pub const RoleManagement = @import("role_management.zig").RoleManagement;
-pub const Role = @import("../types/role.zig").Role;
-pub const Token = @import("token.zig").Token;
-pub const TransferRecipient = @import("fungible_token.zig").TransferRecipient;
-pub const NefFile = @import("nef_file.zig").NefFile;
-pub const MethodToken = @import("nef_file.zig").MethodToken;
-pub const NeoURI = @import("neo_uri.zig").NeoURI;
-pub const NeoURIBuilder = @import("neo_uri.zig").NeoURIBuilder;
-pub const URIUtils = @import("neo_uri.zig").URIUtils;
-pub const NNSName = @import("nns_name.zig").NNSName;
+pub const base = @import("base_namespace.zig");
+pub const tokens = @import("token_namespace.zig");
+pub const native = @import("native_namespace.zig");
+pub const naming = @import("naming_namespace.zig");
+pub const artifacts = @import("artifact_namespace.zig");
+pub const types = @import("type_namespace.zig");
 
-// v3.9.0 (Faun hardfork) native contracts
-pub const Treasury = @import("treasury.zig").Treasury;
-pub const Notary = @import("notary.zig").Notary;
-pub const CryptoLib = @import("crypto_lib.zig").CryptoLib;
-pub const NamedCurveHash = @import("crypto_lib.zig").NamedCurveHash;
+// Export contract components
+pub const SmartContract = base.SmartContract;
+pub const Token = base.Token;
+pub const FungibleToken = tokens.FungibleToken;
+pub const NonFungibleToken = tokens.NonFungibleToken;
+pub const GasToken = tokens.GasToken;
+pub const NeoToken = tokens.NeoToken;
+pub const TransferRecipient = tokens.TransferRecipient;
+pub const ContractManagement = native.ContractManagement;
+pub const PolicyContract = native.PolicyContract;
+pub const RoleManagement = native.RoleManagement;
+pub const Role = native.Role;
+pub const Treasury = native.Treasury;
+pub const Notary = native.Notary;
+pub const CryptoLib = native.CryptoLib;
+pub const NamedCurveHash = native.NamedCurveHash;
+pub const NeoURI = naming.NeoURI;
+pub const NeoURIBuilder = naming.NeoURIBuilder;
+pub const URIUtils = naming.URIUtils;
+pub const NNSName = naming.NNSName;
+pub const NeoNameService = naming.NeoNameService;
+pub const NefFile = artifacts.NefFile;
+pub const MethodToken = artifacts.MethodToken;
 
 // Export contract data structures
-pub const ContractManifest = @import("smart_contract.zig").ContractManifest;
-pub const ContractState = @import("smart_contract.zig").ContractState;
-pub const ContractNef = @import("smart_contract.zig").ContractNef;
-pub const ContractGroup = @import("smart_contract.zig").ContractGroup;
-pub const ContractFeatures = @import("smart_contract.zig").ContractFeatures;
-pub const ContractABI = @import("smart_contract.zig").ContractABI;
-pub const ContractMethod = @import("smart_contract.zig").ContractMethod;
-pub const ContractEvent = @import("smart_contract.zig").ContractEvent;
-pub const ContractPermission = @import("smart_contract.zig").ContractPermission;
+pub const ContractManifest = types.ContractManifest;
+pub const ContractState = types.ContractState;
+pub const ContractNef = types.ContractNef;
+pub const ContractGroup = types.ContractGroup;
+pub const ContractFeatures = types.ContractFeatures;
+pub const ContractABI = types.ContractABI;
+pub const ContractMethod = types.ContractMethod;
+pub const ContractEvent = types.ContractEvent;
+pub const ContractPermission = types.ContractPermission;
+pub const ContractError = types.ContractError;
+pub const ContractErrorUtils = types.ContractErrorUtils;
 
 test "contract module" {
     std.testing.refAllDecls(@This());

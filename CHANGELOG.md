@@ -4,6 +4,35 @@
 
 - (none)
 
+## 1.4.0 - 2026-03-17
+
+### Architecture and Public Surface
+
+- Reorganized the public SDK surface around stable namespace-first entry points under `neo.runtime`, `neo.rpc`, `neo.contract`, `neo.transaction`, and `neo.wallet`, while preserving compatibility aliases.
+- Added clearer canonical names for ambiguous wallet and transaction types, including `StoredAccount` / `SignerAccount`, `TransactionWitness` / `ScriptWitness`, and `WitnessScopeSet`.
+- Extended `neo.rpc.types` into the complete RPC response-model catalog, with organized `core`, `extended`, `protocol`, and `remaining` families.
+
+### RPC Layer Refactor
+
+- Refactored the RPC client, config, and service layers into smaller focused modules with additive namespace exports and builder-based construction.
+- Split the large RPC response files into façade-plus-category modules, significantly reducing file size without changing the public import paths.
+- Kept the complete Neo RPC surface, including response models that were not previously easy to discover from the top-level RPC namespaces.
+
+### Correctness and Reliability
+
+- Fixed RPC request parameter ownership so request objects deep-clone parameter payloads safely.
+- Fixed wallet account ownership boundaries so wallet-managed account storage clones on write and read APIs return borrowed views instead of sharing owning state.
+- Cleaned up latent compile and test issues surfaced by the broader namespace exposure.
+
+### Documentation and Examples
+
+- Updated README, API, architecture, troubleshooting, usage, and migration docs to reflect the preferred namespace-first layout and builder-based RPC client construction.
+- Updated examples to use the preferred public surface.
+
+### Validation
+
+- Re-ran the full verification matrix during the release prep, including `zig build rpc-test`, `zig build test`, and `zig build examples`.
+
 ## 1.3.1 - 2026-02-20
 
 ### Neo N3 v3.9.1 Compatibility + Stability Patch

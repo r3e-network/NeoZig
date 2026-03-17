@@ -25,16 +25,23 @@ Available submodules:
 
 | Module              | Purpose                                                        |
 | ------------------- | -------------------------------------------------------------- |
-| `neo.core`          | Constants, errors, and core types                              |
-| `neo.types`         | Hash160, Hash256, Address, ContractParameter                   |
-| `neo.crypto`        | Cryptographic operations (keys, signatures, NEP-2, WIF, BIP32) |
-| `neo.rpc`           | JSON-RPC client (NeoClient, HTTP transport)                    |
-| `neo.transaction`   | Transaction building and signing                               |
-| `neo.contract`      | Smart contract wrappers (NEP-17, NEP-11, native contracts)     |
-| `neo.wallet`        | NEP-6 wallets, BIP-39 accounts                                 |
-| `neo.script`        | Neo VM script construction                                     |
-| `neo.serialization` | Binary serialization framework                                 |
+| `neo.core`          | Constants and shared error types                               |
+| `neo.model`         | Hash160, Hash256, Address, ContractParameter                   |
+| `neo.security`      | Cryptographic operations (keys, signatures, NEP-2, WIF, BIP32) |
+| `neo.io`            | Binary serialization framework                                 |
+| `neo.vm`            | Neo VM script construction                                     |
+| `neo.runtime`       | Contracts, transactions, wallets, RPC, and protocol access     |
+| `neo.rpc`           | Namespace-first RPC surface (`client`, `config`, etc.)         |
 | `neo.utils`         | Logging, validation, string/array utilities                    |
+
+Flat aliases such as `neo.Hash160`, `neo.crypto`, `neo.transaction`, and `neo.rpc.Client`
+remain available for compatibility.
+
+For RPC response models:
+
+- `neo.rpc.types` is the complete response-model catalog
+- `neo.rpc.types.core`, `extended`, `protocol`, and `remaining` expose the organized response families
+- `neo.rpc` mirrors the common unique response aliases for convenience
 
 ## Core Types
 
@@ -236,8 +243,8 @@ const hash160 = try neo.crypto.hash160(data);
 ### NeoClient Service
 
 ```zig
-// Create service
-var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+// Create service directly when you need transport-level control
+var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
 
 // Configure
 service.setMaxResponseBytes(32 * 1024 * 1024);  // 32 MiB default
@@ -247,16 +254,21 @@ const config = service.getConfiguration();
 ### NeoClient Client
 
 ```zig
-// Build client
-const config = neo.rpc.NeoConfig.init();
-var client = neo.rpc.NeoClient.build(allocator, &service, config);
+// Preferred builder-based construction
+const config = try neo.rpc.Config.builder()
+    .blockInterval(3000)
+    .pollingInterval(3000)
+    .build();
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(config)
+    .build();
 defer client.deinit();
 
-// Or with custom config
-var custom_config = neo.rpc.NeoConfig.init();
-custom_config.timeout_ms = 30000;
-custom_config.max_retries = 3;
-var client = neo.rpc.NeoClient.build(allocator, &service, custom_config);
+// Compatibility path when you already own a service
+var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
+var compat_client = neo.rpc.Client.build(allocator, &service, neo.rpc.Config.init());
+defer compat_client.deinit();
 ```
 
 ### RPC Methods
@@ -348,6 +360,14 @@ const tx = try tx_request.send();
 ```
 
 ## Transactions
+
+Preferred transaction witness names:
+
+- `neo.transaction.TransactionWitness` is the serialized witness type embedded in transactions.
+- `neo.transaction.ScriptWitness` is the richer helper model from the witness utilities.
+- `neo.transaction.WitnessScopeSet` is the richer scope enum that includes combine/extract helpers.
+- `neo.transaction.Witness`, `neo.transaction.CompleteWitness`, and `neo.transaction.WitnessScripts` remain as compatibility aliases.
+- `neo.transaction.CompleteWitnessScope` remains as a compatibility alias.
 
 ### Transaction Builder
 
@@ -519,6 +539,12 @@ defer destroy_tx.deinit();
 
 ## Wallet
 
+Preferred wallet account names:
+
+- `neo.wallet.StoredAccount` is the wallet-managed record type returned by `neo.wallet.Wallet`.
+- `neo.wallet.SignerAccount` is the signer-capable account model used for standalone signing flows.
+- Compatibility aliases `neo.wallet.WalletAccount` and `neo.wallet.Account` remain available.
+
 ### NEP-6 Wallet
 
 ```zig
@@ -587,6 +613,10 @@ if (wallet.isDefault(account.?)) {
 const count = wallet.getAccountCount();
 std.log.info("Total accounts: {}", .{count});
 ```
+
+`neo.wallet.Wallet` returns borrowed `StoredAccount` views from lookup methods such as
+`getAccount(...)` and `getDefaultAccount()`. The wallet owns those records; callers should
+not deinitialize them separately.
 
 ## Utilities
 
@@ -668,6 +698,8 @@ const address = try neo.Address.fromString(allocator, str);
 | `TransactionBuilder` | Caller owns | `builder.deinit()`              |
 | `NeoClient`          | Caller owns | `client.deinit()`               |
 | `Wallet`             | Caller owns | `wallet.deinit()`               |
+| `StoredAccount`      | Wallet owns | Borrowed view, no extra cleanup |
+| `SignerAccount`      | Caller owns | `account.deinit()`              |
 | `Bip39Account`       | Caller owns | `account.deinit()`              |
 | `NEP6Wallet`         | Caller owns | `wallet.deinit()`               |
 | `Allocated strings`  | Caller owns | `allocator.free(str)`           |

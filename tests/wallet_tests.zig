@@ -218,3 +218,24 @@ test "wallet error handling" {
     const account = try wallet.createAccount("Test Account");
     try testing.expectError(neo.errors.NeoError.IllegalArgument, wallet.addAccount(account));
 }
+
+test "wallet addAccount clones caller-owned account" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var wallet = neo.wallet.Wallet.init(allocator);
+    defer wallet.deinit();
+
+    const key_pair = try neo.crypto.generateKeyPair(true);
+    var external = try neo.wallet.WalletAccount.initFromKeyPair(allocator, key_pair, "Owned Account");
+    defer external.deinit();
+
+    _ = try wallet.addAccount(external);
+
+    try testing.expectEqual(@as(u32, 1), wallet.getAccountCount());
+
+    const stored = wallet.getDefaultAccount();
+    try testing.expect(stored != null);
+    try testing.expectEqualStrings("Owned Account", stored.?.getLabel().?);
+    try testing.expect(external.getLabel().?.ptr != stored.?.getLabel().?.ptr);
+}

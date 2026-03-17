@@ -391,7 +391,7 @@ test "ContractSignerFactory utility methods" {
 
     var governance_signer = try ContractSignerFactory.createForGovernance(
         allocator,
-        constants.NativeContracts.NEO_TOKEN,
+        try Hash160.initWithBytes(constants.NativeContracts.NEO_TOKEN[0..]),
         &governance_params,
     );
     defer governance_signer.deinit();

@@ -6,7 +6,7 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/neo-zig-sdk)
 [![Release](https://img.shields.io/github/v/release/r3e-network/neo-zig-sdk?sort=semver&display_name=tag)](https://github.com/r3e-network/neo-zig-sdk/releases/latest)
 
-A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and NeoClient API familiarity.
+A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and a namespace-first SDK layout with NeoClient API familiarity.
 
 ## ✨ Features
 
@@ -25,7 +25,7 @@ A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory managemen
 - **Neo protocol**: aligned with Neo N3 v3.9.1 (VM opcodes, interop pricing, native contract hashes, `getversion` metadata)
 - **Test coverage**: `zig build test` runs unit + parity suites
 - **Networking**: RPC transport uses `std.http.Client`; timeouts are best-effort (no socket deadlines in stdlib)
-- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.NeoClient` for live calls
+- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.client.Client` for live calls
 
 ## 📖 Documentation
 
@@ -36,6 +36,16 @@ The SDK includes comprehensive documentation covering all aspects of development
 - **[Quick Start](#-quick-start)** - Get up and running in 5 minutes
 - **[Installation](#installation)** - Add to your project
 - **[Usage Guide](docs/USAGE.md)** - Comprehensive usage patterns with examples
+
+Preferred public layout:
+
+- `neo.model` for core value types like `Hash160`, `Hash256`, `Address`, and `ContractParameter`
+- `neo.security` for cryptography
+- `neo.io` for serialization
+- `neo.runtime` for contracts, transactions, wallets, RPC, and protocol access
+- `neo.rpc.Client.builder` for RPC client construction
+- `neo.rpc.types` for the complete RPC response-model catalog
+- Flat aliases such as `neo.Hash160` and `neo.rpc.Client` remain available for compatibility
 
 ### Core Concepts
 
@@ -49,18 +59,18 @@ The SDK includes comprehensive documentation covering all aspects of development
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Security](SECURITY.md)** - Security best practices
 
-## 🆕 v1.3.1 Release
+## 🆕 v1.4.0 Release
 
-`v1.3.1` is a Neo N3 v3.9.1 compatibility and stability patch release. Highlights:
+`v1.4.0` is a public-architecture and maintainability release focused on AWS-style SDK structure, namespace-first APIs, and a fully organized RPC surface. Highlights:
 
-- ✅ **Interop + constants hardening** – Neo syscall IDs and protocol constants aligned to Neo v3.9.1 values
-- 🧱 **Reliability fixes** – NEF checksum/vector handling and NNS validation edge cases fixed
-- ♻️ **Memory safety improvements** – added explicit parsed-wallet ownership cleanup helpers
-- 🔁 **Backward compatibility** – public alias exports retained so existing integrations keep compiling
+- 🧭 **Namespace-first layout** – clearer `neo.runtime`, `neo.rpc`, `neo.contract`, `neo.transaction`, and `neo.wallet` organization
+- 🧱 **RPC architecture cleanup** – builder-based client/config/service surface plus split response-model modules
+- ♻️ **Ownership fixes** – safer wallet account and RPC request ownership boundaries
+- 🔁 **Backward compatibility** – compatibility aliases retained so existing integrations keep compiling
 - 🧪 **Validation pass** – full build/test matrix rerun before tagging
 
 ```bash
-git clone --branch v1.3.1 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v1.4.0 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
 ```
@@ -84,9 +94,9 @@ required `.hash` is recorded in your `build.zig.zon`):
 
 ```zig
 .dependencies = .{
-    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz`
+    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz`
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz",
         .hash = "...",
     },
 };
@@ -166,7 +176,7 @@ src/
 Add to your `build.zig.zon`:
 
 ```bash
-zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz
+zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz
 ```
 
 Then add to your `build.zig`:
@@ -182,12 +192,14 @@ exe.root_module.addImport("neo-zig", neo_zig.module("neo-zig"));
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
+const security = neo.security;
+const rpc = neo.rpc;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     // 1. Generate a key pair
-    const key_pair = try neo.crypto.generateKeyPair(true);
+    const key_pair = try security.crypto.generateKeyPair(true);
     defer {
         var kp = key_pair;
         kp.zeroize();
@@ -195,15 +207,20 @@ pub fn main() !void {
 
     // 2. Create address
     const address = try key_pair.public_key.toAddress(
-        neo.constants.AddressConstants.ADDRESS_VERSION,
+        neo.core.constants.AddressConstants.ADDRESS_VERSION,
     );
     const address_str = try address.toString(allocator);
     defer allocator.free(address_str);
     std.log.info("Your address: {s}", .{address_str});
 
     // 3. Connect to RPC
-    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoClient.build(allocator, &service, .{});
+    var client = try rpc.Client.builder(allocator)
+        .endpoint("https://testnet1.neo.coz.io:443")
+        .config(try rpc.Config.builder()
+            .blockInterval(3000)
+            .pollingInterval(3000)
+            .build())
+        .build();
     defer client.deinit();
 
     // 4. Query blockchain
@@ -226,28 +243,35 @@ See [`examples/complete_demo.zig`](examples/complete_demo.zig) for a full exampl
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
+const security = neo.security;
+const rpc = neo.rpc;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     // Generate key pair
-    const key_pair = try neo.crypto.generateKeyPair(true);
+    const key_pair = try security.crypto.generateKeyPair(true);
     defer {
         var mutable_key_pair = key_pair;
         mutable_key_pair.zeroize();
     }
 
     // Create address
-    const address = try key_pair.public_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION);
+    const address = try key_pair.public_key.toAddress(neo.core.constants.AddressConstants.ADDRESS_VERSION);
     const address_str = try address.toString(allocator);
     defer allocator.free(address_str);
 
     std.log.info("Generated address: {s}", .{address_str});
 
     // Create RPC client
-    const config = neo.rpc.NeoConfig.init();
-    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
-    var client = neo.rpc.NeoClient.build(allocator, &service, config);
+    const config = try rpc.Config.builder()
+        .blockInterval(3000)
+        .pollingInterval(3000)
+        .build();
+    var client = try rpc.Client.builder(allocator)
+        .endpoint("https://testnet1.neo.coz.io:443")
+        .config(config)
+        .build();
     defer client.deinit();
 
     // Query blockchain
@@ -318,6 +342,16 @@ var loaded_wallet = try neo.wallet.CompleteNEP6Wallet.loadFromFile("my_wallet.js
 defer loaded_wallet.deinit();
 ```
 
+Preferred wallet account names are `neo.wallet.StoredAccount` for wallet-managed records and
+`neo.wallet.SignerAccount` for standalone signer-capable accounts. Compatibility aliases
+`neo.wallet.WalletAccount` and `neo.wallet.Account` still work.
+
+For transactions, prefer `neo.transaction.TransactionWitness` for serialized transaction witnesses
+`neo.transaction.ScriptWitness` for the richer witness helper model, and
+`neo.transaction.WitnessScopeSet` for the richer scope enum helpers. Compatibility aliases
+`neo.transaction.Witness`, `neo.transaction.CompleteWitness`, and `neo.transaction.WitnessScripts`
+still work, and `neo.transaction.CompleteWitnessScope` also remains available.
+
 ## 🔧 Building
 
 ```bash
@@ -355,10 +389,12 @@ let response = try await neoSwift.getBlockCount().send()
 **Zig:**
 
 ```zig
-const key_pair = try neo.crypto.generateKeyPair(true);
-const address = try key_pair.public_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION);
-var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
-var client = neo.rpc.NeoClient.build(allocator, &service, neo.rpc.NeoConfig.init());
+const key_pair = try neo.security.crypto.generateKeyPair(true);
+const address = try key_pair.public_key.toAddress(neo.core.constants.AddressConstants.ADDRESS_VERSION);
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(try neo.rpc.Config.builder().build())
+    .build();
 defer client.deinit();
 const request = try client.getBlockCount();
 const response = try request.send();
@@ -469,7 +505,7 @@ Networking notes:
 ## 🎖️ Project Status
 
 - **Status**: Core modules implemented; some helper APIs experimental
-- **Version**: 1.3.1
+- **Version**: 1.4.0
 - **Maintenance**: Actively maintained
 
 ---

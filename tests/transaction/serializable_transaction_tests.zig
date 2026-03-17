@@ -8,6 +8,7 @@ const std = @import("std");
 const testing = std.testing;
 const neo = @import("neo-zig");
 const NeoTransaction = neo.transaction.NeoTransaction;
+const TransactionWitness = neo.transaction.TransactionWitness;
 
 test "Transaction serialization roundtrip" {
     const allocator = testing.allocator;
@@ -17,8 +18,8 @@ test "Transaction serialization roundtrip" {
     };
     const attributes = [_]neo.transaction.TransactionAttribute{};
     const script = [_]u8{ 0x10, 0x11, 0x40 };
-    var witnesses = [_]neo.transaction.Witness{
-        neo.transaction.Witness.init(&[_]u8{}, &[_]u8{}),
+    var witnesses = [_]TransactionWitness{
+        TransactionWitness.init(&[_]u8{}, &[_]u8{}),
     };
 
     const transaction = NeoTransaction.init(
@@ -67,8 +68,8 @@ test "Transaction serialization roundtrip with extended attributes" {
         neo.transaction.TransactionAttribute.init(.NotaryAssisted, notary_bytes[0..]),
     };
     const script = [_]u8{ 0x10, 0x11, 0x40 };
-    var witnesses = [_]neo.transaction.Witness{
-        neo.transaction.Witness.init(&[_]u8{}, &[_]u8{}),
+    var witnesses = [_]TransactionWitness{
+        TransactionWitness.init(&[_]u8{}, &[_]u8{}),
     };
 
     const transaction = NeoTransaction.init(

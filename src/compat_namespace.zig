@@ -1,0 +1,12 @@
+pub const Hash160 = @import("model_namespace.zig").Hash160;
+pub const Hash256 = @import("model_namespace.zig").Hash256;
+pub const Address = @import("model_namespace.zig").Address;
+pub const ContractParameter = @import("model_namespace.zig").ContractParameter;
+pub const BinaryWriter = @import("io_namespace.zig").BinaryWriter;
+pub const BinaryReader = @import("io_namespace.zig").BinaryReader;
+pub const Transaction = @import("runtime_namespace.zig").transaction.Transaction;
+pub const TransactionBuilder = @import("runtime_namespace.zig").transaction.TransactionBuilder;
+pub const NeoError = @import("core/errors.zig").NeoError;
+pub const CryptoError = @import("core/errors.zig").CryptoError;
+pub const SerializationError = @import("core/errors.zig").SerializationError;
+pub const ValidationError = @import("core/errors.zig").ValidationError;

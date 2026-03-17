@@ -4,911 +4,62 @@
 //! Ensures complete protocol coverage.
 
 const std = @import("std");
-const ArrayList = std.ArrayList;
 const json_utils = @import("../utils/json_utils.zig");
 
-const constants = @import("../core/constants.zig");
-const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 const Hash256 = @import("../types/hash256.zig").Hash256;
-const PublicKey = @import("../crypto/keys.zig").PublicKey;
 
-/// Neo account state
-pub const NeoAccountState = struct {
-    balance: i64,
-    balance_height: ?u32,
-    public_key: ?[]const u8, // Hex string of public key
+pub const account = @import("extended_account_responses.zig");
+pub const oracle = @import("extended_oracle_responses.zig");
+pub const network = @import("extended_network_responses.zig");
+pub const system = @import("extended_system_responses.zig");
+
+pub const NeoAccountState = account.NeoAccountState;
+pub const NeoAddress = account.NeoAddress;
+pub const TransactionSendToken = account.TransactionSendToken;
+pub const NeoGetUnclaimedGas = account.NeoGetUnclaimedGas;
+pub const Nep17Contract = account.Nep17Contract;
+pub const NeoValidateAddress = account.NeoValidateAddress;
+
+pub const OracleRequest = oracle.OracleRequest;
+pub const ContractMethodToken = oracle.ContractMethodToken;
+pub const NameState = oracle.NameState;
+pub const RecordState = oracle.RecordState;
+pub const OracleResponseCode = oracle.OracleResponseCode;
+
+pub const NeoGetNextBlockValidators = network.NeoGetNextBlockValidators;
+pub const NeoGetStateHeight = network.NeoGetStateHeight;
+pub const NeoGetStateRoot = network.NeoGetStateRoot;
+pub const NeoWitness = network.NeoWitness;
+pub const NeoNetworkFee = network.NeoNetworkFee;
+pub const PopulatedBlocks = network.PopulatedBlocks;
+
+pub const NeoListPlugins = system.NeoListPlugins;
+pub const NativeContractState = system.NativeContractState;
+pub const ExpressContractState = system.ExpressContractState;
+pub const ExpressShutdown = system.ExpressShutdown;
+pub const Diagnostics = system.Diagnostics;
+pub const ContractStorageEntry = system.ContractStorageEntry;
+
+test "extended responses module exposes category namespaces" {
+    const testing = std.testing;
+
+    try testing.expect(account.NeoAccountState == NeoAccountState);
+    try testing.expect(oracle.OracleRequest == OracleRequest);
+    try testing.expect(network.NeoGetStateRoot == NeoGetStateRoot);
+    try testing.expect(system.NeoListPlugins == NeoListPlugins);
+}
 
-    const Self = @This();
-
-    pub fn init(balance: i64, balance_height: ?u32, public_key: ?[]const u8) Self {
-        return Self{
-            .balance = balance,
-            .balance_height = balance_height,
-            .public_key = public_key,
-        };
-    }
-
-    /// Creates account state with no vote
-    pub fn withNoVote(balance: i64, update_height: u32) Self {
-        return Self.init(balance, update_height, null);
-    }
-
-    /// Creates account state with no balance
-    pub fn withNoBalance() Self {
-        return Self.init(0, null, null);
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Self {
-        const obj = json_value.object;
-
-        const balance = obj.get("balance").?.integer;
-        const balance_height = if (obj.get("balanceHeight")) |bh| @as(u32, @intCast(bh.integer)) else null;
-        const public_key = if (obj.get("voteTo")) |pk| try allocator.dupe(u8, pk.string) else null;
-
-        return Self.init(balance, balance_height, public_key);
-    }
-
-    pub fn toJson(self: Self, allocator: std.mem.Allocator) !std.json.Value {
-        var obj = std.json.ObjectMap.init(allocator);
-
-        try json_utils.putOwnedKey(&obj, allocator, "balance", std.json.Value{ .integer = self.balance });
-
-        if (self.balance_height) |bh| {
-            try json_utils.putOwnedKey(&obj, allocator, "balanceHeight", std.json.Value{ .integer = @intCast(bh) });
-        }
-
-        if (self.public_key) |pk| {
-            try json_utils.putOwnedKey(&obj, allocator, "voteTo", std.json.Value{ .string = pk });
-        }
-
-        return std.json.Value{ .object = obj };
-    }
-
-    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-        if (self.public_key) |value| {
-            if (value.len > 0) allocator.free(@constCast(value));
-            self.public_key = null;
-        }
-    }
-};
-
-/// Neo address response
-pub const NeoAddress = struct {
-    address: []const u8,
-    is_valid: bool,
-
-    pub fn init(address: []const u8, is_valid: bool) NeoAddress {
-        return NeoAddress{ .address = address, .is_valid = is_valid };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoAddress {
-        const obj = json_value.object;
-
-        return NeoAddress.init(
-            try allocator.dupe(u8, obj.get("address").?.string),
-            obj.get("isvalid").?.bool,
-        );
-    }
-
-    pub fn deinit(self: *NeoAddress, allocator: std.mem.Allocator) void {
-        if (self.address.len > 0) allocator.free(@constCast(self.address));
-        self.address = "";
-    }
-};
-
-/// Oracle request
-pub const OracleRequest = struct {
-    url: []const u8,
-    filter: ?[]const u8,
-    callback_contract: Hash160,
-    callback_method: []const u8,
-    user_data: []const u8,
-    gas_for_response: u64,
-
-    pub fn init() OracleRequest {
-        return OracleRequest{
-            .url = "",
-            .filter = null,
-            .callback_contract = Hash160.ZERO,
-            .callback_method = "",
-            .user_data = "",
-            .gas_for_response = 0,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !OracleRequest {
-        const obj = json_value.object;
-
-        return OracleRequest{
-            .url = try allocator.dupe(u8, obj.get("url").?.string),
-            .filter = if (obj.get("filter")) |f| try allocator.dupe(u8, f.string) else null,
-            .callback_contract = try Hash160.initWithString(obj.get("callbackContract").?.string),
-            .callback_method = try allocator.dupe(u8, obj.get("callbackMethod").?.string),
-            .user_data = try allocator.dupe(u8, obj.get("userData").?.string),
-            .gas_for_response = @intCast(obj.get("gasForResponse").?.integer),
-        };
-    }
-
-    pub fn deinit(self: *OracleRequest, allocator: std.mem.Allocator) void {
-        if (self.url.len > 0) allocator.free(@constCast(self.url));
-        if (self.filter) |value| {
-            if (value.len > 0) allocator.free(@constCast(value));
-            self.filter = null;
-        }
-        if (self.callback_method.len > 0) allocator.free(@constCast(self.callback_method));
-        if (self.user_data.len > 0) allocator.free(@constCast(self.user_data));
-        self.url = "";
-        self.callback_method = "";
-        self.user_data = "";
-    }
-};
-
-/// Contract method token
-pub const ContractMethodToken = struct {
-    hash: Hash160,
-    method: []const u8,
-    parameters_count: u16,
-    has_return_value: bool,
-    call_flags: u8,
-
-    pub fn init() ContractMethodToken {
-        return ContractMethodToken{
-            .hash = Hash160.ZERO,
-            .method = "",
-            .parameters_count = 0,
-            .has_return_value = false,
-            .call_flags = 0,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractMethodToken {
-        const obj = json_value.object;
-
-        return ContractMethodToken{
-            .hash = try Hash160.initWithString(obj.get("hash").?.string),
-            .method = try allocator.dupe(u8, obj.get("method").?.string),
-            .parameters_count = @intCast(obj.get("parameterscount").?.integer),
-            .has_return_value = obj.get("hasreturnvalue").?.bool,
-            .call_flags = @intCast(obj.get("callflags").?.integer),
-        };
-    }
-
-    pub fn deinit(self: *ContractMethodToken, allocator: std.mem.Allocator) void {
-        if (self.method.len > 0) allocator.free(@constCast(self.method));
-        self.method = "";
-    }
-};
-
-/// Name state
-pub const NameState = struct {
-    name: []const u8,
-    expiration: u32,
-    admin: ?Hash160,
-
-    pub fn init() NameState {
-        return NameState{
-            .name = "",
-            .expiration = 0,
-            .admin = null,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NameState {
-        const obj = json_value.object;
-
-        return NameState{
-            .name = try allocator.dupe(u8, obj.get("name").?.string),
-            .expiration = @intCast(obj.get("expiration").?.integer),
-            .admin = if (obj.get("admin")) |a| try Hash160.initWithString(a.string) else null,
-        };
-    }
-};
-
-/// Neo list plugins response
-pub const NeoListPlugins = struct {
-    plugins: []const Plugin,
-
-    pub const Plugin = struct {
-        name: []const u8,
-        version: []const u8,
-        interfaces: []const []const u8,
-
-        pub fn init() Plugin {
-            return Plugin{
-                .name = "",
-                .version = "",
-                .interfaces = &[_][]const u8{},
-            };
-        }
-
-        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Plugin {
-            if (json_value != .object) return errors.SerializationError.InvalidFormat;
-            const obj = json_value.object;
-
-            const name_value = obj.get("name") orelse return errors.SerializationError.InvalidFormat;
-            if (name_value != .string) return errors.SerializationError.InvalidFormat;
-            const name = try allocator.dupe(u8, name_value.string);
-            errdefer allocator.free(name);
-
-            const version_value = obj.get("version") orelse return errors.SerializationError.InvalidFormat;
-            if (version_value != .string) return errors.SerializationError.InvalidFormat;
-            const version = try allocator.dupe(u8, version_value.string);
-            errdefer allocator.free(version);
-
-            var interfaces = ArrayList([]const u8).init(allocator);
-            errdefer {
-                for (interfaces.items) |iface| allocator.free(@constCast(iface));
-                interfaces.deinit();
-            }
-            if (obj.get("interfaces")) |interfaces_array| {
-                if (interfaces_array != .array) return errors.SerializationError.InvalidFormat;
-                for (interfaces_array.array.items) |interface| {
-                    if (interface != .string) return errors.SerializationError.InvalidFormat;
-                    const iface_copy = try allocator.dupe(u8, interface.string);
-                    errdefer allocator.free(iface_copy);
-                    try interfaces.append(iface_copy);
-                }
-            }
-
-            return Plugin{
-                .name = name,
-                .version = version,
-                .interfaces = try interfaces.toOwnedSlice(),
-            };
-        }
-
-        pub fn deinit(self: *Plugin, allocator: std.mem.Allocator) void {
-            if (self.name.len > 0) allocator.free(@constCast(self.name));
-            if (self.version.len > 0) allocator.free(@constCast(self.version));
-            if (self.interfaces.len > 0) {
-                for (self.interfaces) |iface| {
-                    if (iface.len > 0) allocator.free(@constCast(iface));
-                }
-                allocator.free(@constCast(self.interfaces));
-                self.interfaces = &[_][]const u8{};
-            }
-            self.name = "";
-            self.version = "";
-        }
-    };
-
-    pub fn init() NeoListPlugins {
-        return NeoListPlugins{
-            .plugins = &[_]Plugin{},
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoListPlugins {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-        const array = json_value.array;
-
-        var plugins = ArrayList(Plugin).init(allocator);
-        errdefer {
-            for (plugins.items) |*plugin| plugin.deinit(allocator);
-            plugins.deinit();
-        }
-        for (array.items) |plugin_item| {
-            var plugin = try Plugin.fromJson(plugin_item, allocator);
-            errdefer plugin.deinit(allocator);
-            try plugins.append(plugin);
-        }
-
-        return NeoListPlugins{ .plugins = try plugins.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoListPlugins, allocator: std.mem.Allocator) void {
-        if (self.plugins.len > 0) {
-            for (self.plugins) |*plugin| {
-                plugin.deinit(allocator);
-            }
-            allocator.free(@constCast(self.plugins));
-            self.plugins = &[_]Plugin{};
-        }
-    }
-};
-
-/// Transaction send token
-pub const TransactionSendToken = struct {
-    asset: Hash160,
-    value: i64,
-    address: []const u8,
-
-    pub fn init(asset: Hash160, value: i64, address: []const u8) TransactionSendToken {
-        return TransactionSendToken{
-            .asset = asset,
-            .value = value,
-            .address = address,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !TransactionSendToken {
-        const obj = json_value.object;
-
-        return TransactionSendToken.init(
-            try Hash160.initWithString(obj.get("asset").?.string),
-            obj.get("value").?.integer,
-            try allocator.dupe(u8, obj.get("address").?.string),
-        );
-    }
-
-    pub fn toJson(self: TransactionSendToken, allocator: std.mem.Allocator) !std.json.Value {
-        var obj = std.json.ObjectMap.init(allocator);
-
-        const asset_hex = try self.asset.string(allocator);
-        defer allocator.free(asset_hex);
-
-        try json_utils.putOwnedKey(&obj, allocator, "asset", std.json.Value{ .string = asset_hex });
-        try json_utils.putOwnedKey(&obj, allocator, "value", std.json.Value{ .integer = self.value });
-        try json_utils.putOwnedKey(&obj, allocator, "address", std.json.Value{ .string = self.address });
-
-        return std.json.Value{ .object = obj };
-    }
-};
-
-/// Neo get unclaimed GAS
-pub const NeoGetUnclaimedGas = struct {
-    unclaimed: []const u8,
-    address: []const u8,
-
-    pub fn init() NeoGetUnclaimedGas {
-        return NeoGetUnclaimedGas{
-            .unclaimed = "0",
-            .address = "",
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetUnclaimedGas {
-        const obj = json_value.object;
-
-        return NeoGetUnclaimedGas{
-            .unclaimed = try allocator.dupe(u8, obj.get("unclaimed").?.string),
-            .address = try allocator.dupe(u8, obj.get("address").?.string),
-        };
-    }
-
-    pub fn deinit(self: *NeoGetUnclaimedGas, allocator: std.mem.Allocator) void {
-        if (self.unclaimed.len > 0) allocator.free(@constCast(self.unclaimed));
-        if (self.address.len > 0) allocator.free(@constCast(self.address));
-        self.unclaimed = "0";
-        self.address = "";
-    }
-};
-
-/// Neo get next block validators
-pub const NeoGetNextBlockValidators = struct {
-    validators: []const Validator,
-
-    pub const Validator = struct {
-        public_key: []const u8,
-        votes: []const u8,
-        active: bool,
-
-        pub fn init() Validator {
-            return Validator{
-                .public_key = "",
-                .votes = "0",
-                .active = false,
-            };
-        }
-
-        pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Validator {
-            const obj = json_value.object;
-
-            return Validator{
-                .public_key = try allocator.dupe(u8, obj.get("publickey").?.string),
-                .votes = try allocator.dupe(u8, obj.get("votes").?.string),
-                .active = obj.get("active").?.bool,
-            };
-        }
-
-        pub fn deinit(self: *Validator, allocator: std.mem.Allocator) void {
-            if (self.public_key.len > 0) allocator.free(@constCast(self.public_key));
-            if (self.votes.len > 0) allocator.free(@constCast(self.votes));
-            self.public_key = "";
-            self.votes = "0";
-        }
-    };
-
-    pub fn init() NeoGetNextBlockValidators {
-        return NeoGetNextBlockValidators{
-            .validators = &[_]Validator{},
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetNextBlockValidators {
-        if (json_value != .array) return errors.SerializationError.InvalidFormat;
-        const array = json_value.array;
-
-        var validators = ArrayList(Validator).init(allocator);
-        errdefer {
-            for (validators.items) |*validator| validator.deinit(allocator);
-            validators.deinit();
-        }
-        for (array.items) |validator_item| {
-            var validator = try Validator.fromJson(validator_item, allocator);
-            errdefer validator.deinit(allocator);
-            try validators.append(validator);
-        }
-
-        return NeoGetNextBlockValidators{ .validators = try validators.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoGetNextBlockValidators, allocator: std.mem.Allocator) void {
-        if (self.validators.len > 0) {
-            for (self.validators) |*validator| {
-                validator.deinit(allocator);
-            }
-            allocator.free(@constCast(self.validators));
-            self.validators = &[_]Validator{};
-        }
-    }
-};
-
-/// Neo get state height
-pub const NeoGetStateHeight = struct {
-    local_root_index: u32,
-    validated_root_index: u32,
-
-    pub fn init() NeoGetStateHeight {
-        return NeoGetStateHeight{
-            .local_root_index = 0,
-            .validated_root_index = 0,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetStateHeight {
-        _ = allocator;
-        const obj = json_value.object;
-
-        return NeoGetStateHeight{
-            .local_root_index = @intCast(obj.get("localrootindex").?.integer),
-            .validated_root_index = @intCast(obj.get("validatedrootindex").?.integer),
-        };
-    }
-};
-
-/// Neo get state root
-pub const NeoGetStateRoot = struct {
-    version: u8,
-    index: u32,
-    root_hash: Hash256,
-    witnesses: []const NeoWitness,
-
-    pub fn init() NeoGetStateRoot {
-        return NeoGetStateRoot{
-            .version = 0,
-            .index = 0,
-            .root_hash = Hash256.ZERO,
-            .witnesses = &[_]NeoWitness{},
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoGetStateRoot {
-        if (json_value != .object) return errors.SerializationError.InvalidFormat;
-        const obj = json_value.object;
-
-        var witnesses = ArrayList(NeoWitness).init(allocator);
-        errdefer {
-            for (witnesses.items) |*witness| witness.deinit(allocator);
-            witnesses.deinit();
-        }
-        if (obj.get("witnesses")) |witnesses_array| {
-            if (witnesses_array != .array) return errors.SerializationError.InvalidFormat;
-            for (witnesses_array.array.items) |witness| {
-                var parsed = try NeoWitness.fromJson(witness, allocator);
-                errdefer parsed.deinit(allocator);
-                try witnesses.append(parsed);
-            }
-        }
-
-        return NeoGetStateRoot{ .version = @intCast(obj.get("version").?.integer), .index = @intCast(obj.get("index").?.integer), .root_hash = try Hash256.initWithString(obj.get("roothash").?.string), .witnesses = try witnesses.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *NeoGetStateRoot, allocator: std.mem.Allocator) void {
-        if (self.witnesses.len > 0) {
-            for (self.witnesses) |*witness| {
-                witness.deinit(allocator);
-            }
-            allocator.free(@constCast(self.witnesses));
-            self.witnesses = &[_]NeoWitness{};
-        }
-    }
-};
-
-/// Neo witness
-pub const NeoWitness = struct {
-    invocation: []const u8,
-    verification: []const u8,
-
-    pub fn init(invocation: []const u8, verification: []const u8) NeoWitness {
-        return NeoWitness{
-            .invocation = invocation,
-            .verification = verification,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoWitness {
-        if (json_value != .object) return errors.SerializationError.InvalidFormat;
-        const obj = json_value.object;
-
-        const invocation_value = obj.get("invocation") orelse return errors.SerializationError.InvalidFormat;
-        if (invocation_value != .string) return errors.SerializationError.InvalidFormat;
-        const invocation = try allocator.dupe(u8, invocation_value.string);
-        errdefer allocator.free(invocation);
-
-        const verification_value = obj.get("verification") orelse return errors.SerializationError.InvalidFormat;
-        if (verification_value != .string) return errors.SerializationError.InvalidFormat;
-        const verification = try allocator.dupe(u8, verification_value.string);
-        errdefer allocator.free(verification);
-
-        return NeoWitness.init(invocation, verification);
-    }
-
-    pub fn toJson(self: NeoWitness, allocator: std.mem.Allocator) !std.json.Value {
-        var obj = std.json.ObjectMap.init(allocator);
-
-        try json_utils.putOwnedKey(&obj, allocator, "invocation", std.json.Value{ .string = self.invocation });
-        try json_utils.putOwnedKey(&obj, allocator, "verification", std.json.Value{ .string = self.verification });
-
-        return std.json.Value{ .object = obj };
-    }
-
-    pub fn deinit(self: *NeoWitness, allocator: std.mem.Allocator) void {
-        if (self.invocation.len > 0) allocator.free(@constCast(self.invocation));
-        if (self.verification.len > 0) allocator.free(@constCast(self.verification));
-        self.invocation = "";
-        self.verification = "";
-    }
-};
-
-/// NEP-17 contract
-pub const Nep17Contract = struct {
-    script_hash: Hash160,
-    symbol: []const u8,
-    decimals: u8,
-
-    pub fn init(script_hash: Hash160, symbol: []const u8, decimals: u8) Nep17Contract {
-        return Nep17Contract{
-            .script_hash = script_hash,
-            .symbol = symbol,
-            .decimals = decimals,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Nep17Contract {
-        const obj = json_value.object;
-
-        return Nep17Contract.init(
-            try Hash160.initWithString(obj.get("scripthash").?.string),
-            try allocator.dupe(u8, obj.get("symbol").?.string),
-            @intCast(obj.get("decimals").?.integer),
-        );
-    }
-
-    pub fn deinit(self: *Nep17Contract, allocator: std.mem.Allocator) void {
-        if (self.symbol.len > 0) allocator.free(@constCast(self.symbol));
-        self.symbol = "";
-    }
-};
-
-/// Oracle response code
-pub const OracleResponseCode = enum(u8) {
-    Success = 0x00,
-    ProtocolNotSupported = 0x10,
-    ConsensusUnreachable = 0x12,
-    NotFound = 0x14,
-    Timeout = 0x16,
-    Forbidden = 0x18,
-    ResponseTooLarge = 0x1a,
-    InsufficientFunds = 0x1c,
-    ContentTypeNotSupported = 0x1f,
-    Error = 0xff,
-
-    const Self = @This();
-
-    pub fn getByte(self: Self) u8 {
-        return @intFromEnum(self);
-    }
-
-    pub fn getJsonValue(self: Self) []const u8 {
-        return switch (self) {
-            .Success => "Success",
-            .ProtocolNotSupported => "ProtocolNotSupported",
-            .ConsensusUnreachable => "ConsensusUnreachable",
-            .NotFound => "NotFound",
-            .Timeout => "Timeout",
-            .Forbidden => "Forbidden",
-            .ResponseTooLarge => "ResponseTooLarge",
-            .InsufficientFunds => "InsufficientFunds",
-            .ContentTypeNotSupported => "ContentTypeNotSupported",
-            .Error => "Error",
-        };
-    }
-
-    pub fn fromByte(byte_value: u8) ?Self {
-        return switch (byte_value) {
-            0x00 => .Success,
-            0x10 => .ProtocolNotSupported,
-            0x12 => .ConsensusUnreachable,
-            0x14 => .NotFound,
-            0x16 => .Timeout,
-            0x18 => .Forbidden,
-            0x1a => .ResponseTooLarge,
-            0x1c => .InsufficientFunds,
-            0x1f => .ContentTypeNotSupported,
-            0xff => .Error,
-            else => null,
-        };
-    }
-
-    pub fn fromJsonValue(json_value: []const u8) ?Self {
-        if (std.mem.eql(u8, json_value, "Success")) return .Success;
-        if (std.mem.eql(u8, json_value, "NotFound")) return .NotFound;
-        if (std.mem.eql(u8, json_value, "Timeout")) return .Timeout;
-        if (std.mem.eql(u8, json_value, "Forbidden")) return .Forbidden;
-        if (std.mem.eql(u8, json_value, "Error")) return .Error;
-        return null;
-    }
-};
-
-/// Neo network fee
-pub const NeoNetworkFee = struct {
-    network_fee: u64,
-
-    pub fn init() NeoNetworkFee {
-        return NeoNetworkFee{ .network_fee = 0 };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoNetworkFee {
-        _ = allocator;
-        const obj = json_value.object;
-
-        return NeoNetworkFee{
-            .network_fee = @intCast(obj.get("networkfee").?.integer),
-        };
-    }
-};
-
-/// Neo validate address
-pub const NeoValidateAddress = struct {
-    address: []const u8,
-    is_valid: bool,
-
-    pub fn init() NeoValidateAddress {
-        return NeoValidateAddress{
-            .address = "",
-            .is_valid = false,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NeoValidateAddress {
-        const obj = json_value.object;
-
-        return NeoValidateAddress{
-            .address = try allocator.dupe(u8, obj.get("address").?.string),
-            .is_valid = obj.get("isvalid").?.bool,
-        };
-    }
-};
-
-/// Populated blocks
-pub const PopulatedBlocks = struct {
-    count: u32,
-    blocks: []const u32,
-
-    pub fn init() PopulatedBlocks {
-        return PopulatedBlocks{
-            .count = 0,
-            .blocks = &[_]u32{},
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !PopulatedBlocks {
-        if (json_value != .object) return errors.SerializationError.InvalidFormat;
-        const obj = json_value.object;
-
-        var blocks = ArrayList(u32).init(allocator);
-        errdefer blocks.deinit();
-        if (obj.get("blocks")) |blocks_array| {
-            if (blocks_array != .array) return errors.SerializationError.InvalidFormat;
-            for (blocks_array.array.items) |block| {
-                if (block != .integer) return errors.SerializationError.InvalidFormat;
-                try blocks.append(@intCast(block.integer));
-            }
-        }
-
-        return PopulatedBlocks{ .count = @intCast(obj.get("count").?.integer), .blocks = try blocks.toOwnedSlice() };
-    }
-
-    pub fn deinit(self: *PopulatedBlocks, allocator: std.mem.Allocator) void {
-        if (self.blocks.len > 0) allocator.free(@constCast(self.blocks));
-        self.blocks = &[_]u32{};
-    }
-};
-
-/// Record state
-pub const RecordState = struct {
-    name: []const u8,
-    record_type: []const u8,
-    data: []const u8,
-
-    pub fn init() RecordState {
-        return RecordState{
-            .name = "",
-            .record_type = "",
-            .data = "",
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !RecordState {
-        const obj = json_value.object;
-
-        return RecordState{
-            .name = try allocator.dupe(u8, obj.get("name").?.string),
-            .record_type = try allocator.dupe(u8, obj.get("type").?.string),
-            .data = try allocator.dupe(u8, obj.get("data").?.string),
-        };
-    }
-
-    pub fn deinit(self: *RecordState, allocator: std.mem.Allocator) void {
-        if (self.name.len > 0) allocator.free(@constCast(self.name));
-        if (self.record_type.len > 0) allocator.free(@constCast(self.record_type));
-        if (self.data.len > 0) allocator.free(@constCast(self.data));
-        self.name = "";
-        self.record_type = "";
-        self.data = "";
-    }
-};
-
-/// Native contract state
-pub const NativeContractState = struct {
-    id: i32,
-    hash: Hash160,
-    nef: ContractNef,
-    manifest: ContractManifest,
-    update_history: []const u32,
-
-    pub fn init() NativeContractState {
-        return NativeContractState{
-            .id = 0,
-            .hash = Hash160.ZERO,
-            .nef = ContractNef.init(),
-            .manifest = ContractManifest.init(),
-            .update_history = &[_]u32{},
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !NativeContractState {
-        if (json_value != .object) return errors.SerializationError.InvalidFormat;
-        const obj = json_value.object;
-
-        var update_history = ArrayList(u32).init(allocator);
-        errdefer update_history.deinit();
-        if (obj.get("updatehistory")) |history_array| {
-            if (history_array != .array) return errors.SerializationError.InvalidFormat;
-            for (history_array.array.items) |item| {
-                if (item != .integer) return errors.SerializationError.InvalidFormat;
-                try update_history.append(@intCast(item.integer));
-            }
-        }
-        const update_history_slice = try update_history.toOwnedSlice();
-        errdefer allocator.free(update_history_slice);
-
-        const nef_value = obj.get("nef") orelse return errors.SerializationError.InvalidFormat;
-        var nef = try ContractNef.fromJson(nef_value, allocator);
-        errdefer nef.deinit(allocator);
-
-        const manifest_value = obj.get("manifest") orelse return errors.SerializationError.InvalidFormat;
-        var manifest = try ContractManifest.fromJson(manifest_value, allocator);
-        errdefer manifest.deinit(allocator);
-
-        return NativeContractState{
-            .id = @intCast(obj.get("id").?.integer),
-            .hash = try Hash160.initWithString(obj.get("hash").?.string),
-            .nef = nef,
-            .manifest = manifest,
-            .update_history = update_history_slice,
-        };
-    }
-
-    pub fn deinit(self: *NativeContractState, allocator: std.mem.Allocator) void {
-        self.nef.deinit(allocator);
-        self.manifest.deinit(allocator);
-        if (self.update_history.len > 0) allocator.free(@constCast(self.update_history));
-        self.update_history = &[_]u32{};
-    }
-};
-
-/// Express contract state
-pub const ExpressContractState = struct {
-    hash: Hash160,
-    manifest: ContractManifest,
-
-    pub fn init() ExpressContractState {
-        return ExpressContractState{
-            .hash = Hash160.ZERO,
-            .manifest = ContractManifest.init(),
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ExpressContractState {
-        const obj = json_value.object;
-
-        return ExpressContractState{
-            .hash = try Hash160.initWithString(obj.get("hash").?.string),
-            .manifest = try ContractManifest.fromJson(obj.get("manifest").?, allocator),
-        };
-    }
-
-    pub fn deinit(self: *ExpressContractState, allocator: std.mem.Allocator) void {
-        self.manifest.deinit(allocator);
-    }
-};
-
-/// Express shutdown
-pub const ExpressShutdown = struct {
-    process_id: u32,
-
-    pub fn init() ExpressShutdown {
-        return ExpressShutdown{ .process_id = 0 };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ExpressShutdown {
-        _ = allocator;
-        const obj = json_value.object;
-
-        return ExpressShutdown{
-            .process_id = @intCast(obj.get("processId").?.integer),
-        };
-    }
-};
-
-/// Diagnostics
-pub const Diagnostics = struct {
-    invocation_id: []const u8,
-    invocation_counter: u32,
-
-    pub fn init() Diagnostics {
-        return Diagnostics{
-            .invocation_id = "",
-            .invocation_counter = 0,
-        };
-    }
-
-    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !Diagnostics {
-        const obj = json_value.object;
-
-        return Diagnostics{
-            .invocation_id = try allocator.dupe(u8, obj.get("invocationId").?.string),
-            .invocation_counter = @intCast(obj.get("invocationCounter").?.integer),
-        };
-    }
-
-    pub fn deinit(self: *Diagnostics, allocator: std.mem.Allocator) void {
-        if (self.invocation_id.len > 0) allocator.free(@constCast(self.invocation_id));
-        self.invocation_id = "";
-    }
-};
-
-// Import dependencies
-const ContractManifest = @import("responses.zig").ContractManifest;
-const ContractNef = @import("responses.zig").ContractNef;
-pub const ContractStorageEntry = @import("protocol_responses.zig").ContractStorageEntry;
-
-// Tests
 test "NeoAccountState response parsing" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test account state creation
     const account_state = NeoAccountState.init(100000000, 12345, "02b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816");
 
     try testing.expectEqual(@as(i64, 100000000), account_state.balance);
     try testing.expectEqual(@as(u32, 12345), account_state.balance_height.?);
     try testing.expect(account_state.public_key != null);
 
-    // Test factory methods
     const no_vote_state = NeoAccountState.withNoVote(50000000, 54321);
     try testing.expectEqual(@as(i64, 50000000), no_vote_state.balance);
     try testing.expect(no_vote_state.public_key == null);
@@ -922,12 +73,10 @@ test "Oracle response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test oracle request
     const oracle_request = OracleRequest.init();
     try testing.expectEqual(@as(usize, 0), oracle_request.url.len);
     try testing.expect(oracle_request.filter == null);
 
-    // Test oracle response codes
     try testing.expectEqual(@as(u8, 0x00), OracleResponseCode.Success.getByte());
     try testing.expectEqual(@as(u8, 0x14), OracleResponseCode.NotFound.getByte());
     try testing.expectEqual(@as(u8, 0xff), OracleResponseCode.Error.getByte());
@@ -935,7 +84,6 @@ test "Oracle response types" {
     try testing.expectEqualStrings("Success", OracleResponseCode.Success.getJsonValue());
     try testing.expectEqualStrings("NotFound", OracleResponseCode.NotFound.getJsonValue());
 
-    // Test enum from byte conversion
     try testing.expectEqual(OracleResponseCode.Success, OracleResponseCode.fromByte(0x00).?);
     try testing.expectEqual(OracleResponseCode.NotFound, OracleResponseCode.fromByte(0x14).?);
     try testing.expectEqual(@as(?OracleResponseCode, null), OracleResponseCode.fromByte(0x99));
@@ -945,17 +93,14 @@ test "Validator and network response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test validator response
     const validator = NeoGetNextBlockValidators.Validator.init();
     try testing.expectEqual(@as(usize, 0), validator.public_key.len);
     try testing.expectEqualStrings("0", validator.votes);
     try testing.expect(!validator.active);
 
-    // Test validators response
     const validators = NeoGetNextBlockValidators.init();
     try testing.expectEqual(@as(usize, 0), validators.validators.len);
 
-    // Test state height response
     const state_height = NeoGetStateHeight.init();
     try testing.expectEqual(@as(u32, 0), state_height.local_root_index);
     try testing.expectEqual(@as(u32, 0), state_height.validated_root_index);
@@ -965,7 +110,6 @@ test "Transaction and contract response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test transaction send token
     const send_token = TransactionSendToken.init(
         Hash160.ZERO,
         100000000,
@@ -975,13 +119,11 @@ test "Transaction and contract response types" {
     try testing.expect(send_token.asset.eql(Hash160.ZERO));
     try testing.expectEqual(@as(i64, 100000000), send_token.value);
 
-    // Test contract method token
     const method_token = ContractMethodToken.init();
     try testing.expect(method_token.hash.eql(Hash160.ZERO));
     try testing.expectEqual(@as(usize, 0), method_token.method.len);
     try testing.expectEqual(@as(u16, 0), method_token.parameters_count);
 
-    // Test NEP-17 contract
     const nep17_contract = Nep17Contract.init(Hash160.ZERO, "TEST", 8);
     try testing.expectEqualStrings("TEST", nep17_contract.symbol);
     try testing.expectEqual(@as(u8, 8), nep17_contract.decimals);
@@ -991,18 +133,15 @@ test "State and diagnostic response types" {
     const testing = std.testing;
     _ = testing.allocator;
 
-    // Test state root response
     const state_root = NeoGetStateRoot.init();
     try testing.expectEqual(@as(u8, 0), state_root.version);
     try testing.expectEqual(@as(u32, 0), state_root.index);
     try testing.expect(state_root.root_hash.eql(Hash256.ZERO));
 
-    // Test record state
     const record_state = RecordState.init();
     try testing.expectEqual(@as(usize, 0), record_state.name.len);
     try testing.expectEqual(@as(usize, 0), record_state.record_type.len);
 
-    // Test diagnostics
     const diagnostics = Diagnostics.init();
     try testing.expectEqual(@as(usize, 0), diagnostics.invocation_id.len);
     try testing.expectEqual(@as(u32, 0), diagnostics.invocation_counter);
@@ -1015,7 +154,6 @@ test "Complete response fromJson smoke tests" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    // NeoListPlugins
     var interfaces_array = std.json.Array.init(allocator);
     try interfaces_array.append(std.json.Value{ .string = "IPlugin" });
     try interfaces_array.append(std.json.Value{ .string = "ILogging" });
@@ -1033,7 +171,6 @@ test "Complete response fromJson smoke tests" {
     try testing.expectEqualStrings("RpcServer", parsed_plugins.plugins[0].name);
     try testing.expectEqual(@as(usize, 2), parsed_plugins.plugins[0].interfaces.len);
 
-    // PopulatedBlocks
     var blocks_array = std.json.Array.init(allocator);
     try blocks_array.append(std.json.Value{ .integer = 1 });
     try blocks_array.append(std.json.Value{ .integer = 2 });
@@ -1046,7 +183,6 @@ test "Complete response fromJson smoke tests" {
     try testing.expectEqual(@as(u32, 2), populated.count);
     try testing.expectEqual(@as(usize, 2), populated.blocks.len);
 
-    // NeoGetStateRoot
     var witnesses_array = std.json.Array.init(allocator);
     var witness_obj = std.json.ObjectMap.init(allocator);
     try json_utils.putOwnedKey(&witness_obj, allocator, "invocation", std.json.Value{ .string = "00" });
@@ -1067,7 +203,6 @@ test "Complete response fromJson smoke tests" {
     const parsed_state_root = try NeoGetStateRoot.fromJson(std.json.Value{ .object = state_root_obj }, allocator);
     try testing.expectEqual(@as(usize, 1), parsed_state_root.witnesses.len);
 
-    // NeoGetNextBlockValidators
     var validators_array = std.json.Array.init(allocator);
     var validator_obj = std.json.ObjectMap.init(allocator);
     try json_utils.putOwnedKey(&validator_obj, allocator, "publickey", std.json.Value{ .string = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816" });
@@ -1079,7 +214,6 @@ test "Complete response fromJson smoke tests" {
     try testing.expectEqual(@as(usize, 1), parsed_validators.validators.len);
     try testing.expectEqualStrings("42", parsed_validators.validators[0].votes);
 
-    // NativeContractState (exercises ContractNef + ContractManifest parsing)
     var nef_obj = std.json.ObjectMap.init(allocator);
     try json_utils.putOwnedKey(&nef_obj, allocator, "magic", std.json.Value{ .integer = 123 });
     try json_utils.putOwnedKey(&nef_obj, allocator, "compiler", std.json.Value{ .string = "neo-zig-test" });

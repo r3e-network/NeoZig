@@ -24,7 +24,7 @@ This guide covers common issues, error messages, and their solutions when using 
 ```zig
 .dependencies = .{
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.3.1.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz",
         .hash = "...",
     },
 };
@@ -80,7 +80,10 @@ const account = try wallet.createAccount("My Account");
 For types with allocator parameter:
 
 ```zig
-var client = neo.rpc.NeoClient.build(allocator, &service, config);
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(config)
+    .build();
 defer client.deinit();
 ```
 
@@ -108,11 +111,17 @@ defer gpa.deinit();
 
 ```zig
 // GOOD: Clear ownership
-var client = neo.rpc.NeoClient.build(allocator, &service, config);
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(config)
+    .build();
 defer client.deinit();
 
 // BAD: Double ownership
-var client = neo.rpc.NeoClient.build(allocator, &service, config);
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(config)
+    .build();
 client.deinit();
 client.deinit();  // CRASH!
 ```
@@ -206,10 +215,10 @@ const is_valid = neo.wallet.Bip39Account.isValidMnemonic(mnemonic);
 
 ```zig
 // TestNet
-var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
 
 // MainNet
-var service = neo.rpc.NeoService.init("https://mainnet1.neo.coz.io:443");
+var service = neo.rpc.service.Service.init("https://mainnet1.neo.coz.io:443");
 ```
 
 2. Check network connectivity:
@@ -223,8 +232,12 @@ curl -X POST https://testnet1.neo.coz.io:443 \
 3. Configure timeout:
 
 ```zig
-var config = neo.rpc.NeoConfig.init();
-config.timeout_ms = 30000;  // 30 seconds
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(try neo.rpc.Config.builder().build())
+    .timeoutMs(30000)
+    .build();
+defer client.deinit();
 ```
 
 ### "invalid response format"
@@ -256,11 +269,16 @@ std.log.debug("Enable additional RPC diagnostics in your application", .{});
 
 ```zig
 // Increase or disable the limit
-var service = neo.rpc.NeoService.init(endpoint);
-service.setMaxResponseBytes(64 * 1024 * 1024);  // 64 MiB
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint(endpoint)
+    .config(try neo.rpc.Config.builder().build())
+    .maxResponseBytes(64 * 1024 * 1024)
+    .build();
+defer client.deinit();
 
-// Or disable limit (use with caution)
-// service.setMaxResponseBytes(0);  // Reset to default 32 MiB
+// Or keep the transport-level path when you already own a service:
+var service = neo.rpc.service.Service.init(endpoint);
+service.setMaxResponseBytes(64 * 1024 * 1024);
 ```
 
 ### "max retries exceeded"
@@ -270,11 +288,13 @@ service.setMaxResponseBytes(64 * 1024 * 1024);  // 64 MiB
 **Solution**:
 
 ```zig
-var config = neo.rpc.NeoConfig.init();
-config.max_retries = 5;  // Increase retries
-config.retry_delay_ms = 1000;  // Increase delay
-
-var client = neo.rpc.NeoClient.build(allocator, &service, config);
+var client = try neo.rpc.Client.builder(allocator)
+    .endpoint("https://testnet1.neo.coz.io:443")
+    .config(try neo.rpc.Config.builder().build())
+    .maxRetries(5)
+    .timeoutMs(30000)
+    .build();
+defer client.deinit();
 ```
 
 Check the node status and consider using a different endpoint.

@@ -8,30 +8,7 @@ const std = @import("std");
 const constants = @import("../core/constants.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
 
-/// Request counter for RPC calls
-pub const Counter = struct {
-    value: std.atomic.Value(u32),
-
-    const Self = @This();
-
-    pub fn init() Self {
-        return Self{
-            .value = std.atomic.Value(u32).init(0),
-        };
-    }
-
-    pub fn next(self: *Self) u32 {
-        return self.value.fetchAdd(1, .seq_cst);
-    }
-
-    pub fn get(self: *Self) u32 {
-        return self.value.load(.seq_cst);
-    }
-
-    pub fn reset(self: *Self) void {
-        self.value.store(0, .seq_cst);
-    }
-};
+pub const Counter = @import("neo_request_counter.zig").Counter;
 
 /// Neo SDK configuration
 pub const NeoConfig = struct {
@@ -75,6 +52,12 @@ pub const NeoConfig = struct {
             .allows_transmission_on_fault = false,
             .nns_resolver = MAINNET_NNS_CONTRACT_HASH,
         };
+    }
+
+    pub const Builder = @import("neo_config_builder.zig").Builder(NeoConfig, Hash160);
+
+    pub fn builder() Builder {
+        return Builder.init();
     }
 
     /// Creates configuration with parameters

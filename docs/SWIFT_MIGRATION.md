@@ -13,7 +13,15 @@ const neo = @import("neo-zig");
 // or: const neo = @import("neo_zig");
 ```
 
-## RPC client (NeoClient.build)
+Preferred layout for new Zig code:
+
+- `neo.model` for value types
+- `neo.security` for cryptography
+- `neo.io` for serialization
+- `neo.runtime` for contracts, transactions, wallets, RPC, and protocol access
+- `neo.rpc.Client.builder` for RPC client construction
+
+## RPC client (preferred: Builder)
 
 Swift:
 
@@ -27,15 +35,20 @@ Zig:
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
+const rpc = neo.rpc;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    const config = neo.rpc.NeoConfig.init();
-    var service = neo.rpc.NeoService.init("https://testnet1.neo.coz.io:443");
+    const config = try rpc.Config.builder()
+        .blockInterval(3000)
+        .pollingInterval(3000)
+        .build();
 
-    // `NeoClient.build` takes `*NeoService` and moves ownership into the client.
-    var client = neo.rpc.NeoClient.build(allocator, &service, config);
+    var client = try rpc.Client.builder(allocator)
+        .endpoint("https://testnet1.neo.coz.io:443")
+        .config(config)
+        .build();
     defer client.deinit();
 
     const request = try client.getBlockCount();
@@ -47,7 +60,7 @@ pub fn main() !void {
 
 Notes:
 
-- The client owns the service after `build`; do not call `service.deinit()` afterwards.
+- `NeoClient.build` still exists for compatibility when you already have a `NeoService`.
 - Most RPC methods return a request object; call `.send()` to perform the network call.
 - For allocator-controlled service setup (no `page_allocator` fallback), use `neo.rpc.ServiceFactory.*` helpers.
 

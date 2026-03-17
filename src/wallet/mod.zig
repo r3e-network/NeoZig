@@ -4,21 +4,35 @@
 
 const std = @import("std");
 
+pub const accounts = @import("account_namespace.zig");
+pub const nep6 = @import("nep6_namespace.zig");
+pub const support = @import("support_namespace.zig");
+
 // Export wallet components
-pub const Wallet = @import("neo_wallet.zig").Wallet;
-// WalletAccount is the NEP-6 wallet entry managed by Wallet.
-pub const WalletAccount = @import("neo_wallet.zig").Account;
-pub const Account = @import("account.zig").Account;
-pub const ScryptParams = @import("neo_wallet.zig").ScryptParams;
-pub const ContractInfo = @import("neo_wallet.zig").ContractInfo;
-pub const Hash160Context = @import("neo_wallet.zig").Hash160Context;
-pub const Bip39Account = @import("bip39_account.zig").Bip39Account;
-pub const validateMnemonic = @import("bip39_account.zig").validateMnemonic;
-pub const NEP6Wallet = @import("nep6_wallet.zig").NEP6Wallet;
-pub const NEP6Account = @import("nep6_wallet.zig").NEP6Account;
-pub const NEP6Contract = @import("nep6_wallet.zig").NEP6Contract;
-pub const CompleteNEP6Wallet = @import("nep6_extended.zig").CompleteNEP6Wallet;
+pub const Wallet = accounts.Wallet;
+pub const StoredAccount = accounts.StoredAccount;
+pub const SignerAccount = accounts.SignerAccount;
+pub const WalletAccount = StoredAccount;
+pub const Account = SignerAccount;
+pub const Bip39Account = accounts.Bip39Account;
+pub const VerificationScript = accounts.VerificationScript;
+pub const validateMnemonic = accounts.validateMnemonic;
+pub const NEP6Wallet = nep6.NEP6Wallet;
+pub const NEP6Account = nep6.NEP6Account;
+pub const NEP6Contract = nep6.NEP6Contract;
+pub const CompleteNEP6Wallet = nep6.CompleteNEP6Wallet;
+pub const ScryptParams = support.ScryptParams;
+pub const ContractInfo = support.ContractInfo;
+pub const Hash160Context = support.Hash160Context;
+pub const WalletError = support.WalletError;
 
 test "wallet module" {
     std.testing.refAllDecls(@This());
+}
+
+test "wallet module exposes canonical account aliases" {
+    const testing = std.testing;
+
+    try testing.expect(StoredAccount == WalletAccount);
+    try testing.expect(SignerAccount == Account);
 }

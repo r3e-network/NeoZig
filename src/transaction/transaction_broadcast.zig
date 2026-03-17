@@ -209,6 +209,7 @@ pub const TransactionFees = struct {
 
     /// Formats fees as GAS amounts
     pub fn formatAsGas(self: TransactionFees, allocator: std.mem.Allocator) !TransactionFeesFormatted {
+        _ = allocator;
         const network_gas = @as(f64, @floatFromInt(self.network_fee)) / 100000000.0;
         const system_gas = @as(f64, @floatFromInt(self.system_fee)) / 100000000.0;
         const total_gas = @as(f64, @floatFromInt(self.total_fee)) / 100000000.0;

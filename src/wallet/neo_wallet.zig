@@ -1,6 +1,6 @@
 //! Neo Wallet implementation
 //!
-//! Neo N3 
+//! Neo N3
 //! Neo N3 wallet implementation.
 
 const std = @import("std");
@@ -124,7 +124,7 @@ pub const Wallet = struct {
 
         var iterator = self.accounts_map.iterator();
         while (iterator.next()) |entry| {
-            try accounts.append(entry.value_ptr.*);
+            try accounts.append(entry.value_ptr.borrowedView());
         }
 
         // Sort by script hash
@@ -136,7 +136,9 @@ pub const Wallet = struct {
     /// Gets default account
     pub fn getDefaultAccount(self: Self) ?Account {
         if (self.default_account_hash) |hash| {
-            return self.accounts_map.get(hash);
+            if (self.accounts_map.getPtr(hash)) |account_ptr| {
+                return account_ptr.borrowedView();
+            }
         }
         return null;
     }
@@ -184,7 +186,10 @@ pub const Wallet = struct {
             return errors.throwIllegalArgument("Account with this script hash already exists");
         }
 
-        try self.accounts_map.put(script_hash, account);
+        var stored_account = try account.cloneOwned(self.allocator);
+        errdefer stored_account.deinit();
+
+        try self.accounts_map.put(script_hash, stored_account);
 
         // Set as default if it's the first account
         if (self.default_account_hash == null) {
@@ -235,7 +240,10 @@ pub const Wallet = struct {
 
     /// Gets account by script hash
     pub fn getAccount(self: Self, script_hash: Hash160) ?Account {
-        return self.accounts_map.get(script_hash);
+        if (self.accounts_map.getPtr(script_hash)) |account_ptr| {
+            return account_ptr.borrowedView();
+        }
+        return null;
     }
 
     /// Gets account count
@@ -246,9 +254,12 @@ pub const Wallet = struct {
     /// Creates new account in wallet
     pub fn createAccount(self: *Self, label: ?[]const u8) !Account {
         const key_pair = try KeyPair.generate(true);
-        const account = try Account.initFromKeyPair(self.allocator, key_pair, label);
+        var account = try Account.initFromKeyPair(self.allocator, key_pair, label);
+        errdefer account.deinit();
+        const script_hash = account.getScriptHash();
         _ = try self.addAccount(account);
-        return account;
+        account.deinit();
+        return self.getAccount(script_hash).?;
     }
 
     /// Imports account from private key
@@ -260,12 +271,15 @@ pub const Wallet = struct {
     ) !Account {
         const public_key = try private_key.getPublicKey(true);
         var account = try Account.initFromKeys(self.allocator, private_key, public_key, label);
+        errdefer account.deinit();
 
         // Encrypt private key with password
         try account.encryptPrivateKey(password, private_key, public_key);
 
+        const script_hash = account.getScriptHash();
         _ = try self.addAccount(account);
-        return account;
+        account.deinit();
+        return self.getAccount(script_hash).?;
     }
 
     /// Imports account from WIF
@@ -310,6 +324,7 @@ pub const Account = struct {
     owns_label: bool,
     is_locked: bool,
     encrypted_private_key: ?[]const u8,
+    owns_encrypted_private_key: bool,
     contract_info: ?ContractInfo,
 
     const Self = @This();
@@ -325,6 +340,7 @@ pub const Account = struct {
             .owns_label = label != null,
             .is_locked = false,
             .encrypted_private_key = null,
+            .owns_encrypted_private_key = false,
             .contract_info = null,
         };
     }
@@ -346,13 +362,43 @@ pub const Account = struct {
             .owns_label = label != null,
             .is_locked = false,
             .encrypted_private_key = null,
+            .owns_encrypted_private_key = false,
             .contract_info = null,
+        };
+    }
+
+    /// Creates an allocator-owned clone of this account.
+    pub fn cloneOwned(self: Self, allocator: std.mem.Allocator) !Self {
+        return Self{
+            .allocator = allocator,
+            .address = self.address,
+            .label = try copyLabel(allocator, self.label),
+            .owns_label = self.label != null,
+            .is_locked = self.is_locked,
+            .encrypted_private_key = if (self.encrypted_private_key) |key| try allocator.dupe(u8, key) else null,
+            .owns_encrypted_private_key = self.encrypted_private_key != null,
+            .contract_info = self.contract_info,
+        };
+    }
+
+    /// Creates a non-owning view of this account for borrowed read APIs.
+    pub fn borrowedView(self: Self) Self {
+        return Self{
+            .allocator = self.allocator,
+            .address = self.address,
+            .label = self.label,
+            .owns_label = false,
+            .is_locked = self.is_locked,
+            .encrypted_private_key = self.encrypted_private_key,
+            .owns_encrypted_private_key = false,
+            .contract_info = self.contract_info,
         };
     }
 
     /// Cleanup resources
     pub fn deinit(self: *Self) void {
-        if (self.encrypted_private_key) |key| {
+        if (self.owns_encrypted_private_key and self.encrypted_private_key != null) {
+            const key = self.encrypted_private_key.?;
             self.allocator.free(key);
         }
         if (self.owns_label and self.label != null) {
@@ -412,11 +458,13 @@ pub const Account = struct {
             self.allocator,
         );
 
-        if (self.encrypted_private_key) |old_key| {
+        if (self.owns_encrypted_private_key and self.encrypted_private_key != null) {
+            const old_key = self.encrypted_private_key.?;
             self.allocator.free(old_key);
         }
 
         self.encrypted_private_key = encrypted_key;
+        self.owns_encrypted_private_key = true;
     }
 
     /// Decrypts private key

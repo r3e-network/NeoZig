@@ -1,6 +1,6 @@
 //! Neo Name Service implementation
 //!
-//! Neo N3 
+//! Neo N3
 //! Provides complete NeoNameService contract interaction and domain management.
 
 const std = @import("std");
@@ -362,7 +362,7 @@ pub const NeoNameService = struct {
         comptime T: type,
         function_name: []const u8,
         params: []const ContractParameter,
-        mapper: fn (StackItem, std.mem.Allocator) !T,
+        mapper: fn (StackItem, std.mem.Allocator) anyerror!T,
     ) !Iterator(T) {
         const smart_contract = self.non_fungible_token.token.smart_contract;
         if (smart_contract.client == null) return errors.NeoError.InvalidConfiguration;
@@ -703,8 +703,8 @@ test "NNSDomainManager advanced operations" {
         DomainRecord.init(RecordType.TXT, try allocator.dupe(u8, "Test domain")),
     };
     defer {
-        for (records) |*record| {
-            var mutable_record = record.*;
+        for (records) |record| {
+            var mutable_record = record;
             mutable_record.deinit(allocator);
         }
     }

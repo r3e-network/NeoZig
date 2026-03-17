@@ -1,6 +1,6 @@
 //! Contract Error implementation
 //!
-//! Neo N3 
+//! Neo N3
 //! Provides specialized error handling for smart contract operations.
 
 const std = @import("std");
@@ -103,23 +103,30 @@ pub const ContractError = union(enum) {
     }
 };
 
+pub const ContractValidationError = error{
+    InvalidNeoName,
+    InvalidNeoNameServiceRoot,
+    UnexpectedReturnType,
+    UnresolvableDomainName,
+};
+
 /// Contract error utilities
 pub const ContractErrorUtils = struct {
     /// Validates contract name and throws appropriate error
-    pub fn validateContractName(name: []const u8) ContractError!void {
+    pub fn validateContractName(name: []const u8) ContractValidationError!void {
         if (name.len == 0) {
-            return ContractError.invalidNeoName(name);
+            return error.InvalidNeoName;
         }
 
         if (name.len > 255) {
-            return ContractError.invalidNeoName(name);
+            return error.InvalidNeoName;
         }
 
         // Additional name validation would go here
     }
 
     /// Validates NNS root domain
-    pub fn validateNNSRoot(root: []const u8) ContractError!void {
+    pub fn validateNNSRoot(root: []const u8) ContractValidationError!void {
         const valid_roots = [_][]const u8{ "neo", "test", "local" };
 
         for (valid_roots) |valid_root| {
@@ -128,32 +135,32 @@ pub const ContractErrorUtils = struct {
             }
         }
 
-        return ContractError.invalidNeoNameServiceRoot(root);
+        return error.InvalidNeoNameServiceRoot;
     }
 
     /// Validates stack item type
     pub fn validateStackItemType(
         actual_type: []const u8,
         expected_types: []const []const u8,
-    ) ContractError!void {
+    ) ContractValidationError!void {
         for (expected_types) |expected_type| {
             if (std.mem.eql(u8, actual_type, expected_type)) {
                 return;
             }
         }
 
-        return ContractError.unexpectedReturnType(actual_type, expected_types);
+        return error.UnexpectedReturnType;
     }
 
     /// Checks if domain name is resolvable
-    pub fn checkDomainResolvable(domain_name: []const u8) ContractError!void {
+    pub fn checkDomainResolvable(domain_name: []const u8) ContractValidationError!void {
         // Basic domain format validation
         if (domain_name.len == 0) {
-            return ContractError.unresolvableDomainName(domain_name);
+            return error.UnresolvableDomainName;
         }
 
         if (std.mem.indexOf(u8, domain_name, ".") == null) {
-            return ContractError.unresolvableDomainName(domain_name);
+            return error.UnresolvableDomainName;
         }
 
         // Additional resolvability checks would go here
@@ -205,26 +212,26 @@ test "ContractErrorUtils validation functions" {
     // Test contract name validation
     try ContractErrorUtils.validateContractName("ValidContract");
 
-    try testing.expectError(ContractError.InvalidNeoName, ContractErrorUtils.validateContractName(""));
+    try testing.expectError(ContractValidationError.InvalidNeoName, ContractErrorUtils.validateContractName(""));
 
-    try testing.expectError(ContractError.InvalidNeoName, ContractErrorUtils.validateContractName("x" ** 300));
+    try testing.expectError(ContractValidationError.InvalidNeoName, ContractErrorUtils.validateContractName("x" ** 300));
 
     // Test NNS root validation
     try ContractErrorUtils.validateNNSRoot("neo");
     try ContractErrorUtils.validateNNSRoot("test");
 
-    try testing.expectError(ContractError.InvalidNeoNameServiceRoot, ContractErrorUtils.validateNNSRoot("invalid"));
+    try testing.expectError(ContractValidationError.InvalidNeoNameServiceRoot, ContractErrorUtils.validateNNSRoot("invalid"));
 
     // Test stack item type validation
     const valid_types = [_][]const u8{ "String", "Integer" };
     try ContractErrorUtils.validateStackItemType("String", &valid_types);
 
-    try testing.expectError(ContractError.UnexpectedReturnType, ContractErrorUtils.validateStackItemType("Boolean", &valid_types));
+    try testing.expectError(ContractValidationError.UnexpectedReturnType, ContractErrorUtils.validateStackItemType("Boolean", &valid_types));
 
     // Test domain resolvability
     try ContractErrorUtils.checkDomainResolvable("example.neo");
 
-    try testing.expectError(ContractError.UnresolvableDomainName, ContractErrorUtils.checkDomainResolvable(""));
+    try testing.expectError(ContractValidationError.UnresolvableDomainName, ContractErrorUtils.checkDomainResolvable(""));
 
-    try testing.expectError(ContractError.UnresolvableDomainName, ContractErrorUtils.checkDomainResolvable("nodomain"));
+    try testing.expectError(ContractValidationError.UnresolvableDomainName, ContractErrorUtils.checkDomainResolvable("nodomain"));
 }

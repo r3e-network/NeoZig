@@ -7,7 +7,7 @@ const std = @import("std");
 
 const testing = std.testing;
 const neo = @import("neo-zig");
-const WitnessScope = neo.transaction.CompleteWitnessScope;
+const WitnessScope = neo.transaction.WitnessScopeSet;
 
 test "Witness scope creation and validation" {
     try testing.expectEqual(@as(u8, 0x00), @intFromEnum(WitnessScope.None));

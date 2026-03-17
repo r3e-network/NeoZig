@@ -5,6 +5,12 @@
 
 const std = @import("std");
 const neo = @import("neo-zig");
+const model = neo.model;
+const security = neo.security;
+const runtime = neo.runtime;
+const rpc = neo.rpc;
+const tx = runtime.transaction;
+const wallet = runtime.wallet;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -33,22 +39,22 @@ fn demonstrateHashes(allocator: std.mem.Allocator) !void {
 
     const message = "Neo Zig SDK hash example";
 
-    const sha = neo.Hash256.sha256(message);
+    const sha = model.Hash256.sha256(message);
     const sha_hex = try sha.string(allocator);
     defer allocator.free(sha_hex);
     std.log.info("SHA256(\"{s}\") = {s}...", .{ message, sha_hex[0..16] });
 
-    const double_sha = neo.crypto.BytesHashUtils.hash256(message);
+    const double_sha = security.crypto.BytesHashUtils.hash256(message);
     const double_sha_hex = try double_sha.string(allocator);
     defer allocator.free(double_sha_hex);
     std.log.info("Double SHA256 = {s}...", .{double_sha_hex[0..16]});
 
-    const hash160 = try neo.crypto.hash160(message);
+    const hash160 = try security.crypto.hash160(message);
     const hash160_hex = try hash160.string(allocator);
     defer allocator.free(hash160_hex);
     std.log.info("Hash160 = {s}...", .{hash160_hex[0..16]});
 
-    const ripemd = try neo.crypto.ripemd160Hash(message);
+    const ripemd = try security.crypto.ripemd160Hash(message);
     const ripemd_hex = try ripemd.string(allocator);
     defer allocator.free(ripemd_hex);
     std.log.info("RIPEMD160 = {s}...", .{ripemd_hex[0..16]});
@@ -57,7 +63,7 @@ fn demonstrateHashes(allocator: std.mem.Allocator) !void {
 fn demonstrateKeysAndAddresses(allocator: std.mem.Allocator) !void {
     std.log.info("\n--- Key Generation & Address Creation ---", .{});
 
-    const key_pair = try neo.crypto.generateKeyPair(true);
+    const key_pair = try security.crypto.generateKeyPair(true);
     defer {
         var mutable = key_pair;
         mutable.zeroize();
@@ -68,7 +74,7 @@ fn demonstrateKeysAndAddresses(allocator: std.mem.Allocator) !void {
     defer allocator.free(address_str);
     std.log.info("Generated address: {s}", .{address_str});
 
-    const parsed = try neo.Address.fromString(address_str, allocator);
+    const parsed = try model.Address.fromString(address_str, allocator);
     try ensure(parsed.eql(address));
 
     const script_hash = address.toHash160();
@@ -87,21 +93,21 @@ fn demonstrateKeysAndAddresses(allocator: std.mem.Allocator) !void {
 fn demonstrateWifRoundtrip(allocator: std.mem.Allocator) !void {
     std.log.info("\n--- WIF Key Format ---", .{});
 
-    const key_pair = try neo.crypto.generateKeyPair(true);
+    const key_pair = try security.crypto.generateKeyPair(true);
     defer {
         var mutable = key_pair;
         mutable.zeroize();
     }
 
-    const wif_mainnet = try neo.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
+    const wif_mainnet = try security.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
     defer allocator.free(wif_mainnet);
     std.log.info("Mainnet WIF: {s}...", .{wif_mainnet[0..10]});
 
-    const wif_testnet = try neo.crypto.encodeWIF(key_pair.private_key, true, .testnet, allocator);
+    const wif_testnet = try security.crypto.encodeWIF(key_pair.private_key, true, .testnet, allocator);
     defer allocator.free(wif_testnet);
     std.log.info("Testnet WIF: {s}...", .{wif_testnet[0..10]});
 
-    var decoded = try neo.crypto.decodeWIF(wif_mainnet, allocator);
+    var decoded = try security.crypto.decodeWIF(wif_mainnet, allocator);
     defer decoded.deinit();
 
     try ensure(decoded.private_key.eql(key_pair.private_key));
@@ -114,7 +120,7 @@ fn demonstrateAddressValidation(allocator: std.mem.Allocator) !void {
     std.log.info("\n--- Address Validation ---", .{});
 
     const test_address = "Nj6QRk4G1UcCqSF9QWxxwwfzgfttFsqvGh";
-    const address = try neo.Address.fromString(test_address, allocator);
+    const address = try model.Address.fromString(test_address, allocator);
 
     if (address.isValid()) {
         std.log.info("Address '{s}' is valid", .{test_address});
@@ -129,7 +135,7 @@ fn demonstrateAddressValidation(allocator: std.mem.Allocator) !void {
     defer allocator.free(hash_hex);
     std.log.info("Script hash: {s}", .{hash_hex});
 
-    const reconstructed = neo.Address.fromHash160(script_hash);
+    const reconstructed = model.Address.fromHash160(script_hash);
     try ensure(address.eql(reconstructed));
     std.log.info("Address round-trip from hash successful", .{});
 }
@@ -137,20 +143,20 @@ fn demonstrateAddressValidation(allocator: std.mem.Allocator) !void {
 fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
     std.log.info("\n--- Transaction Building ---", .{});
 
-    var builder = neo.transaction.TransactionBuilder.init(allocator);
+    var builder = tx.TransactionBuilder.init(allocator);
     defer builder.deinit();
 
     _ = builder.version(0)
         .additionalNetworkFee(500000)
         .additionalSystemFee(1000000);
 
-    const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
+    const signer = tx.Signer.init(model.Hash160.ZERO, tx.WitnessScope.CalledByEntry);
     _ = try builder.signer(signer);
 
     _ = try builder.transferToken(
-        neo.transaction.TransactionBuilder.GAS_TOKEN_HASH,
-        neo.Hash160.ZERO,
-        neo.Hash160.ZERO,
+        tx.TransactionBuilder.GAS_TOKEN_HASH,
+        model.Hash160.ZERO,
+        model.Hash160.ZERO,
         100000000,
     );
 
@@ -169,20 +175,20 @@ fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
 fn demonstrateWalletOperations(allocator: std.mem.Allocator) !void {
     std.log.info("\n--- Wallet Operations ---", .{});
 
-    var wallet = neo.wallet.Wallet.init(allocator);
-    defer wallet.deinit();
+    var wallet_instance = wallet.Wallet.init(allocator);
+    defer wallet_instance.deinit();
 
-    _ = wallet.name("Example Wallet").version("3.0");
-    std.log.info("Created wallet: {s} v{s}", .{ wallet.getName(), wallet.getVersion() });
+    _ = wallet_instance.name("Example Wallet").version("3.0");
+    std.log.info("Created wallet: {s} v{s}", .{ wallet_instance.getName(), wallet_instance.getVersion() });
 
-    const account = try wallet.createAccount("Primary Account");
+    const account = try wallet_instance.createAccount("Primary Account");
     std.log.info("Created account: {s}", .{account.getLabel().?});
 
-    if (wallet.isDefault(account)) {
+    if (wallet_instance.isDefault(account)) {
         std.log.info("Account is default", .{});
     }
 
-    std.log.info("Wallet has {} accounts", .{wallet.getAccountCount()});
+    std.log.info("Wallet has {} accounts", .{wallet_instance.getAccountCount()});
 
     const account_address = account.getAddress();
     const address_str = try account_address.toString(allocator);
@@ -193,22 +199,22 @@ fn demonstrateWalletOperations(allocator: std.mem.Allocator) !void {
 fn demonstrateContractParameters(_: std.mem.Allocator) !void {
     std.log.info("\n--- Contract Parameters ---", .{});
 
-    const param_string = neo.ContractParameter.string("hello");
+    const param_string = model.ContractParameter.string("hello");
     std.log.info("String parameter: {s}", .{param_string.String});
 
-    const param_integer = neo.ContractParameter.integer(42);
+    const param_integer = model.ContractParameter.integer(42);
     std.log.info("Integer parameter: {}", .{param_integer.Integer});
 
-    const param_bool = neo.ContractParameter.boolean(true);
+    const param_bool = model.ContractParameter.boolean(true);
     std.log.info("Boolean parameter: {}", .{param_bool.Boolean});
 
-    const param_hash160 = neo.ContractParameter.hash160(neo.Hash160.ZERO);
+    const param_hash160 = model.ContractParameter.hash160(model.Hash160.ZERO);
     _ = param_hash160;
     std.log.info("Hash160 parameter created", .{});
 
-    const param_array = neo.ContractParameter.array(&[_]neo.ContractParameter{
-        neo.ContractParameter.string("item1"),
-        neo.ContractParameter.integer(123),
+    const param_array = model.ContractParameter.array(&[_]model.ContractParameter{
+        model.ContractParameter.string("item1"),
+        model.ContractParameter.integer(123),
     });
     std.log.info("Array parameter with {} items", .{param_array.Array.len});
 }
@@ -216,9 +222,14 @@ fn demonstrateContractParameters(_: std.mem.Allocator) !void {
 fn demonstrateRpcRequests(_: std.mem.Allocator) !void {
     std.log.info("\n--- RPC Client Requests ---", .{});
 
-    const config = neo.rpc.NeoConfig.init();
-    var service = neo.rpc.NeoService.init("http://localhost:20332");
-    var client = neo.rpc.NeoClient.build(std.heap.page_allocator, &service, config);
+    const config = rpc.Config.builder()
+        .blockInterval(15000)
+        .pollingInterval(15000)
+        .build() catch unreachable;
+    var client = try rpc.Client.builder(std.heap.page_allocator)
+        .endpoint("http://localhost:20332")
+        .config(config)
+        .build();
     defer client.deinit();
 
     std.log.info("RPC client created", .{});

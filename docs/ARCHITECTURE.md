@@ -163,6 +163,9 @@ Complete transaction building and signing system:
 
 - **TransactionBuilder**: Fluent API for constructing transactions
 - **NeoTransaction**: Complete transaction with signing and serialization
+- **TransactionWitness**: Serialized witness record embedded in transactions
+- **ScriptWitness**: Higher-level witness helper with script-building utilities
+- **WitnessScopeSet**: Extended witness scope enum with combination/extraction helpers
 - **Signer**: Account-based signing with witness scopes
 - **WitnessRule**: Advanced witness validation rules
 - **BroadcastUtils**: Transaction broadcasting helpers
@@ -173,7 +176,13 @@ JSON-RPC client implementation:
 
 - **NeoService**: HTTP transport with timeout and retry support
 - **NeoClient**: Main client with typed request builders
-- **responses.zig**: Typed response structures
+- **types.zig**: Complete RPC response-model catalog, with `core`, `extended`, `protocol`, and `remaining` families
+- **responses.zig**: Stable façade over categorized `responses_*.zig` modules
+- **responses_blockchain.zig**: Stable façade over `responses_blockchain_*.zig` submodules
+- **responses_contract.zig**: Stable façade over `responses_contract_*.zig` submodules
+- **extended_responses.zig**: Stable façade over categorized `extended_*_responses.zig` modules
+- **remaining_responses.zig**: Stable façade over categorized `remaining_*_responses.zig` modules
+- **protocol_responses.zig**: Stable façade over categorized `protocol_*_responses.zig` modules
 - **response_parser.zig**: JSON parsing with Neo protocol compatibility
 
 ### Contract Module
@@ -192,6 +201,8 @@ Smart contract wrappers and helpers:
 Wallet and account management:
 
 - **Wallet**: Core wallet implementation
+- **StoredAccount**: Wallet-managed account record returned by wallet lookup APIs
+- **SignerAccount**: Standalone signer-capable account model used by signing flows
 - **CompleteNEP6Wallet**: Full NEP-6 standard implementation
 - **Bip39Account**: BIP-39 mnemonic account derivation
 
@@ -218,7 +229,10 @@ Binary serialization framework:
 User Code
     |
     v
-NeoClient.build(allocator, &service, config)
+neo.rpc.Client.builder(allocator)
+    .endpoint(...)
+    .config(...)
+    .build()
     |
     v
 NeoClient (client instance)
