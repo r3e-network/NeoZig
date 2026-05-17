@@ -1,8 +1,73 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 - 2026-05-17
 
-- (none)
+### Public Surface: AWS-style Client
+
+- **NEW `neo.Client`** — a single, AWS-SDK-style client that replaces both `NeoZig` and `neo.rpc.NeoClient` for everyday use. Operations are direct methods that return their response values (no intermediate `RpcRequest` to call `.send()` on):
+
+    ```zig
+    var client = try neo.Client.builder(allocator)
+        .endpoint("http://localhost:20332")
+        .timeoutMs(30_000)
+        .retryPolicy(.{ .max_attempts = 5 })
+        .build();
+    defer client.deinit();
+
+    const count = try client.getBlockCount();
+    var version = try client.getVersion();
+    defer version.deinit(allocator);
+    ```
+
+- **Fluent builder** — `Client.builder(allocator)` returns a builder with chainable setters: `endpoint`, `network` (mainnet/testnet/private preset), `timeoutMs`, `retryPolicy`, `nnsResolver`, `blockIntervalMs`, `pollingIntervalMs`, `allowTransmissionOnFault`, `includeRawResponses`, `maxResponseBytes`.
+- **Option structs** for complex calls: `GetBlockOptions`, `InvokeOptions`, `TransferRangeOptions`.
+- **Top-level type re-exports** — value types (`neo.Hash160`, `neo.Hash256`, `neo.Address`, `neo.ContractParameter`, `neo.StackItem`) and error sets (`neo.NeoError`, `neo.CryptoError`, …) are now reachable directly on `neo` without a namespace pyramid.
+- **`neo.Error` umbrella** — a single union covering every per-module error, suitable as a return type for application glue code.
+
+### Expanded Neo N3 RPC coverage on `neo.Client`
+
+`neo.Client` now wraps ~30 Neo N3 RPC operations. New since the initial v2.0 draft:
+
+- Block headers: `getBlockHeader`, `getBlockHeaderByIndex`, `getBlockHeaderCount`
+- Transactions: `getTransactionHeight`, `submitBlock`
+- Mempool & peers: `getMemPool`, `getRawMemPool`, `getPeers`
+- Validators: `getNextBlockValidators`, `getNativeContracts`
+- Node: `listPlugins`
+- Storage / state: `getStorage`, `getStateRoot`, `getStateHeight`
+- Contract: `invokeContractVerify`, `getUnclaimedGas`
+- NEP-11: `getNep11Balances`
+
+Generic slice parsing was added to the response parser, so RPC operations returning JSON arrays (`getRawMemPool` → `[]Hash256`, `getNativeContracts` → `[]NativeContractState`) compose cleanly through the single-typed `rpcCall` path.
+
+### RPC Robustness
+
+- **Exponential backoff with jitter** on transient transport failures. The retry loop now sleeps between attempts (`Backoff{ initial_ms, multiplier, max_ms, jitter }`); previously the loop spun without any delay.
+- **Auto-incrementing JSON-RPC request IDs**. `HttpClient.jsonRpcRequest` now assigns sequential ids when none is supplied; previously every request was id=1.
+- **Structured server-error capture** — when a node returns a JSON-RPC `error` object, the parsed `code`/`message`/`data` is preserved on the client. Inspect via `Client.takeLastServerError()` after `error.ServerError`. Previously this information was discarded.
+
+### Breaking Changes
+
+- The flat top-level value-type aliases (`neo.Hash160`, etc.) remain stable. Other deprecated paths still resolve via aliases (`neo.runtime.*`, `neo.model.*`, `neo.security.*`, `neo.core.*`, `neo.io.*`, `neo.vm.*`) but are scheduled for removal in v3.0; switch to the top-level surface.
+- **Deep sub-namespaces are gone.** Paths like `neo.contract.native.ContractManagement`, `neo.transaction.witnesses.WitnessRule`, `neo.wallet.accounts.Wallet`, `neo.rpc.client.Client`, `neo.rpc.transport.Service` no longer compile. Use the flat per-domain re-exports instead: `neo.contract.ContractManagement`, `neo.transaction.WitnessRule`, `neo.wallet.Wallet`, `neo.rpc.Client`, `neo.rpc.HttpService`.
+- **`NeoZig` struct removed.** `neo.NeoClient` is now an alias for `neo.Client`. Migrate `NeoZig.Factory.createMainNet(svc, alloc)` to `neo.Client.builder(alloc).network(.mainnet).build()`.
+- `HttpClient.jsonRpcRequest` now takes `*Self` (was `Self`) and `request_id: ?u32` (was `u32`). Callers that explicitly pass an id continue to compile; callers that share `HttpClient` by value need to switch to a pointer.
+
+### Repo Hygiene
+
+- Removed 48 MB of upstream-reference directories (`NeoSwift/`, `neo_csharp/`) and the `.hive-mind/` runtime cache from the working tree (they were already `.gitignore`d).
+- Deleted **33 orphan duplicate response files** in `src/protocol/response/` that had identical type definitions to the live `src/rpc/responses_*.zig` set, plus **5 dead modules** in `src/protocol/` (`service.zig`, `protocol_error.zig`, `neo_express*`, the abandoned `polling/` split) — about 8,000 lines of unreachable code.
+- Deleted **4 orphan test files** in `tests/` (`advanced_test_suite.zig`, `complete_test_suite.zig`, `complete_test_conversion.zig`, `final_comprehensive_tests.zig`) — 2,831 lines that no `build.zig` step referenced.
+- Deleted **all 26 `*_namespace.zig` shim files** (8 top-level + 18 per-domain) — each was a 1–13 line re-export pile whose contents are now inlined into the relevant `mod.zig`. The public API surface (`neo.contract.SmartContract`, `neo.transaction.TransactionBuilder`, …) is unchanged; only the third-level sub-namespaces (`neo.runtime.contract.native.ContractManagement`, etc.) are gone.
+- Deleted legacy `src/NeoZig.zig` (replaced by `neo.Client`).
+- Deleted duplicate `src/rpc/protocol_contract_responses.zig` (8 type definitions, all duplicates of `responses_contract_*.zig` or orphan) and the two trivial sub-umbrellas `responses_blockchain.zig`/`responses_contract.zig`. `responses.zig` now imports leaf type files directly.
+
+### Fixes
+
+- `tests/all_tests.zig` leaked five RpcRequest objects (no `.deinit()` after construction); now properly cleaned up.
+
+### Validation
+
+- `zig build`, `zig build test`, all 13 named test steps (`integration-test`, `rpc-test`, `crypto-test`, `contract-test`, `transaction-test`, `wallet-test`, `protocol-test`, `serialization-test`, `script-test`, `types-test`, `witnessrule-test`, `parity-test`) all green.
 
 ## 1.4.0 - 2026-03-17
 

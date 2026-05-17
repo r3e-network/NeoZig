@@ -1,13 +1,13 @@
 # API Reference
 
-This document provides a high-level overview of the Neo Zig SDK API, organized by functional area.
+This document is a high-level reference for the Neo Zig SDK public API.
 
 ## Table of Contents
 
 - [Module Organization](#module-organization)
+- [Client](#client)
 - [Core Types](#core-types)
 - [Cryptography](#cryptography)
-- [RPC Client](#rpc-client)
 - [Transactions](#transactions)
 - [Smart Contracts](#smart-contracts)
 - [Wallet](#wallet)
@@ -21,27 +21,97 @@ The SDK is organized under the `neo` root module:
 const neo = @import("neo-zig");
 ```
 
-Available submodules:
+Primary entry point — the AWS-SDK-style client:
 
-| Module              | Purpose                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `neo.core`          | Constants and shared error types                               |
-| `neo.model`         | Hash160, Hash256, Address, ContractParameter                   |
-| `neo.security`      | Cryptographic operations (keys, signatures, NEP-2, WIF, BIP32) |
-| `neo.io`            | Binary serialization framework                                 |
-| `neo.vm`            | Neo VM script construction                                     |
-| `neo.runtime`       | Contracts, transactions, wallets, RPC, and protocol access     |
-| `neo.rpc`           | Namespace-first RPC surface (`client`, `config`, etc.)         |
-| `neo.utils`         | Logging, validation, string/array utilities                    |
+| Symbol         | Purpose                                                   |
+| -------------- | --------------------------------------------------------- |
+| `neo.Client`   | Single Neo client with fluent builder and operation methods |
+| `neo.Network`  | Preset enum (`.mainnet`, `.testnet`, `.private`)            |
+| `neo.RetryPolicy` | Exponential-backoff retry policy struct                  |
+| `neo.Error`    | Union over every per-module error set                       |
 
-Flat aliases such as `neo.Hash160`, `neo.crypto`, `neo.transaction`, and `neo.rpc.Client`
-remain available for compatibility.
+Value types are re-exported flat:
+
+| Symbol                | Purpose                                          |
+| --------------------- | ------------------------------------------------ |
+| `neo.Hash160`         | 20-byte hash (addresses, contract scripts)       |
+| `neo.Hash256`         | 32-byte hash (blocks, transactions)              |
+| `neo.Address`         | Neo N3 address with Base58Check                  |
+| `neo.ContractParameter` | Neo VM parameter (integer, string, bytes, etc.) |
+| `neo.StackItem`       | Neo VM stack item                                |
+
+Domain modules for advanced usage:
+
+| Module                | Purpose                                                 |
+| --------------------- | ------------------------------------------------------- |
+| `neo.crypto`          | Key pairs, ECDSA, NEP-2, WIF, BIP-32, RIPEMD-160        |
+| `neo.serialization`   | BinaryReader/Writer, varint, NeoSerializable            |
+| `neo.script`          | ScriptBuilder, OpCode, InteropService                   |
+| `neo.contract`        | SmartContract, NEP-17/NEP-11, native contracts, NNS     |
+| `neo.transaction`    | TransactionBuilder, Witness, signers, broadcast         |
+| `neo.wallet`          | Wallet, Account, NEP-6, BIP-39                          |
+| `neo.rpc`             | Low-level RPC types and transport (escape hatch)        |
+| `neo.protocol`        | Internal JSON-RPC service helpers                       |
+| `neo.constants`       | Network magics, address versions, native contract hashes |
+| `neo.errors`          | Per-module error sets (also re-exported flat on `neo`)  |
+| `neo.utils`           | base58, byte/string/array/numeric helpers, JSON utils    |
+
+Deprecated v1.x paths (`neo.runtime`, `neo.model`, `neo.security`, `neo.core`,
+`neo.io`, `neo.vm`) still resolve through back-compat shims and will be
+removed in v3.0. See [MIGRATION_V2.md](MIGRATION_V2.md) for the side-by-side
+mapping.
 
 For RPC response models:
 
-- `neo.rpc.types` is the complete response-model catalog
-- `neo.rpc.types.core`, `extended`, `protocol`, and `remaining` expose the organized response families
-- `neo.rpc` mirrors the common unique response aliases for convenience
+- `neo.rpc.types` is the response-type catalog (flat, all types reachable from a single module)
+- `neo.rpc.types.core`, `extended`, `protocol`, and `remaining` group the underlying definition files
+
+## Client
+
+```zig
+// Construction (fluent builder; each setter returns a new builder by value)
+var client = try neo.Client.builder(allocator)
+    .endpoint("http://localhost:20332")              // OR .network(.testnet)
+    .timeoutMs(30_000)
+    .retryPolicy(.{ .max_attempts = 5, .initial_backoff_ms = 500 })
+    .blockIntervalMs(15_000)
+    .pollingIntervalMs(15_000)
+    .allowTransmissionOnFault(false)
+    .includeRawResponses(false)
+    .maxResponseBytes(32 * 1024 * 1024)
+    .build();
+defer client.deinit();
+
+// Inspect a structured server error after error.ServerError:
+var info = client.takeLastServerError() orelse return;
+defer info.deinit(allocator);
+std.log.warn("server error {d}: {s}", .{ info.code, info.message });
+```
+
+Operations available as direct methods (return the response value, no `.send()` step):
+
+| Method                                                            | Returns                          |
+| ----------------------------------------------------------------- | -------------------------------- |
+| `getBestBlockHash()`                                              | `Hash256`                        |
+| `getBlockHash(index)`                                             | `Hash256`                        |
+| `getBlock(hash, .{ .full_transactions })`                         | `NeoBlock`                       |
+| `getBlockByIndex(index, .{ .full_transactions })`                 | `NeoBlock`                       |
+| `getBlockCount()`                                                 | `u32`                            |
+| `getConnectionCount()`                                            | `u32`                            |
+| `getVersion()`                                                    | `NeoVersion`                     |
+| `getTransaction(hash)`                                            | `Transaction`                    |
+| `getContractState(contract)`                                      | `ContractState`                  |
+| `invokeFunction(contract, method, params, .{ .signers })`         | `InvocationResult`               |
+| `invokeScript(script_hex, .{ .signers })`                         | `InvocationResult`               |
+| `sendRawTransaction(raw_tx_hex)`                                  | `SendRawTransactionResponse`     |
+| `calculateNetworkFee(tx_hex)`                                     | `NetworkFeeResponse`             |
+| `getNep17Balances(script_hash)`                                   | `Nep17Balances`                  |
+| `getNep17Transfers(script_hash, .{ .from_time, .to_time })`       | `Nep17Transfers`                 |
+| `validateAddress(address)`                                        | `ValidateAddressResult`          |
+| `getNetworkMagic()`                                               | `u32` (cached after first call)  |
+
+For RPC methods not yet wrapped on `Client`, drop down to the legacy
+`neo.rpc.NeoClient` (still exposed) which has the full pre-v2 method set.
 
 ## Core Types
 
@@ -238,125 +308,99 @@ defer allocator.free(hex);
 const hash160 = try neo.crypto.hash160(data);
 ```
 
-## RPC Client
+## RPC Examples
 
-### NeoClient Service
-
-```zig
-// Create service directly when you need transport-level control
-var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
-
-// Configure
-service.setMaxResponseBytes(32 * 1024 * 1024);  // 32 MiB default
-const config = service.getConfiguration();
-```
-
-### NeoClient Client
+All examples assume:
 
 ```zig
-// Preferred builder-based construction
-const config = try neo.rpc.Config.builder()
-    .blockInterval(3000)
-    .pollingInterval(3000)
-    .build();
-var client = try neo.rpc.Client.builder(allocator)
+const std = @import("std");
+const neo = @import("neo-zig");
+
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(config)
+    .timeoutMs(30_000)
+    .retryPolicy(.{ .max_attempts = 5 })
     .build();
 defer client.deinit();
-
-// Compatibility path when you already own a service
-var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
-var compat_client = neo.rpc.Client.build(allocator, &service, neo.rpc.Config.init());
-defer compat_client.deinit();
 ```
 
-### RPC Methods
-
-**Blockchain Info:**
+**Blockchain queries:**
 
 ```zig
-// Get current block count
-const block_count_request = try client.getBlockCount();
-const block_count = try block_count_request.send();
+const count = try client.getBlockCount();
+const best_hash = try client.getBestBlockHash();
 
-// Get best block hash
-const best_hash_request = try client.getBestBlockHash();
-const best_hash = try best_hash_request.send();
+var block = try client.getBlockByIndex(count - 1, .{ .full_transactions = true });
+defer block.deinit(allocator);
 
-// Get block by hash or index
-const block_request = try client.getBlock(block_hash);
-const block = try block_request.send();
-
-// Get block header
-const header_request = try client.getBlockHeader(block_hash);
-const header = try header_request.send();
+const hash = try client.getBlockHash(123);
+var block2 = try client.getBlock(hash, .{ .full_transactions = false });
+defer block2.deinit(allocator);
 ```
 
-**Network Info:**
+**Network info:**
 
 ```zig
-// Get network magic (for signing)
-const magic_request = try client.getNetworkMagicNumber();
-const magic = try magic_request.send();
+// Get and cache the network magic (used by signing)
+const magic = try client.getNetworkMagic();
 
-// Get node version
-const version_request = try client.getVersion();
-const version = try version_request.send();
-
-// Getpeers (network connectivity)
-const peers_request = try client.getPeers();
-const peers = try peers_request.send();
+var version = try client.getVersion();
+defer version.deinit(allocator);
 ```
 
-**Token Balances:**
+**Token balances:**
 
 ```zig
-// Get NEP-17 balances
-const balances_request = try client.getNep17Balances(script_hash);
-const balances = try balances_request.send();
+var balances = try client.getNep17Balances(script_hash);
+defer balances.deinit(allocator);
 
-// Get specific token balance
-const balance_request = try client.getNep17Balance(
+var transfers = try client.getNep17Transfers(
     script_hash,
-    neo.contract.GasToken.GAS_HASH,
+    .{ .from_time = 1700_000_000_000, .to_time = 1710_000_000_000 },
 );
-const balance = try balance_request.send();
+defer transfers.deinit(allocator);
 ```
 
-**Smart Contract:**
+**Smart contract:**
 
 ```zig
-// Invoke read-only contract method
 const params = [_]neo.ContractParameter{
     neo.ContractParameter.hash160(holder_address),
 };
-const invoke_request = try client.invokeFunction(
+var result = try client.invokeFunction(
     contract_hash,
     "balanceOf",
     &params,
-    &signers,
+    .{ .signers = &.{} },
 );
-const result = try invoke_request.send();
+defer result.deinit(allocator);
 
-// Get contract state
-const state_request = try client.getContractState(contract_hash);
-const state = try state_request.send();
+var state = try client.getContractState(contract_hash);
+defer state.deinit(allocator);
 ```
 
-**Transaction:**
+**Transactions:**
 
 ```zig
-// Send raw transaction
-const result = try client.sendRawTransaction(transaction_bytes);
+const send_response = try client.sendRawTransaction(raw_tx_hex);
 
-// Get application log
-const log_request = try client.getApplicationLog(tx_hash);
-const log = try log_request.send();
+var tx = try client.getTransaction(tx_hash);
+defer tx.deinit(allocator);
+```
 
-// Get transaction info
-const tx_request = try client.getTransaction(tx_hash);
-const tx = try tx_request.send();
+**Error handling — capturing structured server errors:**
+
+```zig
+const result = client.getBlock(unknown_hash, .{}) catch |err| switch (err) {
+    error.ServerError => {
+        var info = client.takeLastServerError() orelse return err;
+        defer info.deinit(allocator);
+        std.log.warn("RPC error {d}: {s}", .{ info.code, info.message });
+        return err;
+    },
+    else => return err,
+};
+_ = result;
 ```
 
 ## Transactions
@@ -415,8 +459,9 @@ defer allocator.free(hash_hex);
 ### Transaction Signing
 
 ```zig
-// Get network magic (required for correct signing)
-const magic = try client.getNetworkMagicNumber();
+// Get network magic (required for correct signing).
+// On neo.Client this is `getNetworkMagic()`; it caches after first call.
+const magic = try client.getNetworkMagic();
 
 // Sign with key pair
 const signed_tx = try transaction.sign(key_pair, magic);

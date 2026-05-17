@@ -3,10 +3,8 @@ const ArrayList = std.ArrayList;
 
 const errors = @import("../core/errors.zig");
 const Hash160 = @import("../types/hash160.zig").Hash160;
-const contract_types = @import("responses_contract.zig");
-
-const ContractManifest = contract_types.ContractManifest;
-const ContractNef = contract_types.ContractNef;
+const ContractManifest = @import("responses_contract_manifest.zig").ContractManifest;
+const ContractNef = @import("responses_contract_state.zig").ContractNef;
 
 /// Neo list plugins response
 pub const NeoListPlugins = struct {
@@ -241,4 +239,27 @@ pub const Diagnostics = struct {
     }
 };
 
-pub const ContractStorageEntry = @import("protocol_responses.zig").ContractStorageEntry;
+/// A single (key, value) pair from a contract's storage section.
+pub const ContractStorageEntry = struct {
+    key: []const u8,
+    value: []const u8,
+
+    pub fn init(key: []const u8, value: []const u8) ContractStorageEntry {
+        return .{ .key = key, .value = value };
+    }
+
+    pub fn fromJson(json_value: std.json.Value, allocator: std.mem.Allocator) !ContractStorageEntry {
+        const obj = json_value.object;
+        return ContractStorageEntry.init(
+            try allocator.dupe(u8, obj.get("key").?.string),
+            try allocator.dupe(u8, obj.get("value").?.string),
+        );
+    }
+
+    pub fn deinit(self: *ContractStorageEntry, allocator: std.mem.Allocator) void {
+        if (self.key.len > 0) allocator.free(@constCast(self.key));
+        if (self.value.len > 0) allocator.free(@constCast(self.value));
+        self.key = "";
+        self.value = "";
+    }
+};

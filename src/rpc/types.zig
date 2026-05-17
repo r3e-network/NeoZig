@@ -67,10 +67,10 @@ pub const ResponseAliases = remaining.ResponseAliases;
 pub const ExpressShutdownResponse = remaining.ExpressShutdownResponse;
 pub const DiagnosticsResponse = remaining.DiagnosticsResponse;
 
-test "rpc types exposes complete catalog namespaces" {
+test "rpc types exposes consistent catalog" {
     const testing = std.testing;
 
-    try testing.expect(core.blockchain.NeoBlock == NeoBlock);
+    try testing.expect(core.NeoBlock == NeoBlock);
     try testing.expect(extended.network.NeoGetStateRoot == NeoGetStateRoot);
     try testing.expect(protocol.wallet.NeoGetClaimable == NeoGetClaimable);
     try testing.expect(remaining.state.NeoFindStates == NeoFindStates);

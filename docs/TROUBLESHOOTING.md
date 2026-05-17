@@ -24,7 +24,7 @@ This guide covers common issues, error messages, and their solutions when using 
 ```zig
 .dependencies = .{
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v2.0.0.tar.gz",
         .hash = "...",
     },
 };
@@ -77,12 +77,11 @@ const account = try wallet.createAccount("My Account");
 // ... use account ...
 ```
 
-For types with allocator parameter:
+For types with an allocator parameter:
 
 ```zig
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(config)
     .build();
 defer client.deinit();
 ```
@@ -111,16 +110,14 @@ defer gpa.deinit();
 
 ```zig
 // GOOD: Clear ownership
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(config)
     .build();
 defer client.deinit();
 
 // BAD: Double ownership
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(config)
     .build();
 client.deinit();
 client.deinit();  // CRASH!
@@ -154,7 +151,7 @@ Private keys must be 32 bytes for secp256r1.
 1. Ensure you're using the correct network magic when signing:
 
 ```zig
-const magic = try client.getNetworkMagicNumber();
+const magic = try client.getNetworkMagic();
 // Use magic when building the transaction
 ```
 
@@ -215,10 +212,12 @@ const is_valid = neo.wallet.Bip39Account.isValidMnemonic(mnemonic);
 
 ```zig
 // TestNet
-var service = neo.rpc.service.Service.init("https://testnet1.neo.coz.io:443");
+var client = try neo.Client.builder(allocator).network(.testnet).build();
+defer client.deinit();
 
 // MainNet
-var service = neo.rpc.service.Service.init("https://mainnet1.neo.coz.io:443");
+var client2 = try neo.Client.builder(allocator).network(.mainnet).build();
+defer client2.deinit();
 ```
 
 2. Check network connectivity:
@@ -232,10 +231,9 @@ curl -X POST https://testnet1.neo.coz.io:443 \
 3. Configure timeout:
 
 ```zig
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(try neo.rpc.Config.builder().build())
-    .timeoutMs(30000)
+    .timeoutMs(30_000)
     .build();
 defer client.deinit();
 ```
@@ -269,9 +267,8 @@ std.log.debug("Enable additional RPC diagnostics in your application", .{});
 
 ```zig
 // Increase or disable the limit
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint(endpoint)
-    .config(try neo.rpc.Config.builder().build())
     .maxResponseBytes(64 * 1024 * 1024)
     .build();
 defer client.deinit();
@@ -288,11 +285,16 @@ service.setMaxResponseBytes(64 * 1024 * 1024);
 **Solution**:
 
 ```zig
-var client = try neo.rpc.Client.builder(allocator)
+var client = try neo.Client.builder(allocator)
     .endpoint("https://testnet1.neo.coz.io:443")
-    .config(try neo.rpc.Config.builder().build())
-    .maxRetries(5)
-    .timeoutMs(30000)
+    .timeoutMs(30_000)
+    .retryPolicy(.{
+        .max_attempts = 5,
+        .initial_backoff_ms = 1_000,
+        .multiplier = 2.0,
+        .max_backoff_ms = 30_000,
+        .jitter = 0.25,
+    })
     .build();
 defer client.deinit();
 ```
@@ -352,7 +354,7 @@ _ = builder.additionalSystemFee(1000000)  // 0.01 NEO
 1. Ensure correct network magic:
 
 ```zig
-const magic = try client.getNetworkMagicNumber();
+const magic = try client.getNetworkMagic();
 const signed_tx = try transaction.sign(key_pair, magic);
 ```
 

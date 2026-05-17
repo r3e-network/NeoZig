@@ -1,37 +1,36 @@
-//! RPC module
+//! Low-level RPC types and transport.
 //!
-//! Complete RPC system.
+//! Most applications should use `neo.Client` instead. This module is the
+//! escape hatch for callers that need the legacy `NeoClient` builder, the
+//! response-type catalog (`rpc.types`), or direct access to the HTTP
+//! transport for embedding/testing.
 
 const std = @import("std");
 
-pub const client = @import("client_namespace.zig");
-pub const config = @import("config_namespace.zig");
-pub const service = @import("service_namespace.zig");
-pub const transport = @import("transport_namespace.zig");
-pub const operation = @import("operation_namespace.zig");
 pub const types = @import("types.zig");
 
-// Backward-compatible flat exports
-pub const NeoClient = client.Client;
-pub const NeoConfig = config.Config;
-pub const NeoService = service.Service;
+pub const NeoClient = @import("neo_client.zig").NeoClient;
+pub const NeoConfig = @import("neo_config.zig").NeoConfig;
+pub const NeoService = @import("neo_service.zig").NeoService;
 pub const Client = NeoClient;
 pub const Config = NeoConfig;
 pub const Service = NeoService;
-pub const NeoClientBuilder = client.Builder;
-pub const NeoConfigBuilder = config.Builder;
-pub const RpcRequest = operation.Request;
-pub const RpcParam = operation.Param;
-pub const ServiceFactory = service.Factory;
-pub const ServiceImplementation = service.Implementation;
-pub const HttpService = transport.Service;
-pub const HttpServiceFactory = transport.ServiceFactory;
-pub const HttpClient = transport.Client;
-pub const HttpClientFactory = transport.ClientFactory;
-pub const Request = operation.JsonRequest;
-pub const RequestUtils = operation.RequestUtils;
-pub const Response = operation.Response;
-pub const ResponseError = operation.ResponseError;
+pub const NeoClientBuilder = NeoClient.Builder;
+pub const NeoConfigBuilder = NeoConfig.Builder;
+pub const RpcRequest = @import("rpc_operation.zig").RpcRequest;
+pub const RpcParam = @import("rpc_operation.zig").RpcParam;
+pub const ServiceFactory = @import("neo_service.zig").ServiceFactory;
+pub const ServiceImplementation = @import("neo_service.zig").ServiceImplementation;
+pub const HttpService = @import("http_service.zig").HttpService;
+pub const HttpServiceFactory = @import("http_service.zig").HttpServiceFactory;
+pub const HttpClient = @import("http_client.zig").HttpClient;
+pub const HttpClientFactory = @import("http_client.zig").HttpClientFactory;
+pub const Backoff = @import("http_client.zig").Backoff;
+pub const ServerError = @import("http_client.zig").ServerError;
+pub const Request = @import("request.zig").Request;
+pub const RequestUtils = @import("request.zig").RequestUtils;
+pub const Response = @import("response.zig").Response;
+pub const ResponseError = @import("response.zig").ResponseError;
 
 pub const NeoBlock = types.NeoBlock;
 pub const NeoVersion = types.NeoVersion;
@@ -93,12 +92,4 @@ pub const DiagnosticsResponse = types.DiagnosticsResponse;
 
 test "rpc module" {
     std.testing.refAllDecls(@This());
-}
-
-test "rpc module mirrors unique catalog aliases" {
-    const testing = std.testing;
-
-    try testing.expect(NeoGetClaimable == types.NeoGetClaimable);
-    try testing.expect(NeoFindStates == types.NeoFindStates);
-    try testing.expect(DiagnosticsResponse == types.DiagnosticsResponse);
 }

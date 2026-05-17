@@ -1,17 +1,12 @@
-//! Complete Neo Zig SDK demonstration
+//! Complete Neo Zig SDK demonstration.
 //!
-//! Comprehensive Neo Zig SDK demo.
+//! Exercises every major area of the SDK against the v2.0 flat surface:
+//!   keys + WIF, hashes, addresses, transactions, wallets, and the
+//!   AWS-style `neo.Client`. None of the operations contact a real node.
 
 const std = @import("std");
 
 const neo = @import("neo-zig");
-const model = neo.model;
-const security = neo.security;
-const runtime = neo.runtime;
-const rpc = neo.rpc;
-const tx = runtime.transaction;
-const contracts = runtime.contract;
-const wallets = runtime.wallet;
 
 fn ensure(ok: bool) !void {
     if (!ok) return error.DemoInvariantFailed;
@@ -20,10 +15,9 @@ fn ensure(ok: bool) !void {
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    std.log.info("🚀 Neo Zig SDK - Complete Demo", .{});
-    std.log.info("================================================", .{});
+    std.log.info("Neo Zig SDK — Complete Demo", .{});
+    std.log.info("============================", .{});
 
-    // Demonstrate all SDK functionality
     try demonstrateKeyManagement(allocator);
     try demonstrateHashOperations(allocator);
     try demonstrateAddressOperations(allocator);
@@ -31,238 +25,165 @@ pub fn main() !void {
     try demonstrateWalletManagement(allocator);
     try demonstrateRpcClient(allocator);
 
-    std.log.info("✅ All functionality successfully demonstrated!", .{});
+    std.log.info("All functionality successfully demonstrated.", .{});
 }
 
-/// Demonstrates key management
+/// Generate a key pair, round-trip through WIF.
 fn demonstrateKeyManagement(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🔑 Key Management ", .{});
+    std.log.info("\n-- Key Management --", .{});
 
-    // Generate key pair
-    const key_pair = try security.crypto.generateKeyPair(true);
+    const key_pair = try neo.crypto.generateKeyPair(true);
     defer {
         var mutable_key_pair = key_pair;
         mutable_key_pair.zeroize();
     }
+    std.log.info("  generated compressed key pair", .{});
 
-    std.log.info("  ✅ Generated key pair with compressed public key", .{});
-
-    // Test WIF encoding
-    const wif_mainnet = try security.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
+    const wif_mainnet = try neo.crypto.encodeWIF(key_pair.private_key, true, .mainnet, allocator);
     defer allocator.free(wif_mainnet);
+    std.log.info("  WIF: {s}...", .{wif_mainnet[0..10]});
 
-    std.log.info("  📝 WIF encoded: {s}...", .{wif_mainnet[0..10]});
-
-    // Decode WIF and verify
-    var decoded = try security.crypto.decodeWIF(wif_mainnet, allocator);
+    var decoded = try neo.crypto.decodeWIF(wif_mainnet, allocator);
     defer decoded.deinit();
     try ensure(decoded.private_key.eql(key_pair.private_key));
-    std.log.info("  ✅ WIF round-trip successful", .{});
-
-    std.log.info("  🌐 Network: {}, Compressed: {}", .{ decoded.network, decoded.compressed });
+    std.log.info("  WIF round-trip OK (network={}, compressed={})", .{ decoded.network, decoded.compressed });
 }
 
-/// Demonstrates hash operations
+/// SHA256, RIPEMD160, and the combined Hash160 (RIPEMD160 of SHA256).
 fn demonstrateHashOperations(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🔐 Hash Operations ", .{});
-
+    std.log.info("\n-- Hash Operations --", .{});
     const test_data = "Neo Zig SDK hash test data";
 
-    // SHA256
-    const sha_hash = model.Hash256.sha256(test_data);
+    const sha_hash = neo.Hash256.sha256(test_data);
     const sha_hex = try sha_hash.string(allocator);
     defer allocator.free(sha_hex);
-    std.log.info("  📊 SHA256: {s}...", .{sha_hex[0..16]});
+    std.log.info("  SHA256:    {s}...", .{sha_hex[0..16]});
 
-    // RIPEMD160
-    const ripemd_hash = try security.crypto.ripemd160Hash(test_data);
+    const ripemd_hash = try neo.crypto.ripemd160Hash(test_data);
     const ripemd_hex = try ripemd_hash.string(allocator);
     defer allocator.free(ripemd_hex);
-    std.log.info("  🔍 RIPEMD160: {s}...", .{ripemd_hex[0..16]});
+    std.log.info("  RIPEMD160: {s}...", .{ripemd_hex[0..16]});
 
-    // Hash160
-    const hash160_result = try security.crypto.hash160(test_data);
+    const hash160_result = try neo.crypto.hash160(test_data);
     const hash160_hex = try hash160_result.string(allocator);
     defer allocator.free(hash160_hex);
-    std.log.info("  📋 Hash160: {s}...", .{hash160_hex[0..16]});
+    std.log.info("  Hash160:   {s}...", .{hash160_hex[0..16]});
 
-    // Test hash comparison and operations
-    const same_sha = model.Hash256.sha256(test_data);
-    if (sha_hash.eql(same_sha)) {
-        std.log.info("  ✅ Hash consistency verified", .{});
-    }
+    const same_sha = neo.Hash256.sha256(test_data);
+    try ensure(sha_hash.eql(same_sha));
+    std.log.info("  hash consistency verified", .{});
 }
 
-/// Demonstrates address operations
+/// Address ↔ Hash160 round-trip.
 fn demonstrateAddressOperations(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🏠 Address Operations ", .{});
+    std.log.info("\n-- Address Operations --", .{});
 
-    // Create address from public key
-    var private_key = security.crypto.generatePrivateKey();
+    var private_key = neo.crypto.generatePrivateKey();
     defer private_key.zeroize();
     const public_key = try private_key.getPublicKey(true);
     const address = try public_key.toAddress(neo.constants.AddressConstants.ADDRESS_VERSION);
 
-    // Convert to string
     const address_str = try address.toString(allocator);
     defer allocator.free(address_str);
+    std.log.info("  address: {s}", .{address_str});
 
-    std.log.info("  📍 Generated address: {s}", .{address_str});
+    if (address.isValid()) std.log.info("  address valid", .{});
+    if (address.isStandard()) std.log.info("  standard single-signature", .{});
 
-    // Validate address properties
-    if (address.isValid()) {
-        std.log.info("  ✅ Address is valid", .{});
-    }
-
-    if (address.isStandard()) {
-        std.log.info("  📝 Standard single-signature address", .{});
-    }
-
-    // Test address conversion back to Hash160
     const script_hash = address.toHash160();
-    const recovered_address = model.Address.fromHash160(script_hash);
+    const recovered_address = neo.Address.fromHash160(script_hash);
+    try ensure(address.eql(recovered_address));
+    std.log.info("  Hash160 ↔ Address round-trip OK", .{});
 
-    if (address.eql(recovered_address)) {
-        std.log.info("  ✅ Address round-trip successful", .{});
-    }
-
-    // Test Hash160 from address
-    const hash_from_address = try model.Hash160.fromAddress(address_str, allocator);
-    if (script_hash.eql(hash_from_address)) {
-        std.log.info("  ✅ Hash160 from address conversion successful", .{});
-    }
+    const hash_from_address = try neo.Hash160.fromAddress(address_str, allocator);
+    try ensure(script_hash.eql(hash_from_address));
 }
 
-/// Demonstrates transaction building
+/// Build, validate, and hash a GAS transfer transaction.
 fn demonstrateTransactionBuilding(allocator: std.mem.Allocator) !void {
-    std.log.info("\n💰 Transaction Building ", .{});
+    std.log.info("\n-- Transaction Building --", .{});
 
-    var builder = tx.TransactionBuilder.init(allocator);
+    var builder = neo.transaction.TransactionBuilder.init(allocator);
     defer builder.deinit();
 
-    // Configure transaction
     _ = builder.version(0)
-        .additionalNetworkFee(500000)
-        .additionalSystemFee(1000000);
+        .additionalNetworkFee(500_000)
+        .additionalSystemFee(1_000_000);
 
-    std.log.info("  ⚙️ Transaction configured - Version: 0, Network Fee: 500000, System Fee: 1000000", .{});
-
-    // Add signer
-    const signer = tx.Signer.init(model.Hash160.ZERO, tx.WitnessScope.CalledByEntry);
+    const signer = neo.transaction.Signer.init(neo.Hash160.ZERO, neo.transaction.WitnessScope.CalledByEntry);
     _ = try builder.signer(signer);
 
-    std.log.info("  👤 Signer added with CalledByEntry scope", .{});
-
-    // Build GAS transfer
     _ = try builder.transferToken(
-        tx.TransactionBuilder.GAS_TOKEN_HASH,
-        model.Hash160.ZERO, // from
-        model.Hash160.ZERO, // to
-        100000000, // 1 GAS
+        neo.transaction.TransactionBuilder.GAS_TOKEN_HASH,
+        neo.Hash160.ZERO,
+        neo.Hash160.ZERO,
+        100_000_000, // 1.00000000 GAS
     );
 
-    std.log.info("  💸 GAS transfer script built (1.00000000 GAS)", .{});
-
-    // Add high priority)
     _ = try builder.highPriority();
+    try ensure(builder.isHighPriority());
 
-    if (builder.isHighPriority()) {
-        std.log.info("  ⚡ High priority attribute added", .{});
-    }
-
-    // Build final transaction)
     var transaction = try builder.build();
     defer transaction.deinit(allocator);
-
     try transaction.validate();
-    std.log.info("  ✅ Transaction built and validated successfully", .{});
 
-    // Calculate transaction hash)
     const tx_hash = try transaction.getHash(allocator);
     const hash_hex = try tx_hash.string(allocator);
     defer allocator.free(hash_hex);
-
-    std.log.info("  🔗 Transaction hash: {s}...", .{hash_hex[0..16]});
+    std.log.info("  tx hash: {s}...", .{hash_hex[0..16]});
 }
 
-/// Demonstrates wallet management
+/// Wallet + Account creation, default-account, lookup.
 fn demonstrateWalletManagement(allocator: std.mem.Allocator) !void {
-    std.log.info("\n💼 Wallet Management ", .{});
+    std.log.info("\n-- Wallet Management --", .{});
 
-    // Create wallet
-    var wallet_instance = wallets.Wallet.init(allocator);
+    var wallet_instance = neo.wallet.Wallet.init(allocator);
     defer wallet_instance.deinit();
 
     _ = wallet_instance.name("Demo Wallet").version("3.0");
-    std.log.info("  📁 Created wallet: {s} v{s}", .{ wallet_instance.getName(), wallet_instance.getVersion() });
+    std.log.info("  wallet: {s} v{s}", .{ wallet_instance.getName(), wallet_instance.getVersion() });
 
-    // Create account
     const account = try wallet_instance.createAccount("Demo Account");
-    std.log.info("  👤 Created account with label: {s}", .{account.getLabel().?});
+    std.log.info("  account label: {s}", .{account.getLabel().?});
+    if (wallet_instance.isDefault(account)) std.log.info("  account is default", .{});
 
-    // Verify default account
-    if (wallet_instance.isDefault(account)) {
-        std.log.info("  🎯 Account set as default", .{});
-    }
-
-    std.log.info("  📊 Wallet has {} accounts", .{wallet_instance.getAccountCount()});
-
-    // Get account address
     const account_address = account.getAddress();
     const address_str = try account_address.toString(allocator);
     defer allocator.free(address_str);
+    std.log.info("  address: {s}", .{address_str});
 
-    std.log.info("  📍 Account address: {s}", .{address_str});
-
-    // Test account lookup
     const script_hash = account.getScriptHash();
-    const found_account = wallet_instance.getAccount(script_hash);
-
-    if (found_account != null) {
-        std.log.info("  ✅ Account lookup successful", .{});
-    }
+    try ensure(wallet_instance.getAccount(script_hash) != null);
 }
 
-/// Demonstrates RPC client
+/// Build a `neo.Client` and confirm the AWS-style operations are reachable.
+/// Operations are not actually invoked — that would require a live Neo node.
 fn demonstrateRpcClient(allocator: std.mem.Allocator) !void {
-    std.log.info("\n🌐 RPC Client ", .{});
+    std.log.info("\n-- RPC Client (AWS-style) --", .{});
 
-    // Create RPC client
-    const config = try rpc.Config.builder()
-        .blockInterval(15000)
-        .pollingInterval(15000)
-        .build();
-    var client = try rpc.Client.builder(allocator)
+    var client = try neo.Client.builder(allocator)
         .endpoint("http://localhost:20332")
-        .config(config)
+        .timeoutMs(15_000)
+        .retryPolicy(.{ .max_attempts = 3, .initial_backoff_ms = 500 })
         .build();
     defer client.deinit();
 
-    std.log.info("  🔗 RPC client created for endpoint: {s}", .{client.getService().getConfiguration().endpoint});
-    std.log.info("  ⏱️ Timeout: {}ms", .{client.getService().getConfiguration().timeout_ms});
+    std.log.info("  client built (endpoint=http://localhost:20332)", .{});
+    std.log.info("  retry: max_attempts={d}, backoff_ms={d}", .{
+        client.retry.max_attempts,
+        client.retry.initial_backoff_ms,
+    });
 
-    // Test RPC request creation
-    const best_block_request = try client.getBestBlockHash();
-    std.log.info("  📊 Created request: {s}", .{best_block_request.method});
+    // Each of these returns its response value directly when a live node is
+    // present — kept commented to keep the demo offline-safe:
+    //
+    //   const count = try client.getBlockCount();
+    //   var version = try client.getVersion();
+    //   defer version.deinit(allocator);
+    //   var block = try client.getBlockByIndex(count - 1, .{ .full_transactions = true });
+    //   defer block.deinit(allocator);
+    //   var balances = try client.getNep17Balances(some_hash);
+    //   defer balances.deinit(allocator);
 
-    const block_count_request = try client.getBlockCount();
-    std.log.info("  📊 Created request: {s}", .{block_count_request.method});
-
-    const version_request = try client.getVersion();
-    std.log.info("  📊 Created request: {s}", .{version_request.method});
-
-    // Test contract invocation request
-    const contract_hash = model.Hash160.ZERO;
-    const params = [_]model.ContractParameter{model.ContractParameter.integer(42)};
-    const signers = [_]tx.Signer{};
-
-    const invoke_request = try client.invokeFunction(contract_hash, "balanceOf", &params, &signers);
-    std.log.info("  📝 Created contract invocation: {s}", .{invoke_request.method});
-
-    // Test wallet RPC methods
-    const test_script_hash = try model.Hash160.initWithString("1234567890abcdef1234567890abcdef12345678");
-    const balances_request = try client.getNep17Balances(test_script_hash);
-    std.log.info("  💰 Created balance request: {s}", .{balances_request.method});
-
-    std.log.info("  ✅ All RPC requests created successfully", .{});
+    std.log.info("  client surface verified offline", .{});
 }

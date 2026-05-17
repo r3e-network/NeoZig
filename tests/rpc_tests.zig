@@ -75,12 +75,10 @@ test "NeoConfig and NeoClient builders expose sdk-style configuration" {
     try testing.expect(std.mem.eql(u8, "http://localhost:20332", from_endpoint_client.service.service_impl.http_service.url));
 }
 
-test "rpc module exposes organized sdk namespaces" {
+test "rpc module exposes flat aliases over legacy types" {
     const testing = std.testing;
     const allocator = testing.allocator;
 
-    try testing.expect(neo.rpc.client.Client == neo.rpc.NeoClient);
-    try testing.expect(neo.rpc.config.Config == neo.rpc.NeoConfig);
     try testing.expect(neo.rpc.Client == neo.rpc.NeoClient);
     try testing.expect(neo.rpc.Config == neo.rpc.NeoConfig);
     try testing.expect(neo.rpc.Service == neo.rpc.NeoService);

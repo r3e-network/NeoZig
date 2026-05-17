@@ -397,21 +397,26 @@ test "complete protocol system tests" {
     defer client.deinit();
 
     // Test all major RPC requests
-    const best_block_request = try client.getBestBlockHash();
+    var best_block_request = try client.getBestBlockHash();
+    defer best_block_request.deinit();
     try testing.expectEqualStrings("getbestblockhash", best_block_request.method);
 
-    const block_count_request = try client.getBlockCount();
+    var block_count_request = try client.getBlockCount();
+    defer block_count_request.deinit();
     try testing.expectEqualStrings("getblockcount", block_count_request.method);
 
-    const version_request = try client.getVersion();
+    var version_request = try client.getVersion();
+    defer version_request.deinit();
     try testing.expectEqualStrings("getversion", version_request.method);
 
     // Test parameterized requests
-    const block_hash_request = try client.getBlockHash(12345);
+    var block_hash_request = try client.getBlockHash(12345);
+    defer block_hash_request.deinit();
     try testing.expectEqualStrings("getblockhash", block_hash_request.method);
 
     const test_hash = try neo.Hash256.initWithString("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
-    const block_request = try client.getBlock(test_hash, true);
+    var block_request = try client.getBlock(test_hash, true);
+    defer block_request.deinit();
     try testing.expectEqualStrings("getblock", block_request.method);
 
     // Test Response parsing

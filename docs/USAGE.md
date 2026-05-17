@@ -25,18 +25,22 @@ const neo = @import("neo-zig");
 // or: const neo = @import("neo_zig");
 ```
 
-Preferred layout for new code:
+The recommended v2.0 layout is flat — everything you need is directly on `neo`:
 
-- `neo.model` for core value types
-- `neo.security` for cryptography
-- `neo.io` for serialization
-- `neo.runtime` for contracts, transactions, wallets, RPC, and protocol access
-- `neo.rpc.Client.builder` for RPC client construction
+- `neo.Client` — the AWS-style client with `Client.builder(allocator)…build()`
+- `neo.Hash160`, `neo.Hash256`, `neo.Address`, `neo.ContractParameter`, `neo.StackItem` — value types
+- `neo.Error` — umbrella error set; plus per-module: `neo.CryptoError`, `neo.TransactionError`, etc.
+- `neo.crypto`, `neo.transaction`, `neo.wallet`, `neo.contract`, `neo.script`, `neo.serialization`
+- `neo.constants`, `neo.utils`
+- `neo.rpc` — low-level transport (escape hatch; most code does not need it)
 
-Flat aliases such as `neo.Hash160` and `neo.rpc.Client` remain available.
+The deprecated v1.x paths `neo.runtime`, `neo.model`, `neo.security`, `neo.core`,
+`neo.io`, and `neo.vm` still resolve through compatibility shims and will be
+removed in v3.0; see [MIGRATION_V2.md](MIGRATION_V2.md).
 
-For response models, prefer `neo.rpc.types` when you want the full catalog.
-Use `neo.rpc.types.core`, `extended`, `protocol`, and `remaining` for the organized families.
+For RPC response models, prefer `neo.rpc.types` for the full catalog; the
+common types (`NeoBlock`, `NeoVersion`, `InvocationResult`, `Nep17Balances`,
+etc.) are also re-exported directly on `neo` via the `Client` module.
 
 ## Allocators and Memory Management
 
@@ -80,9 +84,8 @@ const account = try wallet.createAccount("My Account");
 
 // Pattern 2: Immediate cleanup for large objects in loops
 while (processing) {
-    var client = try neo.rpc.Client.builder(allocator)
+    var client = try neo.Client.builder(allocator)
         .endpoint("https://testnet1.neo.coz.io:443")
-        .config(config)
         .build();
     defer client.deinit();
     // ... use client ...
@@ -143,29 +146,23 @@ pub fn main() !void {
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
-const rpc = neo.rpc;
 
 pub fn queryBlockchain() !void {
     const allocator = std.heap.page_allocator;
 
-    const config = try rpc.Config.builder()
-        .blockInterval(3000)
-        .pollingInterval(3000)
-        .build();
-    var client = try rpc.Client.builder(allocator)
-        .endpoint("https://testnet1.neo.coz.io:443")
-        .config(config)
+    var client = try neo.Client.builder(allocator)
+        .network(.testnet)
+        .blockIntervalMs(3000)
+        .pollingIntervalMs(3000)
         .build();
     defer client.deinit();
 
-    // Query block count
-    const block_count_request = try client.getBlockCount();
-    const block_count = try block_count_request.send();
+    // Operations return their values directly — no .send() step.
+    const block_count = try client.getBlockCount();
     std.log.info("Current block count: {}", .{block_count});
 
-    // Get network magic (required for signing)
-    const magic_request = try client.getNetworkMagicNumber();
-    const magic = try magic_request.send();
+    // Get network magic (required for signing); cached after first call.
+    const magic = try client.getNetworkMagic();
     std.log.info("Network magic: {}", .{magic});
 }
 ```
@@ -175,7 +172,6 @@ pub fn queryBlockchain() !void {
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
-const rpc = neo.rpc;
 
 pub fn transferGas(from_private_key: []const u8, to_address_str: []const u8) !void {
     const allocator = std.heap.page_allocator;
@@ -188,38 +184,37 @@ pub fn transferGas(from_private_key: []const u8, to_address_str: []const u8) !vo
         kp.zeroize();
     }
 
-    // Create RPC client
-    var client = try rpc.Client.builder(allocator)
-        .endpoint("https://testnet1.neo.coz.io:443")
-        .config(try rpc.Config.builder().build())
+    // Build a client (the AWS-style way)
+    var client = try neo.Client.builder(allocator)
+        .network(.testnet)
+        .timeoutMs(30_000)
+        .retryPolicy(.{ .max_attempts = 5 })
         .build();
     defer client.deinit();
 
-    // Get network magic
-    const magic = try client.getNetworkMagicNumber();
+    const magic = try client.getNetworkMagic();
 
     // Parse addresses
     const from_address = try neo.Address.fromHash160(key_pair.public_key.toHash160());
     const to_address = try neo.Address.fromString(allocator, to_address_str);
     defer allocator.free(to_address);
 
-    // Create GAS token contract wrapper
+    // GAS token wrapper still uses the legacy client surface; pass through
+    // `client.getService()` or wrap directly. For most use cases prefer
+    // calling `client.invokeFunction` / `client.sendRawTransaction` directly.
     const gas_token = neo.contract.GasToken.init(allocator, &client);
 
-    // Build transfer transaction
     var transfer_tx = try gas_token.transfer(
         from_address.toHash160(),
         to_address.toHash160(),
         100000000, // 1 GAS (8 decimals)
-        null,      // no additional data
+        null,
     );
     defer transfer_tx.deinit();
 
-    // Sign and send
     const signed_tx = try transfer_tx.sign(key_pair, magic);
-    const tx_hash = try client.sendRawTransaction(signed_tx);
-
-    std.log.info("Transfer sent: {s}", .{tx_hash});
+    const send_response = try client.sendRawTransaction(signed_tx);
+    std.log.info("Transfer sent: {s}", .{send_response.hash});
 }
 ```
 
@@ -421,21 +416,22 @@ pub fn demonstrateScriptHashes() !void {
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
-const rpc = neo.rpc;
 
 pub fn demonstrateRPC() !void {
     const allocator = std.heap.page_allocator;
 
-    const config = try rpc.Config.builder()
-        .blockInterval(3000)
-        .pollingInterval(3000)
-        .build();
-
-    var client = try rpc.Client.builder(allocator)
-        .endpoint("https://testnet1.neo.coz.io:443")
-        .config(config)
-        .timeoutMs(30000)
-        .maxRetries(3)
+    var client = try neo.Client.builder(allocator)
+        .endpoint("https://testnet1.neo.coz.io:443")  // or .network(.testnet)
+        .timeoutMs(30_000)
+        .retryPolicy(.{
+            .max_attempts = 3,
+            .initial_backoff_ms = 500,
+            .multiplier = 2.0,
+            .max_backoff_ms = 30_000,
+            .jitter = 0.25,
+        })
+        .blockIntervalMs(3000)
+        .pollingIntervalMs(3000)
         .maxResponseBytes(64 * 1024 * 1024)
         .build();
     defer client.deinit();
@@ -446,22 +442,29 @@ pub fn demonstrateRPC() !void {
 
 ### Query Methods
 
+Operations return their response values directly:
+
 ```zig
 // Blockchain queries
-const block_count = try client.getBlockCount().send();
-const best_hash = try client.getBestBlockHash().send();
-const block = try client.getBlock(block_hash).send();
+const block_count = try client.getBlockCount();             // u32
+const best_hash = try client.getBestBlockHash();            // Hash256
+var block = try client.getBlock(block_hash, .{});           // NeoBlock
+defer block.deinit(allocator);
 
 // Network queries
-const magic = try client.getNetworkMagicNumber().send();
-const version = try client.getVersion().send();
+const magic = try client.getNetworkMagic();                 // u32 (cached)
+var version = try client.getVersion();                      // NeoVersion
+defer version.deinit(allocator);
 
 // Token balances
-const balances = try client.getNep17Balances(script_hash).send();
-const gas_balance = try client.getNep17Balance(
+var balances = try client.getNep17Balances(script_hash);    // Nep17Balances
+defer balances.deinit(allocator);
+
+var transfers = try client.getNep17Transfers(
     script_hash,
-    neo.contract.GasToken.GAS_HASH,
-).send();
+    .{ .from_time = 1700_000_000_000 },
+);
+defer transfers.deinit(allocator);
 ```
 
 ### Contract Invocation
@@ -470,23 +473,42 @@ const gas_balance = try client.getNep17Balance(
 const std = @import("std");
 const neo = @import("neo-zig");
 
-pub fn invokeContract(client: *neo.rpc.Client, script_hash: neo.Hash160) !void {
+pub fn invokeContract(client: *neo.Client, script_hash: neo.Hash160) !void {
     const allocator = std.heap.page_allocator;
 
-    // Prepare parameters
     const params = [_]neo.ContractParameter{
         neo.ContractParameter.integer(1000),
     };
 
-    const signers = [_]neo.transaction.Signer{};
+    var result = try client.invokeFunction(
+        script_hash,
+        "balanceOf",
+        &params,
+        .{ .signers = &.{} },
+    );
+    defer result.deinit(allocator);
 
-    // Invoke read-only method
-    const result = try client
-        .invokeFunction(script_hash, "balanceOf", &params, &signers)
-        .send();
-
-    std.log.info("Invocation result: {s}", .{result});
+    std.log.info("Invocation state: {}", .{result.state});
 }
+```
+
+### Handling Structured Server Errors
+
+When a node returns a JSON-RPC `error` object, `Client` returns
+`error.ServerError` and stashes the parsed `code`/`message`/`data` for
+inspection:
+
+```zig
+const result = client.getBlock(unknown_hash, .{}) catch |err| switch (err) {
+    error.ServerError => {
+        var info = client.takeLastServerError() orelse return err;
+        defer info.deinit(allocator);
+        std.log.warn("RPC error {d}: {s}", .{ info.code, info.message });
+        return err;
+    },
+    else => return err,
+};
+defer result.deinit(allocator);
 ```
 
 ## Transaction Building
@@ -507,7 +529,7 @@ const neo = @import("neo-zig");
 
 pub fn buildBasicTransaction(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     from_hash: neo.Hash160,
     to_hash: neo.Hash160,
 ) !neo.transaction.NeoTransaction {
@@ -554,7 +576,7 @@ const neo = @import("neo-zig");
 
 pub fn buildMultiSigTransaction(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     signers: []const neo.transaction.Signer,
     key_pairs: []const neo.crypto.KeyPair,
 ) !neo.transaction.NeoTransaction {
@@ -577,7 +599,7 @@ pub fn buildMultiSigTransaction(
     errdefer transaction.deinit(allocator);
 
     // Get network magic
-    const magic = try client.getNetworkMagicNumber();
+    const magic = try client.getNetworkMagic();
 
     // Sign with each key
     for (key_pairs) |key_pair| {
@@ -598,7 +620,7 @@ const std = @import("std");
 const neo = @import("neo-zig");
 
 pub fn sendTransaction(
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     transaction: *neo.transaction.NeoTransaction,
 ) ![]const u8 {
     const allocator = std.heap.page_allocator;
@@ -612,8 +634,10 @@ pub fn sendTransaction(
 
     std.log.info("Transaction sent: {s}", .{tx_hash});
 
-    // Wait for confirmation (optional)
-    // const application_log = try client.getApplicationLog(tx_hash).send();
+    // Wait for confirmation (optional) — drop down to the legacy
+    // neo.rpc.NeoClient for methods not yet on neo.Client:
+    //   var req = try neo.rpc.NeoClient.builder(...).build().getApplicationLog(tx_hash);
+    //   const log = try req.send();
 
     return tx_hash;
 }
@@ -629,7 +653,7 @@ const neo = @import("neo-zig");
 
 pub fn nep17Operations(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     wallet_hash: neo.Hash160,
 ) !void {
     // Create token wrapper
@@ -662,7 +686,7 @@ const neo = @import("neo-zig");
 
 pub fn nep11Operations(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     owner_hash: neo.Hash160,
     nft_hash: neo.Hash160,
 ) !void {
@@ -698,7 +722,7 @@ const neo = @import("neo-zig");
 
 pub fn deployContract(
     allocator: std.mem.Allocator,
-    client: *neo.rpc.Client,
+    client: *neo.Client,
     nef_bytes: []const u8,
     manifest_json: []const u8,
     sender_hash: neo.Hash160,
@@ -851,24 +875,28 @@ pub fn complexOperation() !void {
 
 ### Recoverable Errors
 
-```zig
-pub fn robustRPCRequest(client: *neo.rpc.Client) !u32 {
-    const result = client.getBlockCount() catch |err| {
-        switch (err) {
-            error.RequestTimeout => {
-                std.log.warn("Request timed out, retrying...", .{});
-                // Retry once
-                return try client.getBlockCount().send();
-            },
-            error.ConnectionFailed => {
-                std.log.err("Connection failed", .{});
-                return error.ConnectionFailed;
-            },
-            else => return err,
-        }
-    };
+Operations return values directly. The client's `RetryPolicy` already handles
+transport-level transients with exponential backoff and jitter, so most retry
+loops don't need to be written by hand:
 
-    return try result.send();
+```zig
+pub fn robustRPCRequest(client: *neo.Client) !u32 {
+    return client.getBlockCount() catch |err| switch (err) {
+        // Transient — client.retry already retried `max_attempts` times.
+        // Surface to caller or escalate.
+        error.NetworkTimeout, error.ConnectionFailed => {
+            std.log.err("transport failed after retries: {s}", .{@errorName(err)});
+            return err;
+        },
+        // JSON-RPC error from the server — inspect the structured payload.
+        error.ServerError => {
+            var info = client.takeLastServerError() orelse return err;
+            defer info.deinit(client.allocator);
+            std.log.warn("rpc error {d}: {s}", .{ info.code, info.message });
+            return err;
+        },
+        else => return err,
+    };
 }
 ```
 
@@ -900,7 +928,10 @@ std.log.info("Key generated successfully", .{});
 
 ```zig
 // Use HTTPS for production
-var service = neo.rpc.Service.init("https://mainnet1.neo.coz.io:443");
+var client = try neo.Client.builder(allocator)
+    .endpoint("https://mainnet1.neo.coz.io:443")
+    .build();
+defer client.deinit();
 ```
 
 ### Performance
@@ -968,7 +999,7 @@ When signing transactions, use the correct network magic:
 Get from node:
 
 ```zig
-const magic = try client.getNetworkMagicNumber();
+const magic = try client.getNetworkMagic();
 ```
 
 ## Related Documentation

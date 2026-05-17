@@ -6,71 +6,53 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/r3e-network/neo-zig-sdk)
 [![Release](https://img.shields.io/github/v/release/r3e-network/neo-zig-sdk?sort=semver&display_name=tag)](https://github.com/r3e-network/neo-zig-sdk/releases/latest)
 
-A Neo N3 blockchain SDK implemented in Zig, focused on explicit memory management, clear error handling, and a namespace-first SDK layout with NeoClient API familiarity.
+A Neo N3 blockchain SDK in Zig, modeled on the AWS SDK ergonomics: one `Client`, fluent builder, direct operation methods, explicit ownership, structured errors.
 
 ## ✨ Features
 
-- **🔐 Cryptographic Suite**: secp256r1, ECDSA, RIPEMD160, NEP-2, BIP32, WIF encoding with allocator-aware APIs
-- **🏗️ Type-Safe Core Types**: Hash160, Hash256, Neo addresses with comprehensive validation
-- **📝 Smart Contract Support**: NEP-17/NEP-11 tokens, contract deployment and interaction helpers
-- **🔧 Transaction System**: Multi-signature, witness rules, transaction building
-- **🌐 RPC Client**: HTTP client with parsing and best-effort retries/timeouts
-- **💼 Wallet System**: NEP-6, BIP-39, HD wallets with secure storage helpers
-- **🧪 Testing**: Broad validation coverage mirroring Swift SDK behavior
-- **📚 Documentation**: Examples, API docs, and migration notes
+- **🧭 AWS-style `Client`** — single `neo.Client.builder(allocator)...build()` entry point; operations return values directly (no intermediate request handles to send)
+- **🔐 Cryptographic Suite** — secp256r1, ECDSA, RIPEMD160, NEP-2, BIP32, WIF with allocator-aware APIs
+- **🏗️ Type-Safe Core Types** — Hash160, Hash256, Address, ContractParameter, StackItem
+- **📝 Smart Contract Support** — NEP-17/NEP-11 tokens, contract deployment, native contracts (NEO, GAS, Policy, Role, CryptoLib, Notary, …)
+- **🔧 Transaction System** — multi-sig, witness rules, builder, broadcast
+- **🌐 RPC Client** — exponential backoff with jitter, auto-incrementing request ids, structured JSON-RPC error capture
+- **💼 Wallet System** — NEP-6, BIP-39 mnemonics, HD wallets
+- **🧪 Testing** — 13 named test suites, all green
 
 ## ✅ Status
 
 - **Zig**: `0.14.0+` (see `build.zig.zon`)
 - **Neo protocol**: aligned with Neo N3 v3.9.1 (VM opcodes, interop pricing, native contract hashes, `getversion` metadata)
-- **Test coverage**: `zig build test` runs unit + parity suites
-- **Networking**: RPC transport uses `std.http.Client`; timeouts are best-effort (no socket deadlines in stdlib)
-- **Contracts**: Some high-level helpers return stub values when no RPC client is attached; attach `neo.rpc.client.Client` for live calls
+- **Test coverage**: 13 named test suites, all green (`zig build test`, plus 12 domain suites)
+- **Networking**: `std.http` transport with exponential backoff + jitter on transient failures; timeouts are still best-effort (no socket deadlines in stdlib)
+- **Contracts**: some high-level helpers return stub values when no RPC client is attached; attach `neo.Client` for live calls
 
 ## 📖 Documentation
 
-The SDK includes comprehensive documentation covering all aspects of development:
+- **[Quick Start](#-quick-start)** — 5-minute walkthrough
+- **[Usage Guide](docs/USAGE.md)** — comprehensive patterns with examples
+- **[Architecture](docs/ARCHITECTURE.md)** — module organization
+- **[API Reference](docs/API.md)** — full API surface
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** — common issues
+- **[Migration v1 → v2](docs/MIGRATION_V2.md)** — what changed and how to update
+- **[Swift Migration](docs/SWIFT_MIGRATION.md)** — transition from the NeoSwift SDK
+- **[Contributing](CONTRIBUTING.md)** — development guidelines
+- **[Security](SECURITY.md)** — security best practices
 
-### Getting Started
+## 🆕 v2.0.0 Release
 
-- **[Quick Start](#-quick-start)** - Get up and running in 5 minutes
-- **[Installation](#installation)** - Add to your project
-- **[Usage Guide](docs/USAGE.md)** - Comprehensive usage patterns with examples
+`v2.0.0` reshapes the public API around a single AWS-SDK-style `Client`:
 
-Preferred public layout:
+- 🧭 **One `neo.Client`** — fluent builder, direct operation methods (no `RpcRequest` → `.send()` two-step)
+- ⚡ **RPC robustness** — real exponential backoff with jitter, auto-incrementing request ids, structured server-error capture (`Client.takeLastServerError()`)
+- 🧱 **Flat top-level surface** — `neo.Hash160`, `neo.Client`, `neo.Error`, etc. directly on `neo` — no namespace pyramid
+- 🧹 **8,000 LOC of dead code removed** — orphan duplicate response modules and abandoned protocol splits deleted
+- 🔁 **Back-compat shims kept** — deprecated paths (`neo.runtime.*`, `neo.model.*`, …) still resolve, scheduled for removal in v3.0
 
-- `neo.model` for core value types like `Hash160`, `Hash256`, `Address`, and `ContractParameter`
-- `neo.security` for cryptography
-- `neo.io` for serialization
-- `neo.runtime` for contracts, transactions, wallets, RPC, and protocol access
-- `neo.rpc.Client.builder` for RPC client construction
-- `neo.rpc.types` for the complete RPC response-model catalog
-- Flat aliases such as `neo.Hash160` and `neo.rpc.Client` remain available for compatibility
-
-### Core Concepts
-
-- **[Architecture](docs/ARCHITECTURE.md)** - Module organization and design patterns
-- **[API Reference](docs/API.md)** - Complete API documentation
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-
-### Migration & Contributing
-
-- **[Swift Migration](docs/SWIFT_MIGRATION.md)** - Transition from NeoClient SDK
-- **[Contributing](CONTRIBUTING.md)** - Development guidelines
-- **[Security](SECURITY.md)** - Security best practices
-
-## 🆕 v1.4.0 Release
-
-`v1.4.0` is a public-architecture and maintainability release focused on AWS-style SDK structure, namespace-first APIs, and a fully organized RPC surface. Highlights:
-
-- 🧭 **Namespace-first layout** – clearer `neo.runtime`, `neo.rpc`, `neo.contract`, `neo.transaction`, and `neo.wallet` organization
-- 🧱 **RPC architecture cleanup** – builder-based client/config/service surface plus split response-model modules
-- ♻️ **Ownership fixes** – safer wallet account and RPC request ownership boundaries
-- 🔁 **Backward compatibility** – compatibility aliases retained so existing integrations keep compiling
-- 🧪 **Validation pass** – full build/test matrix rerun before tagging
+See [CHANGELOG.md](CHANGELOG.md) and [docs/MIGRATION_V2.md](docs/MIGRATION_V2.md) for details.
 
 ```bash
-git clone --branch v1.4.0 https://github.com/r3e-network/neo-zig-sdk.git
+git clone --branch v2.0.0 https://github.com/r3e-network/neo-zig-sdk.git
 cd neo-zig-sdk
 zig build test
 ```
@@ -89,14 +71,13 @@ zig build examples
 zig build complete-demo
 ```
 
-or add it as a package dependency (recommended: use `zig fetch --save` so the
-required `.hash` is recorded in your `build.zig.zon`):
+Add as a package dependency (recommended: use `zig fetch --save` so the required `.hash` is recorded):
 
 ```zig
 .dependencies = .{
-    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz`
+    // Added via: `zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v2.0.0.tar.gz`
     .neo_zig = .{
-        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz",
+        .url = "https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v2.0.0.tar.gz",
         .hash = "...",
     },
 };
@@ -106,68 +87,33 @@ required `.hash` is recorded in your `build.zig.zon`):
 
 ```
 src/
-├── neo.zig                     # Main SDK entry point
-├── core/
-│   ├── constants.zig          # Neo blockchain constants
-│   └── errors.zig             # Comprehensive error system
-├── types/
-│   ├── hash160.zig            # 160-bit hashes (addresses, contracts)
-│   ├── hash256.zig            # 256-bit hashes (blocks, transactions)
-│   ├── address.zig            # Neo address with Base58Check
-│   └── contract_parameter.zig # Neo VM parameter types
-├── crypto/
-│   ├── keys.zig               # Private/public key management
-│   ├── signatures.zig         # ECDSA signature operations
-│   ├── secp256r1.zig          # Elliptic curve implementation
-│   ├── ripemd160.zig          # RIPEMD160 hash function
-│   ├── nep2.zig               # Password-protected keys
-│   ├── bip32.zig              # HD wallet derivation
-│   └── wif.zig                # Wallet Import Format
-├── transaction/
-│   ├── transaction_builder.zig # Transaction construction
-│   ├── neo_transaction.zig    # Complete transaction implementation
-│   ├── account_signer.zig     # Account-based signing
-│   ├── witness_rule.zig       # Witness validation rules
-│   └── transaction_broadcast.zig # Network broadcasting
-├── contract/
-│   ├── smart_contract.zig     # Contract interaction
-│   ├── contract_management.zig # Contract deployment
-│   ├── fungible_token.zig     # NEP-17 tokens
-│   ├── non_fungible_token.zig # NEP-11 NFTs
-│   ├── gas_token.zig          # Native GAS token
-│   ├── neo_token.zig          # Native NEO token
-│   ├── policy_contract.zig    # Network policy
-│   ├── crypto_lib.zig         # CryptoLib (hashes, ECDSA, BLS12-381)
-│   ├── notary.zig             # Notary-assisted transactions
-│   ├── treasury.zig           # Treasury (passive fund holder)
-│   ├── role_management.zig    # Node roles
-│   ├── nef_file.zig           # NEF3 format
-│   ├── neo_uri.zig            # NEP-9 URI scheme
-│   └── nns_name.zig           # Neo Name Service
-├── rpc/
-│   ├── neo_client.zig         # Main RPC client
-│   ├── http_client.zig        # HTTP networking
-│   ├── responses.zig          # Response types
-│   └── response_parser.zig    # JSON parsing
-├── wallet/
-│   ├── neo_wallet.zig         # Core wallet management
-│   ├── nep6_wallet.zig        # NEP-6 standard
-│   ├── nep6_extended.zig      # Complete NEP-6 implementation
-│   └── bip39_account.zig      # BIP-39 mnemonic accounts
-├── script/
-│   ├── script_builder.zig     # Neo VM script construction
-│   └── op_code.zig            # VM opcodes
-├── serialization/
-│   ├── binary_writer.zig      # Binary serialization
-│   ├── binary_reader.zig      # Binary deserialization
-│   └── neo_serializable.zig   # Serialization framework
-└── utils/
-    ├── base58.zig             # Base58 encoding
-    ├── string_extensions.zig  # String utilities
-    ├── array_extensions.zig   # Array utilities
-    ├── memory_utils.zig       # Ownership and deinit helpers
-    └── decode.zig             # Safe decode/string helpers
+├── neo.zig             Public surface: Client, types, errors, domain modules
+├── client.zig          The neo.Client struct + Builder + operation methods
+├── core/               Shared constants and per-module error sets
+├── types/              Hash160, Hash256, Address, ContractParameter, StackItem,
+│                       CallFlags, Role, RecordType, NeoVmStateType, …
+├── crypto/             secp256r1, ECDSA, hashing, NEP-2, BIP-32, WIF, base58
+├── serialization/      BinaryReader/Writer, varint, NeoSerializable
+├── script/             ScriptBuilder, OpCode, InteropService, ScriptReader
+├── contract/           SmartContract, NEP-17/NEP-11, native contracts (NEO,
+│                       GAS, Policy, Role, CryptoLib, Notary, Treasury,
+│                       ContractManagement), NEF, NNS, NEP-9 URIs
+├── transaction/        TransactionBuilder, NeoTransaction, AccountSigner,
+│                       ContractSigner, Witness/WitnessRule, broadcast
+├── wallet/             Wallet, Account, NEP-6, BIP-39 mnemonics
+├── rpc/                Low-level RPC transport, request/response model,
+│                       structured-error capture, retry/backoff policy
+├── protocol/           Internal JSON-RPC service helpers
+└── utils/              base58, bytes/string/array/numeric helpers, JSON utils
 ```
+
+**Public entry point** is `src/neo.zig`. Most consumers only need:
+
+- `neo.Client` + `neo.Client.builder(alloc)…build()` (in `src/client.zig`)
+- `neo.Hash160`, `neo.Hash256`, `neo.Address`, `neo.ContractParameter`
+- `neo.Error` (and the per-module `neo.CryptoError`, `neo.RpcError`, …)
+- Domain modules: `neo.crypto`, `neo.transaction`, `neo.wallet`, `neo.contract`, `neo.script`, `neo.serialization`
+- `neo.rpc` only when reaching past `Client` is necessary
 
 ## 🚀 Quick Start
 
@@ -176,7 +122,7 @@ src/
 Add to your `build.zig.zon`:
 
 ```bash
-zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v1.4.0.tar.gz
+zig fetch --save https://github.com/r3e-network/neo-zig-sdk/archive/refs/tags/v2.0.0.tar.gz
 ```
 
 Then add to your `build.zig`:
@@ -192,40 +138,52 @@ exe.root_module.addImport("neo-zig", neo_zig.module("neo-zig"));
 ```zig
 const std = @import("std");
 const neo = @import("neo-zig");
-const security = neo.security;
-const rpc = neo.rpc;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     // 1. Generate a key pair
-    const key_pair = try security.crypto.generateKeyPair(true);
-    defer {
-        var kp = key_pair;
-        kp.zeroize();
-    }
+    var key_pair = try neo.crypto.generateKeyPair(true);
+    defer key_pair.zeroize();
 
     // 2. Create address
     const address = try key_pair.public_key.toAddress(
-        neo.core.constants.AddressConstants.ADDRESS_VERSION,
+        neo.constants.AddressConstants.ADDRESS_VERSION,
     );
     const address_str = try address.toString(allocator);
     defer allocator.free(address_str);
     std.log.info("Your address: {s}", .{address_str});
 
-    // 3. Connect to RPC
-    var client = try rpc.Client.builder(allocator)
-        .endpoint("https://testnet1.neo.coz.io:443")
-        .config(try rpc.Config.builder()
-            .blockInterval(3000)
-            .pollingInterval(3000)
-            .build())
+    // 3. Build a client (AWS-SDK style — fluent builder, one entry point)
+    var client = try neo.Client.builder(allocator)
+        .network(.testnet)
+        .timeoutMs(30_000)
+        .retryPolicy(.{ .max_attempts = 5, .initial_backoff_ms = 500 })
         .build();
     defer client.deinit();
 
-    // 4. Query blockchain
-    const block_count = try client.getBlockCount().send();
-    std.log.info("Current block: {}", .{block_count});
+    // 4. Query the chain. Operations return values directly — no
+    //    intermediate request handle to .send().
+    const count = try client.getBlockCount();
+    std.log.info("Current block: {}", .{count});
+
+    var version = try client.getVersion();
+    defer version.deinit(allocator);
+    std.log.info("Node version: {s}", .{version.user_agent});
+
+    // 5. Structured server errors are captured on the client and accessible
+    //    after a method returns error.ServerError:
+    //
+    //   const bad = client.getBlock(missing_hash, .{}) catch |err| switch (err) {
+    //       error.ServerError => {
+    //           var info = client.takeLastServerError() orelse return err;
+    //           defer info.deinit(allocator);
+    //           std.log.warn("server error {d}: {s}", .{ info.code, info.message });
+    //           return err;
+    //       },
+    //       else => return err,
+    //   };
+    //   _ = bad;
 }
 ```
 

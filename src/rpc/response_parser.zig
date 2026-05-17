@@ -50,8 +50,32 @@ pub fn parseResponseResult(comptime T: type, result: std.json.Value, allocator: 
         remaining.NeoGetVersion => try remaining.NeoGetVersion.fromJson(result, allocator),
 
         else => blk: {
-            if (@hasDecl(T, "fromJson")) break :blk try T.fromJson(result, allocator);
             if (T == std.json.Value) break :blk try json_utils.cloneValue(result, allocator);
+
+            const info = @typeInfo(T);
+            // Generic slice support: parse a JSON array element-by-element.
+            // Each element is parsed via parseResponseResult, so any element
+            // type already supported here (primitive, response struct, etc.)
+            // composes naturally as a slice.
+            if (info == .pointer and info.pointer.size == .slice) {
+                if (result != .array) return errors.NetworkError.InvalidResponse;
+                const items = result.array.items;
+                const out = try allocator.alloc(info.pointer.child, items.len);
+                errdefer allocator.free(out);
+                var count: usize = 0;
+                errdefer {
+                    if (@hasDecl(info.pointer.child, "deinit")) {
+                        for (out[0..count]) |*it| it.deinit(allocator);
+                    }
+                }
+                for (items, 0..) |item, i| {
+                    out[i] = try parseResponseResult(info.pointer.child, item, allocator);
+                    count = i + 1;
+                }
+                break :blk out;
+            }
+
+            if (@hasDecl(T, "fromJson")) break :blk try T.fromJson(result, allocator);
             @compileError("Unsupported RPC response type: " ++ @typeName(T));
         },
     };
@@ -164,6 +188,34 @@ test "Response parsing for basic types" {
     const bool_json = std.json.Value{ .bool = true };
     const parsed_bool = try parseResponseResult(bool, bool_json, allocator);
     try testing.expect(parsed_bool);
+}
+
+test "parseResponseResult handles slice of Hash256 (e.g. getrawmempool)" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    var array = std.json.Array.init(allocator);
+    defer array.deinit();
+    try array.append(std.json.Value{ .string = hex });
+    try array.append(std.json.Value{ .string = hex });
+
+    const list = try parseResponseResult([]Hash256, std.json.Value{ .array = array }, allocator);
+    defer allocator.free(list);
+
+    try testing.expectEqual(@as(usize, 2), list.len);
+    const expected = try Hash256.initWithString(hex);
+    try testing.expect(list[0].eql(expected));
+    try testing.expect(list[1].eql(expected));
+}
+
+test "parseResponseResult rejects non-array for slice target" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+    try testing.expectError(
+        errors.NetworkError.InvalidResponse,
+        parseResponseResult([]Hash256, std.json.Value{ .integer = 1 }, allocator),
+    );
 }
 
 test "Stack item parsing utilities" {

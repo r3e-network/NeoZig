@@ -13,6 +13,54 @@ const Uri = std.Uri;
 
 const log = std.log.scoped(.neo_rpc);
 
+/// Structured JSON-RPC error reported by the server.
+/// Populated on `HttpClient.last_rpc_error` whenever a JSON-RPC response
+/// contains an `error` member. Always cleared at the start of every call.
+pub const ServerError = struct {
+    code: i32,
+    message: []const u8,
+    data: ?[]const u8,
+
+    /// Frees owned strings on `message` and `data`.
+    pub fn deinit(self: *ServerError, allocator: std.mem.Allocator) void {
+        allocator.free(self.message);
+        if (self.data) |d| allocator.free(d);
+        self.message = "";
+        self.data = null;
+    }
+};
+
+/// Exponential-backoff retry parameters.
+pub const Backoff = struct {
+    /// First-retry delay in milliseconds.
+    initial_ms: u32 = 500,
+    /// Growth factor applied per attempt.
+    multiplier: f32 = 2.0,
+    /// Maximum delay between attempts in milliseconds.
+    max_ms: u32 = 30_000,
+    /// Jitter as a fraction of the computed delay, e.g. 0.25 = ±25%.
+    jitter: f32 = 0.25,
+
+    /// Computes the delay for `attempt` (0-based: first retry is attempt=0).
+    pub fn delayMs(self: Backoff, attempt: u32, rng: *std.Random.DefaultPrng) u32 {
+        const base: f32 = @floatFromInt(self.initial_ms);
+        var pow: f32 = 1.0;
+        var i: u32 = 0;
+        while (i < attempt) : (i += 1) pow *= self.multiplier;
+        var delay = base * pow;
+        if (delay > @as(f32, @floatFromInt(self.max_ms))) {
+            delay = @floatFromInt(self.max_ms);
+        }
+        if (self.jitter > 0) {
+            const span = delay * self.jitter;
+            const r = rng.random().float(f32) * 2.0 - 1.0; // [-1, 1]
+            delay += r * span;
+            if (delay < 0) delay = 0;
+        }
+        return @intFromFloat(delay);
+    }
+};
+
 pub const HttpClient = struct {
     /// Upper bound for HTTP response bodies captured into memory.
     /// This prevents unbounded growth when a node (or attacker) returns a huge body.
@@ -24,8 +72,14 @@ pub const HttpClient = struct {
     timeout_ms: u32,
     max_retries: u32,
     max_response_bytes: usize = DEFAULT_MAX_RESPONSE_BYTES,
+    backoff: Backoff = .{},
     send_fn: ?*const SendFn,
     send_context: ?*anyopaque,
+    /// Auto-incrementing JSON-RPC request id.
+    next_request_id: u32 = 1,
+    /// Populated when the last `jsonRpcRequest` saw a structured server error.
+    /// Owned by the client; cleared at the start of each call.
+    last_rpc_error: ?ServerError = null,
 
     const Self = @This();
     const SendFn = fn (ctx: ?*anyopaque, allocator: std.mem.Allocator, endpoint: []const u8, payload: []const u8, timeout_ms: u32) errors.NetworkError![]u8;
@@ -71,10 +125,30 @@ pub const HttpClient = struct {
     }
 
     pub fn deinit(self: *Self) void {
+        if (self.last_rpc_error) |*err| err.deinit(self.allocator);
+        self.last_rpc_error = null;
         if (self.owns_endpoint) {
             self.allocator.free(self.endpoint);
             self.owns_endpoint = false;
         }
+    }
+
+    /// Overrides the retry backoff policy.
+    pub fn setBackoff(self: *Self, backoff: Backoff) void {
+        self.backoff = backoff;
+    }
+
+    /// Consumes and returns the last structured server error, transferring
+    /// ownership to the caller. Returns null when there is no captured error.
+    pub fn takeLastServerError(self: *Self) ?ServerError {
+        const out = self.last_rpc_error;
+        self.last_rpc_error = null;
+        return out;
+    }
+
+    fn clearLastError(self: *Self) void {
+        if (self.last_rpc_error) |*err| err.deinit(self.allocator);
+        self.last_rpc_error = null;
     }
 
     pub fn setTimeout(self: *Self, timeout_ms: u32) void {
@@ -97,39 +171,60 @@ pub const HttpClient = struct {
         self.send_context = context;
     }
 
-    /// Posts JSON-RPC payload with best-effort timeout/retry enforcement.
-    /// Note: actual socket-level deadlines are not enforced by std.http; we fall back
-    /// to elapsed-time checks and retry bounds to avoid hanging forever.
+    /// Posts a JSON-RPC payload, retrying transient failures with
+    /// exponential backoff. The retry budget is bounded by `max_retries`;
+    /// the per-attempt timeout is `timeout_ms`. The std.http transport does
+    /// not enforce socket-level deadlines, so `timeout_ms` is also re-checked
+    /// against the cumulative elapsed time as a backstop.
     pub fn post(self: Self, json_payload: []const u8) ![]u8 {
         const sender = self.send_fn orelse return errors.NetworkError.NetworkUnavailable;
         var overall = std.time.Timer.start() catch return errors.NetworkError.RequestFailed;
+        var rng = std.Random.DefaultPrng.init(seedFromTimer(&overall));
         var attempt: u32 = 0;
-        while (attempt <= self.max_retries) {
-            const response = (if (sender == &defaultSend and self.send_context == null)
+        while (true) {
+            const send_attempt = if (sender == &defaultSend and self.send_context == null)
                 sendFetch(self.allocator, self.endpoint, json_payload, self.timeout_ms, self.max_response_bytes)
             else
-                sender(self.send_context, self.allocator, self.endpoint, json_payload, self.timeout_ms)) catch |err| {
+                sender(self.send_context, self.allocator, self.endpoint, json_payload, self.timeout_ms);
+
+            if (send_attempt) |response| {
+                return response;
+            } else |err| {
                 if (overall.read() / std.time.ns_per_ms >= self.timeout_ms) {
                     return errors.NetworkError.NetworkTimeout;
                 }
-                attempt += 1;
-                if (attempt > self.max_retries or !shouldRetry(err)) {
+                if (attempt >= self.max_retries or !shouldRetry(err)) {
                     return err;
                 }
-                // Backoff omitted on platforms without std.time.sleep
-                continue;
-            };
-            return response;
+                const delay_ms = self.backoff.delayMs(attempt, &rng);
+                if (delay_ms > 0) {
+                    std.time.sleep(@as(u64, delay_ms) * std.time.ns_per_ms);
+                }
+                attempt += 1;
+            }
         }
-        return errors.NetworkError.NetworkTimeout;
     }
 
+    /// Issues a JSON-RPC 2.0 request and returns the `result` value.
+    ///
+    /// Auto-assigns a sequential request id from `next_request_id` when
+    /// `request_id` is null, so callers can omit it. On a structured server
+    /// error response (the JSON contains an `error` member) the parsed
+    /// `code`/`message`/`data` is captured on `last_rpc_error` and the call
+    /// returns `error.ServerError` — inspect via `takeLastServerError`.
     pub fn jsonRpcRequest(
-        self: Self,
+        self: *Self,
         method: []const u8,
         params: std.json.Value,
-        request_id: u32,
+        request_id: ?u32,
     ) !std.json.Value {
+        self.clearLastError();
+        const id = request_id orelse blk: {
+            const value = self.next_request_id;
+            self.next_request_id = if (value == std.math.maxInt(u32)) 1 else value + 1;
+            break :blk value;
+        };
+
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
         const temp_allocator = arena.allocator();
@@ -138,7 +233,7 @@ pub const HttpClient = struct {
         try json_utils.putOwnedKey(&request_obj, temp_allocator, "jsonrpc", std.json.Value{ .string = try temp_allocator.dupe(u8, "2.0") });
         try json_utils.putOwnedKey(&request_obj, temp_allocator, "method", std.json.Value{ .string = try temp_allocator.dupe(u8, method) });
         try json_utils.putOwnedKey(&request_obj, temp_allocator, "params", params);
-        try json_utils.putOwnedKey(&request_obj, temp_allocator, "id", std.json.Value{ .integer = @intCast(request_id) });
+        try json_utils.putOwnedKey(&request_obj, temp_allocator, "id", std.json.Value{ .integer = @intCast(id) });
 
         const request_json = std.json.Value{ .object = request_obj };
 
@@ -154,10 +249,9 @@ pub const HttpClient = struct {
         const response_obj = parsed.value.object;
 
         if (response_obj.get("error")) |error_value| {
-            const error_code = error_value.object.get("code").?.integer;
-            const error_message = error_value.object.get("message").?.string;
+            try self.captureServerError(error_value);
             if (!builtin.is_test) {
-                log.debug("RPC Error {d}: {s}", .{ error_code, error_message });
+                if (self.last_rpc_error) |rec| log.debug("RPC Error {d}: {s}", .{ rec.code, rec.message });
             }
             return errors.NetworkError.ServerError;
         }
@@ -166,11 +260,36 @@ pub const HttpClient = struct {
         return try json_utils.cloneValue(result, self.allocator);
     }
 
-    pub fn validateConnection(self: Self) !bool {
+    fn captureServerError(self: *Self, error_value: std.json.Value) !void {
+        if (error_value != .object) return errors.NetworkError.InvalidResponse;
+        const obj = error_value.object;
+        const code: i32 = if (obj.get("code")) |c| switch (c) {
+            .integer => |v| @intCast(v),
+            else => 0,
+        } else 0;
+        const message_src: []const u8 = if (obj.get("message")) |m| switch (m) {
+            .string => |s| s,
+            else => "",
+        } else "";
+        const message_owned = try self.allocator.dupe(u8, message_src);
+        errdefer self.allocator.free(message_owned);
+        var data_owned: ?[]const u8 = null;
+        if (obj.get("data")) |d| switch (d) {
+            .string => |s| data_owned = try self.allocator.dupe(u8, s),
+            else => {},
+        };
+        self.last_rpc_error = ServerError{
+            .code = code,
+            .message = message_owned,
+            .data = data_owned,
+        };
+    }
+
+    pub fn validateConnection(self: *Self) !bool {
         var params_array = std.json.Array.init(self.allocator);
         defer params_array.deinit();
         const params = std.json.Value{ .array = params_array };
-        _ = self.jsonRpcRequest("getversion", params, 1) catch |err| {
+        _ = self.jsonRpcRequest("getversion", params, null) catch |err| {
             switch (err) {
                 error.NetworkTimeout, error.ConnectionFailed => return false,
                 else => return err,
@@ -179,15 +298,21 @@ pub const HttpClient = struct {
         return true;
     }
 
-    pub fn getNetworkLatency(self: Self) !u64 {
+    pub fn getNetworkLatency(self: *Self) !u64 {
         var timer = try std.time.Timer.start();
         var params_array = std.json.Array.init(self.allocator);
         defer params_array.deinit();
         const params = std.json.Value{ .array = params_array };
-        _ = try self.jsonRpcRequest("getblockcount", params, 1);
+        _ = try self.jsonRpcRequest("getblockcount", params, null);
         return timer.read() / std.time.ns_per_ms;
     }
 };
+
+/// Seeds a PRNG from the current monotonic time. Deterministic only within
+/// a single nanosecond, which is fine for jitter purposes.
+fn seedFromTimer(timer: *std.time.Timer) u64 {
+    return @as(u64, @bitCast(@as(i64, @intCast(timer.read())))) ^ 0xa5a5a5a5a5a5a5a5;
+}
 
 pub const HttpClientFactory = struct {
     pub fn mainnet(allocator: std.mem.Allocator) HttpClient {
@@ -334,9 +459,97 @@ test "HttpClient custom sender" {
     var params_array = std.json.Array.init(allocator);
     defer params_array.deinit();
     const params = std.json.Value{ .array = params_array };
-    const result = try client.jsonRpcRequest("getnumber", params, 1);
+    const result = try client.jsonRpcRequest("getnumber", params, null);
     try testing.expectEqual(@as(i64, 42), result.integer);
     try testing.expectEqualStrings("{\"jsonrpc\":\"2.0\",\"method\":\"getnumber\",\"params\":[],\"id\":1}", captured.items);
+
+    // Second call uses the next request id.
+    var params2 = std.json.Array.init(allocator);
+    defer params2.deinit();
+    _ = try client.jsonRpcRequest("getnumber", std.json.Value{ .array = params2 }, null);
+    try testing.expectEqualStrings("{\"jsonrpc\":\"2.0\",\"method\":\"getnumber\",\"params\":[],\"id\":2}", captured.items);
+}
+
+test "Backoff.delayMs grows exponentially up to max" {
+    const testing = std.testing;
+    var rng = std.Random.DefaultPrng.init(42);
+    const policy = Backoff{
+        .initial_ms = 100,
+        .multiplier = 2.0,
+        .max_ms = 1_000,
+        .jitter = 0,
+    };
+    try testing.expectEqual(@as(u32, 100), policy.delayMs(0, &rng));
+    try testing.expectEqual(@as(u32, 200), policy.delayMs(1, &rng));
+    try testing.expectEqual(@as(u32, 400), policy.delayMs(2, &rng));
+    try testing.expectEqual(@as(u32, 800), policy.delayMs(3, &rng));
+    try testing.expectEqual(@as(u32, 1_000), policy.delayMs(4, &rng));
+    try testing.expectEqual(@as(u32, 1_000), policy.delayMs(5, &rng));
+}
+
+test "Backoff.delayMs applies jitter within fraction" {
+    const testing = std.testing;
+    var rng = std.Random.DefaultPrng.init(7);
+    const policy = Backoff{
+        .initial_ms = 1_000,
+        .multiplier = 1.0,
+        .max_ms = 10_000,
+        .jitter = 0.5,
+    };
+    var i: u32 = 0;
+    while (i < 32) : (i += 1) {
+        const d = policy.delayMs(0, &rng);
+        try testing.expect(d >= 500 and d <= 1_500);
+    }
+}
+
+const ServerErrorContext = struct {
+    response: []const u8,
+};
+
+fn serverErrorSend(
+    ctx: ?*anyopaque,
+    allocator: std.mem.Allocator,
+    endpoint: []const u8,
+    payload: []const u8,
+    timeout_ms: u32,
+) errors.NetworkError![]u8 {
+    _ = endpoint;
+    _ = payload;
+    _ = timeout_ms;
+    const raw_ptr = ctx orelse return errors.NetworkError.RequestFailed;
+    const context_ptr: *ServerErrorContext = @ptrCast(@alignCast(raw_ptr));
+    return allocator.dupe(u8, context_ptr.response) catch return errors.NetworkError.RequestFailed;
+}
+
+test "HttpClient captures structured server error" {
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    var ctx = ServerErrorContext{
+        .response = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"invalid params\"},\"id\":1}",
+    };
+    var client = HttpClient.init(allocator, "http://example.com");
+    defer client.deinit();
+    client.withSender(serverErrorSend, &ctx);
+
+    var params_array = std.json.Array.init(allocator);
+    defer params_array.deinit();
+    const params = std.json.Value{ .array = params_array };
+
+    try testing.expectError(
+        errors.NetworkError.ServerError,
+        client.jsonRpcRequest("badmethod", params, null),
+    );
+
+    var captured = client.takeLastServerError() orelse return error.MissingServerError;
+    defer captured.deinit(allocator);
+    try testing.expectEqual(@as(i32, -32602), captured.code);
+    try testing.expectEqualStrings("invalid params", captured.message);
+    try testing.expect(captured.data == null);
+
+    // The error is consumed by takeLastServerError; second call returns null.
+    try testing.expect(client.takeLastServerError() == null);
 }
 
 test "HttpClient maps oversized response to InvalidResponse" {

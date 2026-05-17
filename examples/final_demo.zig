@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const neo = @import("neo-zig");
-const constants = neo.core.constants;
+const constants = neo.constants;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

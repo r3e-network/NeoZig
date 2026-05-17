@@ -19,65 +19,30 @@ The SDK is organized as a collection of focused modules under `src/`:
 
 ```
 src/
-├── neo.zig                     # Main SDK entry point
-├── core/
-│   ├── constants.zig          # Neo blockchain constants
-│   └── errors.zig             # Comprehensive error system
-├── types/
-│   ├── hash160.zig            # 160-bit hashes (addresses, contracts)
-│   ├── hash256.zig            # 256-bit hashes (blocks, transactions)
-│   ├── address.zig            # Neo address with Base58Check
-│   └── contract_parameter.zig # Neo VM parameter types
-├── crypto/
-│   ├── keys.zig               # Private/public key management
-│   ├── signatures.zig         # ECDSA signature operations
-│   ├── secp256r1.zig          # Elliptic curve implementation
-│   ├── ripemd160.zig          # RIPEMD160 hash function
-│   ├── nep2.zig               # Password-protected keys
-│   ├── bip32.zig              # HD wallet derivation
-│   └── wif.zig                # Wallet Import Format
-├── transaction/
-│   ├── transaction_builder.zig # Transaction construction
-│   ├── neo_transaction.zig    # Complete transaction implementation
-│   ├── account_signer.zig     # Account-based signing
-│   ├── witness_rule.zig       # Witness validation rules
-│   └── transaction_broadcast.zig # Network broadcasting
-├── contract/
-│   ├── smart_contract.zig     # Contract interaction
-│   ├── contract_management.zig # Contract deployment
-│   ├── fungible_token.zig     # NEP-17 tokens
-│   ├── non_fungible_token.zig # NEP-11 NFTs
-│   ├── gas_token.zig          # Native GAS token
-│   ├── neo_token.zig          # Native NEO token
-│   ├── policy_contract.zig    # Network policy
-│   ├── role_management.zig    # Node roles
-│   ├── nef_file.zig           # NEF3 format
-│   ├── neo_uri.zig            # NEP-9 URI scheme
-│   └── nns_name.zig           # Neo Name Service
-├── rpc/
-│   ├── neo_client.zig         # Main RPC client
-│   ├── http_client.zig        # HTTP networking
-│   ├── responses.zig          # Response types
-│   └── response_parser.zig    # JSON parsing
-├── wallet/
-│   ├── neo_wallet.zig         # Core wallet management
-│   ├── nep6_wallet.zig        # NEP-6 standard
-│   ├── nep6_extended.zig      # Complete NEP-6 implementation
-│   └── bip39_account.zig      # BIP-39 mnemonic accounts
-├── script/
-│   ├── script_builder.zig     # Neo VM script construction
-│   └── op_code.zig            # VM opcodes
-├── serialization/
-│   ├── binary_writer.zig      # Binary serialization
-│   ├── binary_reader.zig      # Binary deserialization
-│   └── neo_serializable.zig   # Serialization framework
-└── utils/
-    ├── base58.zig             # Base58 encoding
-    ├── string_extensions.zig  # String utilities
-    ├── array_extensions.zig   # Array utilities
-    ├── memory_utils.zig       # Ownership and deinit helpers
-    └── decode.zig             # Safe decode/string helpers
+├── neo.zig             Public surface: Client, value types, errors, domain modules
+├── client.zig          neo.Client struct + Builder + operation methods
+├── core/               Shared constants and per-module error sets
+├── types/              Hash160, Hash256, Address, ContractParameter, StackItem,
+│                       CallFlags, Role, RecordType, NeoVmStateType
+├── crypto/             secp256r1, ECDSA, hashing, NEP-2, BIP-32, WIF, base58
+├── serialization/      BinaryReader/Writer, varint, NeoSerializable
+├── script/             ScriptBuilder, OpCode, InteropService, ScriptReader
+├── contract/           SmartContract, NEP-17/NEP-11, native contracts (NEO,
+│                       GAS, Policy, Role, CryptoLib, Notary, Treasury,
+│                       ContractManagement), NEF, NNS, NEP-9 URIs
+├── transaction/        TransactionBuilder, NeoTransaction, AccountSigner,
+│                       ContractSigner, Witness, WitnessRule, broadcast
+├── wallet/             Wallet, Account, NEP-6, BIP-39 mnemonics
+├── rpc/                Low-level RPC transport, request/response model,
+│                       Backoff/ServerError types, full response catalog
+├── protocol/           Internal JSON-RPC service helpers
+└── utils/              base58, bytes/string/array/numeric helpers, JSON utils
 ```
+
+The package's public entry point is `src/neo.zig`; the `neo.Client` struct
+lives in `src/client.zig`. Domain modules (`crypto`, `transaction`, `wallet`,
+`contract`, `script`, `serialization`, `rpc`, `protocol`) are exposed
+flat — there are no intermediate `*_namespace.zig` shims.
 
 ## Ownership Model
 
@@ -96,8 +61,10 @@ var builder = neo.transaction.TransactionBuilder.init(allocator);
 defer builder.deinit();  // Frees internal allocations
 
 // Pattern 2: RPC response with allocated fields
-const response = try client.getBlockCount().send();
-defer response.deinit(allocator);  // Frees allocated strings/slices
+//   getBlockCount returns u32, no deinit needed.
+//   getVersion/getBlock return owned data — deinit with the client's allocator.
+var version = try client.getVersion();
+defer version.deinit(allocator);  // Frees allocated strings/slices
 
 // Pattern 3: Key pair with zeroization
 const key_pair = try neo.crypto.generateKeyPair(true);
@@ -172,18 +139,20 @@ Complete transaction building and signing system:
 
 ### RPC Module
 
-JSON-RPC client implementation:
+Low-level JSON-RPC transport. Most application code should use `neo.Client`
+instead; this module is the escape hatch for callers that need direct
+transport control.
 
-- **NeoService**: HTTP transport with timeout and retry support
-- **NeoClient**: Main client with typed request builders
-- **types.zig**: Complete RPC response-model catalog, with `core`, `extended`, `protocol`, and `remaining` families
-- **responses.zig**: Stable façade over categorized `responses_*.zig` modules
-- **responses_blockchain.zig**: Stable façade over `responses_blockchain_*.zig` submodules
-- **responses_contract.zig**: Stable façade over `responses_contract_*.zig` submodules
-- **extended_responses.zig**: Stable façade over categorized `extended_*_responses.zig` modules
-- **remaining_responses.zig**: Stable façade over categorized `remaining_*_responses.zig` modules
-- **protocol_responses.zig**: Stable façade over categorized `protocol_*_responses.zig` modules
-- **response_parser.zig**: JSON parsing with Neo protocol compatibility
+- **HttpClient**: JSON-RPC transport with exponential-backoff retry and structured server-error capture (`Backoff`, `ServerError`)
+- **HttpService**: Configurable HTTP service wrapper used by NeoClient and Client
+- **NeoService**: Service abstraction that owns the transport and statistics
+- **NeoClient**: Legacy client retained for back-compat; alias of `neo.Client`
+- **types.zig**: Flat response-type catalog re-exporting from the leaf definition files
+- **responses.zig**: Facade over the per-domain leaf files (`responses_blockchain_*.zig`, `responses_contract_*.zig`, `responses_invocation.zig`, `responses_token.zig`)
+- **extended_responses.zig / protocol_responses.zig / remaining_responses.zig**: Facades grouping account/oracle/network/system/wallet/state/node/misc response types
+- **response_aliases.zig**: Operation-result aliases (`NeoGetBlock`, `NeoGetTransaction`, etc.) and generic helpers
+- **response.zig**: JSON-RPC 2.0 envelope (`Response<T>`, `ResponseError`)
+- **response_parser.zig**: JSON parsing utilities
 
 ### Contract Module
 
@@ -229,27 +198,39 @@ Binary serialization framework:
 User Code
     |
     v
-neo.rpc.Client.builder(allocator)
-    .endpoint(...)
-    .config(...)
+neo.Client.builder(allocator)
+    .endpoint(...)               (or .network(.testnet))
+    .timeoutMs(...)
+    .retryPolicy(...)
     .build()
     |
     v
-NeoClient (client instance)
+neo.Client (client instance, owns transport)
     |
-    +-- getBlockCount() --> RPCRequest { method, params }
+    +-- getBlockCount() --> rpcCall(u32, "getblockcount", &.{})
     |
     v
-send() --> HttpClient.post()
+RpcRequest.init().send()
+    |
+    v
+NeoService.performRequest()
+    |
+    v
+HttpService.performIO() --> HttpClient.post()
+    |
+    +-- on transient failure: exponential backoff + jitter, retry
     |
     v
 std.http.Client sends JSON-RPC request
     |
-    v
-Response parser validates and converts JSON to typed response
+    +-- on server error: capture { code, message, data } on client.last_rpc_error
     |
     v
-Returns response to user
+Response parser converts JSON result to typed response
+    |
+    v
+Returns response value (or error.ServerError; inspect via
+takeLastServerError) to user
 ```
 
 ### Transaction Flow
@@ -297,95 +278,50 @@ public_key.toAddress(ADDRESS_VERSION) --> Address
 toString(allocator) --> "NX5v2MtKixV3mPJPfbJdc7f3oGyM2eE9CQ"
 ```
 
-## Adding New RPC Method
+## Adding a New RPC Method
 
-The SDK uses typed request builders plus typed response parsing:
+To add a new JSON-RPC method to `neo.Client`:
 
-### Step 1: Add Response Type
+### Step 1: Define (or locate) the response type
 
-In `src/rpc/responses.zig`:
+If the JSON-RPC method returns a complex object, define a response struct in
+the appropriate `src/rpc/responses_*.zig` (or `extended_*_responses.zig` /
+`remaining_*_responses.zig`) leaf file. Existing primitives like `u32`,
+`bool`, and `Hash256` can be used directly. Each response type must provide:
 
 ```zig
-pub const MyResponse = struct {
-    result: MyResult,
-    id: std.json.Value,
-    jsonrpc: []const u8,
-
-    pub fn deinit(self: *MyResponse, allocator: std.mem.Allocator) void {
-        self.result.deinit(allocator);
-    }
-};
-
-pub const MyResult = struct {
-    field1: []const u8,
-    field2: u64,
-
-    pub fn deinit(self: *MyResult, allocator: std.mem.Allocator) void {
-        allocator.free(self.field1);
-    }
-};
+pub fn fromJson(value: std.json.Value, allocator: std.mem.Allocator) !@This() { ... }
+pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void { ... }
 ```
 
-### Step 2: Add Response Alias
+### Step 2: Re-export from the public catalog (if user-visible)
 
-In `src/rpc/response_aliases.zig` if protocol layer needs accessor:
+Add the type to `src/rpc/responses.zig` (or the appropriate facade) and to
+`src/rpc/types.zig` if it should appear on `neo.rpc`. If user-facing,
+re-export from `src/client.zig` so callers can write `neo.MyResponse`.
 
-```zig
-pub const MyResultAccessor = struct {
-    response: *responses.MyResponse,
+### Step 3: Add the operation method on `Client`
 
-    pub fn getField1(self: MyResultAccessor) []const u8 {
-        return self.response.result.field1;
-    }
-};
-```
-
-### Step 3: Add Request Builder
-
-In `src/protocol/neo_protocol.zig`:
+In `src/client.zig`, add a method that wraps `rpcCall`:
 
 ```zig
-pub const MyRequest = struct {
-    method: []const u8 = "getmymethod",
-    params: Params,
-    id: std.json.Value,
-
-    pub fn init(params: Params) MyRequest {
-        return .{
-            .params = params,
-            .id = .{ .integer = 1 },
-        };
-    }
-};
-
-pub const MyParams = struct {
-    param1: []const u8,
-};
-```
-
-### Step 4: Add Client Method
-
-In `src/rpc/neo_client.zig`:
-
-```zig
-pub fn getMyMethod(
-    self: *NeoClient,
-    param1: []const u8,
-) !RPCRequest(MyResponse) {
-    const params = protocol.MyParams{ .param1 = param1 };
-    const request = protocol.MyRequest.init(params);
-    return self.makeRequest(request);
+pub fn getMyMethod(self: *Self, param: []const u8) !MyResponse {
+    const params = [_]RpcParam{RpcParam.initString(param)};
+    return self.rpcCall(MyResponse, "getmymethod", &params);
 }
 ```
 
-### Step 5: Add Test
+For complex parameter sets, accept an `Options` struct (see
+`GetBlockOptions`, `InvokeOptions`, `TransferRangeOptions`).
 
-In `tests/rpc_tests.zig`:
+### Step 4: Test
+
+Add a unit test inline in `src/client.zig` or a domain test in
+`tests/rpc_tests.zig`:
 
 ```zig
-test "getmymethod" {
-    // Test request params
-    // Test response parsing
+test "client.getMyMethod builds correct request" {
+    // Use HttpClient.withSender to stub the transport (see http_client.zig tests).
 }
 ```
 
@@ -546,7 +482,8 @@ const gas_token = neo.contract.GasToken.init(allocator, client);
 
 ## Related Documentation
 
-- [API Reference](API.md) - Detailed API documentation
-- [Usage Guide](USAGE.md) - Practical usage patterns
-- [Swift Migration](SWIFT_MIGRATION.md) - Migration from Swift SDK
-- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+- [API Reference](API.md) — Detailed API documentation
+- [Usage Guide](USAGE.md) — Practical usage patterns
+- [Migration v1 → v2](MIGRATION_V2.md) — What changed in v2.0 and how to update
+- [Swift Migration](SWIFT_MIGRATION.md) — Migration from the NeoSwift SDK
+- [Troubleshooting](TROUBLESHOOTING.md) — Common issues and solutions

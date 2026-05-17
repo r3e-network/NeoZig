@@ -1,7 +1,8 @@
-//! RPC Response Types
+//! Core RPC response types — facade over the per-domain definition files.
 //!
-//! Neo N3
-//! Handles all Neo RPC response parsing and serialization.
+//! All types are defined in `responses_blockchain_*.zig`, `responses_contract_*.zig`,
+//! `responses_invocation.zig`, and `responses_token.zig`. This file re-exports
+//! them as a flat set so consumers can import a single module.
 
 const std = @import("std");
 const json_utils = @import("../utils/json_utils.zig");
@@ -9,55 +10,52 @@ const json_utils = @import("../utils/json_utils.zig");
 const Hash256 = @import("../types/hash256.zig").Hash256;
 const errors = @import("../core/errors.zig");
 
-pub const blockchain = @import("responses_blockchain.zig");
-pub const invocation = @import("responses_invocation.zig");
-pub const token = @import("responses_token.zig");
-pub const contract = @import("responses_contract.zig");
-
 pub const StackItem = @import("../types/stack_item.zig").StackItem;
 pub const TransactionAttribute = @import("../protocol/response/transaction_attribute.zig").TransactionAttribute;
 
-pub const NeoBlock = blockchain.NeoBlock;
-pub const NeoWitness = blockchain.NeoWitness;
-pub const Transaction = blockchain.Transaction;
-pub const TransactionSigner = blockchain.TransactionSigner;
-pub const WitnessRule = blockchain.WitnessRule;
-pub const WitnessCondition = blockchain.WitnessCondition;
-pub const NeoVersion = blockchain.NeoVersion;
-pub const HardforkInfo = blockchain.HardforkInfo;
-pub const ProtocolConfiguration = blockchain.ProtocolConfiguration;
-pub const NetworkFeeResponse = blockchain.NetworkFeeResponse;
-pub const SendRawTransactionResponse = blockchain.SendRawTransactionResponse;
+// Blockchain types
+pub const NeoBlock = @import("responses_blockchain_block.zig").NeoBlock;
+const tx_types = @import("responses_blockchain_transaction.zig");
+pub const NeoWitness = tx_types.NeoWitness;
+pub const Transaction = tx_types.Transaction;
+pub const TransactionSigner = tx_types.TransactionSigner;
+pub const WitnessRule = tx_types.WitnessRule;
+pub const WitnessCondition = tx_types.WitnessCondition;
+const network_types = @import("responses_blockchain_network.zig");
+pub const NeoVersion = network_types.NeoVersion;
+pub const HardforkInfo = network_types.HardforkInfo;
+pub const ProtocolConfiguration = network_types.ProtocolConfiguration;
+pub const NetworkFeeResponse = network_types.NetworkFeeResponse;
+pub const SendRawTransactionResponse = network_types.SendRawTransactionResponse;
 
-pub const InvocationResult = invocation.InvocationResult;
-pub const NeoApplicationLog = invocation.NeoApplicationLog;
-pub const Execution = invocation.Execution;
-pub const Notification = invocation.Notification;
+// Invocation types
+const invocation_types = @import("responses_invocation.zig");
+pub const InvocationResult = invocation_types.InvocationResult;
+pub const NeoApplicationLog = invocation_types.NeoApplicationLog;
+pub const Execution = invocation_types.Execution;
+pub const Notification = invocation_types.Notification;
 
-pub const Nep17Balances = token.Nep17Balances;
-pub const TokenBalance = token.TokenBalance;
-pub const Nep17Transfers = token.Nep17Transfers;
-pub const TokenTransfer = token.TokenTransfer;
+// NEP-17 token types
+const token_types = @import("responses_token.zig");
+pub const Nep17Balances = token_types.Nep17Balances;
+pub const TokenBalance = token_types.TokenBalance;
+pub const Nep17Transfers = token_types.Nep17Transfers;
+pub const TokenTransfer = token_types.TokenTransfer;
 
-pub const ContractState = contract.ContractState;
-pub const ContractNef = contract.ContractNef;
-pub const ContractFeatures = contract.ContractFeatures;
-pub const ContractManifest = contract.ContractManifest;
-pub const ContractGroup = contract.ContractGroup;
-pub const ContractParameterDefinition = contract.ContractParameterDefinition;
-pub const ContractMethod = contract.ContractMethod;
-pub const ContractEvent = contract.ContractEvent;
-pub const ContractABI = contract.ContractABI;
-pub const ContractPermission = contract.ContractPermission;
-
-test "responses module exposes category namespaces" {
-    const testing = std.testing;
-
-    try testing.expect(blockchain.NeoBlock == NeoBlock);
-    try testing.expect(invocation.InvocationResult == InvocationResult);
-    try testing.expect(token.Nep17Balances == Nep17Balances);
-    try testing.expect(contract.ContractState == ContractState);
-}
+// Contract types
+const contract_state_types = @import("responses_contract_state.zig");
+pub const ContractState = contract_state_types.ContractState;
+pub const ContractNef = contract_state_types.ContractNef;
+const contract_manifest_types = @import("responses_contract_manifest.zig");
+pub const ContractFeatures = contract_manifest_types.ContractFeatures;
+pub const ContractManifest = contract_manifest_types.ContractManifest;
+pub const ContractGroup = contract_manifest_types.ContractGroup;
+const contract_abi_types = @import("responses_contract_abi.zig");
+pub const ContractParameterDefinition = contract_abi_types.ContractParameterDefinition;
+pub const ContractMethod = contract_abi_types.ContractMethod;
+pub const ContractEvent = contract_abi_types.ContractEvent;
+pub const ContractABI = contract_abi_types.ContractABI;
+pub const ContractPermission = contract_abi_types.ContractPermission;
 
 test "NeoBlock response parsing" {
     const testing = std.testing;
@@ -74,12 +72,9 @@ test "InvocationResult parsing and operations" {
     _ = testing.allocator;
 
     var invocation_result = InvocationResult.init();
-
     try testing.expect(!invocation_result.hasFaulted());
-
     invocation_result.state = .Fault;
     try testing.expect(invocation_result.hasFaulted());
-
     try testing.expectError(errors.NeoError.IllegalState, invocation_result.getFirstStackItem());
 }
 
